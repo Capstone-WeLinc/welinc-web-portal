@@ -508,7 +508,7 @@ export default function ModuleSelection() {
   const launchSubsystem = (sys: string) => {
     const config = SUBSYSTEMS[sys as keyof typeof SUBSYSTEMS];
     if (config) {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       window.location.href = `${config.url}/login?token=${token}`;
     }
   };
