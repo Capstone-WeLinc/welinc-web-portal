@@ -4,32 +4,26 @@ import { Eye, EyeOff, AlertCircle, Truck } from 'lucide-react';
 import { api } from '../../lib/api';
 import { decodeJwt, type JwtPayload, getCurrentUser } from '../../lib/auth';
 
-export const getSubsystemUrl = (system: string, defaultPort: number) => {
-  const envUrl = (import.meta.env as any)[`VITE_${system}_URL`];
-  if (envUrl) return envUrl;
-  return `${window.location.protocol}//${window.location.hostname}:${defaultPort}`;
-};
-
-export const getSubsystems = () => ({
+export const SUBSYSTEMS = {
   VRMS: {
     name: 'Vehicle Repair & Maintenance (VRMS)',
-    url: getSubsystemUrl('VRMS', 5173),
+    url: import.meta.env.VITE_VRMS_URL || 'http://localhost:5173',
     color: 'border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 text-blue-400',
     iconColor: 'bg-blue-500 text-brand-dark',
   },
   VMMS: {
     name: 'Vehicle Monitoring & Maintenance (VMMS)',
-    url: getSubsystemUrl('VMMS', 5174),
+    url: import.meta.env.VITE_VMMS_URL || 'http://localhost:5174',
     color: 'border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400',
     iconColor: 'bg-emerald-500 text-brand-dark',
   },
   BMS: {
     name: 'Booking & Operations (BMS)',
-    url: getSubsystemUrl('BMS', 5175),
+    url: import.meta.env.VITE_BMS_URL || 'http://localhost:5175',
     color: 'border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 text-amber-400',
     iconColor: 'bg-amber-500 text-brand-dark',
   },
-});
+};
 
 export default function Login() {
   const navigate = useNavigate();
@@ -97,7 +91,7 @@ export default function Login() {
       if (subsystemRoles.length === 1) {
         // Redirect immediately to the single accessible subsystem
         const targetSystem = subsystemRoles[0].system.toUpperCase();
-        const config = getSubsystems()[targetSystem as keyof ReturnType<typeof getSubsystems>];
+        const config = SUBSYSTEMS[targetSystem as keyof typeof SUBSYSTEMS];
         if (config) {
           window.location.href = `${config.url}/login?token=${token}`;
           return;
