@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import Login, { SUBSYSTEMS } from './pages/auth/Login';
+import Login, { getSubsystems } from './pages/auth/Login';
 import ModuleSelection from './pages/portal/ModuleSelection';
 import { getCurrentUser } from './lib/auth';
 
@@ -36,7 +36,7 @@ function PortalRootRedirect() {
       // Redirect immediately to that subsystem
       const token = localStorage.getItem('token');
       const targetSystem = subsystemRoles[0].system.toUpperCase();
-      const config = SUBSYSTEMS[targetSystem as keyof typeof SUBSYSTEMS];
+      const config = getSubsystems()[targetSystem as keyof ReturnType<typeof getSubsystems>];
       if (config && token) {
         window.location.href = `${config.url}/login?token=${token}`;
         return;

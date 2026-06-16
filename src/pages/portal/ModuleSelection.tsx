@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { logout, getCurrentUser, type AuthenticatedUser } from '../../lib/auth';
-import { SUBSYSTEMS } from '../auth/Login';
+import { getSubsystems } from '../auth/Login';
 
 interface SystemRole {
   role: string;
@@ -554,7 +554,7 @@ export default function ModuleSelection() {
   };
 
   const launchSubsystem = (sys: string) => {
-    const config = SUBSYSTEMS[sys as keyof typeof SUBSYSTEMS];
+    const config = getSubsystems()[sys as keyof ReturnType<typeof getSubsystems>];
     if (config) {
       const token = localStorage.getItem('token');
       window.location.href = `${config.url}/login?token=${token}`;
