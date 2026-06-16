@@ -134,6 +134,25 @@ export default function ModuleSelection() {
     }
   };
 
+  const validatePasswordStrength = (pw: string): string | null => {
+    if (pw.length < 12) {
+      return 'Password must be at least 12 characters long.';
+    }
+    if (!/[A-Z]/.test(pw)) {
+      return 'Password must include at least one uppercase letter.';
+    }
+    if (!/[a-z]/.test(pw)) {
+      return 'Password must include at least one lowercase letter.';
+    }
+    if (!/\d/.test(pw)) {
+      return 'Password must include at least one number.';
+    }
+    if (!/[^A-Za-z0-9]/.test(pw)) {
+      return 'Password must include at least one special character.';
+    }
+    return null;
+  };
+
   const handleCreateOrUpdateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
@@ -161,6 +180,11 @@ export default function ModuleSelection() {
           setFormError('Password is required for new users.');
           return;
         }
+        const pwError = validatePasswordStrength(password);
+        if (pwError) {
+          setFormError(pwError);
+          return;
+        }
         await api.post('/auth/users', {
           name: name.trim(),
           username: username.trim(),
@@ -169,6 +193,13 @@ export default function ModuleSelection() {
         });
         showToast(`User ${username} created successfully!`);
       } else {
+        if (password) {
+          const pwError = validatePasswordStrength(password);
+          if (pwError) {
+            setFormError(pwError);
+            return;
+          }
+        }
         await api.patch(`/auth/users/${selectedUserId}`, {
           name: name.trim(),
           username: username.trim(),
@@ -180,7 +211,12 @@ export default function ModuleSelection() {
       setShowUserModal(false);
       fetchUsers();
     } catch (err: any) {
-      setFormError(err.response?.data?.message || 'Failed to save user.');
+      const msg = err.response?.data?.message;
+      if (Array.isArray(msg)) {
+        setFormError(msg.join(', '));
+      } else {
+        setFormError(msg || 'Failed to save user.');
+      }
     }
   };
 
@@ -193,14 +229,26 @@ export default function ModuleSelection() {
       return;
     }
 
+    const pwError = validatePasswordStrength(password);
+    if (pwError) {
+      setFormError(pwError);
+      return;
+    }
+
     try {
       await api.patch(`/auth/users/${selectedUserId}/password`, {
         password: password,
       });
       showToast(`Password reset successfully for ${username}!`);
       setShowUserModal(false);
+      fetchUsers();
     } catch (err: any) {
-      setFormError(err.response?.data?.message || 'Failed to reset password.');
+      const msg = err.response?.data?.message;
+      if (Array.isArray(msg)) {
+        setFormError(msg.join(', '));
+      } else {
+        setFormError(msg || 'Failed to save user.');
+      }
     }
   };
 

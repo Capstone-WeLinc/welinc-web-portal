@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle, Truck } from 'lucide-react';
 import { api } from '../../lib/api';
-import { decodeJwt, type JwtPayload } from '../../lib/auth';
+import { decodeJwt, type JwtPayload, getCurrentUser } from '../../lib/auth';
 
 export const SUBSYSTEMS = {
   VRMS: {
@@ -32,6 +32,12 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (getCurrentUser()) {
+      navigate('/', { replace: true });
+    }
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
