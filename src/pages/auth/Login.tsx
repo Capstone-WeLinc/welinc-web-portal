@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle, Truck } from 'lucide-react';
 import { api } from '../../lib/api';
 import { decodeJwt, type JwtPayload, getCurrentUser } from '../../lib/auth';
@@ -33,11 +33,17 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  React.useEffect(() => {
-    if (getCurrentUser()) {
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('logout') === 'true') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('welinc_user');
+      navigate('/login', { replace: true });
+    } else if (getCurrentUser()) {
       navigate('/', { replace: true });
     }
-  }, [navigate]);
+  }, [searchParams, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
