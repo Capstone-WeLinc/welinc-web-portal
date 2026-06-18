@@ -9,7 +9,7 @@ export const api = axios.create({
 
 api.interceptors.request.use((config) => {
   try {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('welinc_token');
     if (token) {
       if (!config.headers) {
         config.headers = {} as any;

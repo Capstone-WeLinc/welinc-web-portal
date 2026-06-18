@@ -1,33 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle, Truck } from 'lucide-react';
 import { api } from '../../lib/api';
-import { decodeJwt, type JwtPayload, getCurrentUser } from '../../lib/auth';
+import { decodeJwt, type JwtPayload, getCurrentUser, setTokens } from '../../lib/auth';
+import { useToast } from '../../context/ToastContext';
 
+// Subsystem URL map — update these env vars for production
 export const SUBSYSTEMS = {
   VRMS: {
     name: 'Vehicle Repair & Maintenance (VRMS)',
-    url: import.meta.env.VITE_VRMS_URL || 'http://localhost:5173',
+    url: import.meta.env.VITE_VRMS_URL || 'http://localhost:8001',
     color: 'border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 text-blue-400',
     iconColor: 'bg-blue-500 text-brand-dark',
   },
   VMMS: {
     name: 'Vehicle Monitoring & Maintenance (VMMS)',
-    url: import.meta.env.VITE_VMMS_URL || 'http://localhost:5174',
+    url: import.meta.env.VITE_VMMS_URL || 'http://localhost:8002',
     color: 'border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400',
     iconColor: 'bg-emerald-500 text-brand-dark',
   },
   BMS: {
     name: 'Booking & Operations (BMS)',
-    url: import.meta.env.VITE_BMS_URL || 'http://localhost:5175',
+    url: import.meta.env.VITE_BMS_URL || 'http://localhost:8003',
     color: 'border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 text-amber-400',
     iconColor: 'bg-amber-500 text-brand-dark',
   },
 };
 
+function redirectToSubsystem(systemUrl: string, token: string) {
+  window.location.href = `${systemUrl}/login?token=${token}`;
+}
+
 export default function Login() {
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
+  const { showToast } = useToast();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -37,8 +44,14 @@ export default function Login() {
 
   useEffect(() => {
     if (searchParams.get('logout') === 'true') {
-      localStorage.removeItem('token');
+      localStorage.removeItem('welinc_token');
       localStorage.removeItem('welinc_user');
+      showToast('Successfully logged out.', 'success');
+      navigate('/login', { replace: true });
+    } else if (searchParams.get('inactivity') === 'true') {
+      localStorage.removeItem('welinc_token');
+      localStorage.removeItem('welinc_user');
+      showToast('Signed out due to inactivity.', 'info');
       navigate('/login', { replace: true });
     } else if (getCurrentUser()) {
       navigate('/', { replace: true });
@@ -51,23 +64,22 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Login against the SHARED system on backend
       const response = await api.post('/auth/login', {
-        username: username.trim(),
+        email: email.trim().toLowerCase(),
         password,
-        system: 'SHARED',
       });
 
       const token = response.data.accessToken;
-      localStorage.setItem('token', token);
+      setTokens(token);
       api.defaults.headers.common.Authorization = `Bearer ${token}`;
 
       const decoded = decodeJwt<JwtPayload>(token);
       localStorage.setItem('welinc_user', JSON.stringify({
         id: decoded.sub,
-        username: decoded.username,
+        email: decoded.email || email,
         roles: decoded.roles || [],
       }));
+
 
       // Filter roles belonging to subsystems (VRMS, VMMS, BMS)
       const subsystemRoles = (decoded.roles || []).filter((r) =>
@@ -75,31 +87,38 @@ export default function Login() {
       );
 
       if (subsystemRoles.length === 0) {
-        // User has access to SHARED but no actual subsystem. If they are a SHARED Admin, they can manage users.
-        const hasSharedAdmin = (decoded.roles || []).some(
-          (r) => r.system.toUpperCase() === 'SHARED' && r.role.toUpperCase() === 'ADMIN'
-        );
-        if (hasSharedAdmin) {
-          navigate('/portal', { replace: true });
-        } else {
-          setError('User has no assigned subsystem access.');
-          localStorage.clear();
-        }
+        setError('Your account has no assigned subsystem access. Contact your administrator.');
+        localStorage.clear();
         return;
       }
 
-      if (subsystemRoles.length === 1) {
-        // Redirect immediately to the single accessible subsystem
-        const targetSystem = subsystemRoles[0].system.toUpperCase();
-        const config = SUBSYSTEMS[targetSystem as keyof typeof SUBSYSTEMS];
-        if (config) {
-          window.location.href = `${config.url}/login?token=${token}`;
+      showToast('Welcome back! Logging you in...', 'success');
+
+      setTimeout(() => {
+        if (subsystemRoles.length === 1) {
+          // Single system — redirect directly, no selection screen
+          const targetSystem = subsystemRoles[0].system.toUpperCase();
+          const config = SUBSYSTEMS[targetSystem as keyof typeof SUBSYSTEMS];
+          if (config) {
+            redirectToSubsystem(config.url, token);
+            return;
+          }
+        }
+
+        // Multi-system user (e.g. mechanic with VRMS + VMMS): redirect to VRMS as default
+        const vrmsRole = subsystemRoles.find((r) => r.system.toUpperCase() === 'VRMS');
+        if (vrmsRole) {
+          redirectToSubsystem(SUBSYSTEMS.VRMS.url, token);
           return;
         }
-      }
 
-      // If user has 2 or more systems, route them to selection dashboard
-      navigate('/portal', { replace: true });
+        // Fallback: go to first available system
+        const firstSystem = subsystemRoles[0].system.toUpperCase();
+        const firstConfig = SUBSYSTEMS[firstSystem as keyof typeof SUBSYSTEMS];
+        if (firstConfig) {
+          redirectToSubsystem(firstConfig.url, token);
+        }
+      }, 800);
     } catch (err: any) {
       console.error('[Login Error]', err);
       const data = err.response?.data;
@@ -108,7 +127,7 @@ export default function Login() {
       } else if (data?.remainingAttempts !== undefined) {
         setError(`Invalid credentials. ${data.remainingAttempts} attempts remaining.`);
       } else if (err.response?.status === 401) {
-        setError('Invalid username or password.');
+        setError('Invalid email or password.');
       } else {
         setError('Unable to reach the authentication server. Please try again.');
       }
@@ -119,7 +138,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex bg-brand-dark">
-      {/* Left Pane: Brand Info (BMS styling) */}
+      {/* Left Pane: Brand Info */}
       <div className="hidden lg:flex flex-col w-[52%] relative overflow-hidden">
         <div
           className="absolute inset-0"
@@ -189,7 +208,7 @@ export default function Login() {
                 <Truck size={22} className="text-brand-blueAccent" strokeWidth={2.5} />
               </div>
               <h2 className="text-2xl font-black text-white mb-1">Sign In</h2>
-              <p className="text-white/50 text-sm">Enter your credentials to continue</p>
+              <p className="text-white/50 text-sm">Enter your credentials to access your workspace</p>
             </div>
 
             {error && (
@@ -201,26 +220,42 @@ export default function Login() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-white/70 mb-2">Username</label>
+                <label className="block text-sm font-semibold text-white/70 mb-2">
+                  Email Address <span className="text-red-400">*</span>
+                </label>
                 <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter username"
+                  id="login-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@welinc.com"
                   required
+                  autoComplete="email"
                   className="w-full px-4 py-3 text-base bg-white/[0.06] border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-brand-gold/40 focus:border-brand-gold/50 transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-white/70 mb-2">Password</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-semibold text-white/70">
+                    Password <span className="text-red-400">*</span>
+                  </label>
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs text-brand-gold/80 hover:text-brand-gold transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
                 <div className="relative">
                   <input
+                    id="login-password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter password"
                     required
+                    autoComplete="current-password"
                     className="w-full px-4 py-3 text-base bg-white/[0.06] border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-brand-gold/40 focus:border-brand-gold/50 transition-all pr-12"
                   />
                   <button
@@ -234,6 +269,7 @@ export default function Login() {
               </div>
 
               <button
+                id="login-submit"
                 type="submit"
                 disabled={loading}
                 className="w-full bg-brand-gold hover:bg-brand-goldHover text-brand-blueAccent font-black py-3.5 rounded-xl text-base transition-all cursor-pointer disabled:opacity-60 shadow-lg shadow-brand-gold/20 hover:shadow-brand-gold/30 hover:-translate-y-0.5 active:translate-y-0"

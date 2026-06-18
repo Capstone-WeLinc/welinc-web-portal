@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Login, { SUBSYSTEMS } from './pages/auth/Login';
-import ModuleSelection from './pages/portal/ModuleSelection';
-import { getCurrentUser } from './lib/auth';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import { getCurrentUser, getToken } from './lib/auth';
+import { ToastProvider } from './context/ToastContext';
+import SessionMonitor from './components/SessionMonitor';
 
 function PortalRootRedirect() {
   const navigate = useNavigate();
@@ -14,36 +16,51 @@ function PortalRootRedirect() {
       return;
     }
 
+    const token = getToken();
+
+
     // Filter subsystem roles
     const subsystemRoles = (user.roles || []).filter((r) =>
       ['VRMS', 'VMMS', 'BMS'].includes(r.system.toUpperCase())
     );
 
     if (subsystemRoles.length === 0) {
-      const hasSharedAdmin = (user.roles || []).some(
-        (r) => r.system.toUpperCase() === 'SHARED' && r.role.toUpperCase() === 'ADMIN'
-      );
-      if (hasSharedAdmin) {
-        navigate('/portal', { replace: true });
-      } else {
-        localStorage.clear();
-        navigate('/login', { replace: true });
-      }
+      localStorage.clear();
+      navigate('/login', { replace: true });
       return;
     }
 
+    if (!token) {
+      navigate('/login', { replace: true });
+      return;
+    }
+
+    // Single system → go straight there
     if (subsystemRoles.length === 1) {
-      // Redirect immediately to that subsystem
-      const token = localStorage.getItem('token');
       const targetSystem = subsystemRoles[0].system.toUpperCase();
       const config = SUBSYSTEMS[targetSystem as keyof typeof SUBSYSTEMS];
-      if (config && token) {
+      if (config) {
         window.location.href = `${config.url}/login?token=${token}`;
         return;
       }
     }
 
-    // Default to Portal selection page
+    // Multi-role: prefer VRMS for mechanics
+    const vrmsRole = subsystemRoles.find((r) => r.system.toUpperCase() === 'VRMS');
+    if (vrmsRole) {
+      window.location.href = `${SUBSYSTEMS.VRMS.url}/login?token=${token}`;
+      return;
+    }
+
+    // Fallback: first available system
+    const firstSystem = subsystemRoles[0].system.toUpperCase();
+    const firstConfig = SUBSYSTEMS[firstSystem as keyof typeof SUBSYSTEMS];
+    if (firstConfig) {
+      window.location.href = `${firstConfig.url}/login?token=${token}`;
+      return;
+    }
+
+    // Last resort: portal management page
     navigate('/portal', { replace: true });
   }, [navigate]);
 
@@ -57,7 +74,7 @@ function PortalRootRedirect() {
 export default function App() {
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'token' || e.key === 'welinc_token' || e.key === 'accessToken' || e.key === 'welinc_user') {
+      if (e.key === 'welinc_token' || e.key === 'welinc_user') {
         window.location.reload();
       }
     };
@@ -66,13 +83,17 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<PortalRootRedirect />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/portal" element={<ModuleSelection />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <ToastProvider>
+      <BrowserRouter>
+        <SessionMonitor />
+        <Routes>
+          <Route path="/" element={<PortalRootRedirect />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/portal" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ToastProvider>
   );
 }

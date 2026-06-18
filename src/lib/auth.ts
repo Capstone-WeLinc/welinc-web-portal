@@ -1,14 +1,14 @@
 export interface JwtPayload {
   sub: string;
-  username: string;
-  system: string;
+  email: string;
   roles: { role: string; system: string }[];
+  iat?: number;
+  exp?: number;
 }
 
 export interface AuthenticatedUser {
   id: string;
-  username: string;
-  system: string;
+  email: string;
   roles: JwtPayload['roles'];
 }
 
@@ -29,21 +29,35 @@ export function decodeJwt<T>(token: string): T {
   return JSON.parse(json) as T;
 }
 
+export function setTokens(accessToken: string): void {
+  localStorage.setItem('welinc_token', accessToken);
+}
+
+export function getToken(): string | null {
+  return localStorage.getItem('welinc_token');
+}
+
 export function logout(): void {
-  localStorage.removeItem('token');
+  localStorage.removeItem('welinc_token');
   localStorage.removeItem('welinc_user');
 }
 
 export function getCurrentUser(): AuthenticatedUser | null {
-  const token = localStorage.getItem('token');
+  const token = getToken();
   if (!token) return null;
 
   try {
     const decoded = decodeJwt<JwtPayload>(token);
+
+    // Check token expiry
+    if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+      logout();
+      return null;
+    }
+
     return {
       id: decoded.sub,
-      username: decoded.username,
-      system: decoded.system,
+      email: decoded.email || '',
       roles: decoded.roles || [],
     };
   } catch (e) {
