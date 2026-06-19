@@ -65,7 +65,7 @@ export default function Login() {
 
     try {
       const response = await api.post('/auth/login', {
-        email: email.trim().toLowerCase(),
+        email: email.trim(),
         password,
       });
 
