@@ -18,6 +18,7 @@ export default function ForgotPassword() {
 
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setError('');
     setLoading(true);
     try {
@@ -36,6 +37,7 @@ export default function ForgotPassword() {
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setError('');
     setLoading(true);
     try {
@@ -57,6 +59,7 @@ export default function ForgotPassword() {
 
   const handleVerifyAndReset = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setError('');
 
     if (newPassword !== confirmPassword) {
