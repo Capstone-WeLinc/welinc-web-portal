@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle, Truck } from 'lucide-react';
 import { api } from '../../lib/api';
@@ -41,18 +41,25 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   const [searchParams] = useSearchParams();
+  const hasShownToast = useRef(false);
 
   useEffect(() => {
     if (searchParams.get('logout') === 'true') {
-      localStorage.removeItem('welinc_token');
-      localStorage.removeItem('welinc_user');
-      showToast('Successfully logged out.', 'success');
-      navigate('/login', { replace: true });
+      if (!hasShownToast.current) {
+        hasShownToast.current = true;
+        localStorage.removeItem('welinc_token');
+        localStorage.removeItem('welinc_user');
+        showToast('Successfully logged out.', 'success');
+        navigate('/login', { replace: true });
+      }
     } else if (searchParams.get('inactivity') === 'true') {
-      localStorage.removeItem('welinc_token');
-      localStorage.removeItem('welinc_user');
-      showToast('Signed out due to inactivity.', 'info');
-      navigate('/login', { replace: true });
+      if (!hasShownToast.current) {
+        hasShownToast.current = true;
+        localStorage.removeItem('welinc_token');
+        localStorage.removeItem('welinc_user');
+        showToast('Signed out due to inactivity.', 'info');
+        navigate('/login', { replace: true });
+      }
     } else if (getCurrentUser()) {
       navigate('/', { replace: true });
     }
@@ -129,8 +136,11 @@ export default function Login() {
         setError(`Invalid credentials. ${data.remainingAttempts} attempts remaining.`);
       } else if (err.response?.status === 401) {
         setError('Invalid email or password.');
+      } else if (err.response?.status === 400) {
+        const msg = data?.message;
+        setError(Array.isArray(msg) ? msg.join(', ') : msg || 'Validation error. Please check your inputs.');
       } else {
-        setError('Unable to reach the authentication server. Please try again.');
+        setError(`Unable to reach the authentication server (${err.message}). Please try again.`);
       }
     } finally {
       setLoading(false);

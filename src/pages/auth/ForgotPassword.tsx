@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, CheckCircle, AlertCircle, Truck, Eye, EyeOff } from 'lucide-react';
 import { api } from '../../lib/api';
+import { useToast } from '../../context/ToastContext';
 
 type Step = 'email' | 'otp' | 'newPassword' | 'done';
 
@@ -15,6 +16,7 @@ export default function ForgotPassword() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
 
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
