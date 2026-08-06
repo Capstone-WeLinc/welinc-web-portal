@@ -72,8 +72,13 @@ export default function Login() {
     setLoading(true);
 
     try {
+      let formattedEmail = email.trim();
+      if (!formattedEmail.includes('@')) {
+        formattedEmail = `${formattedEmail}@welinc.com`;
+      }
+
       const response = await api.post('/auth/login', {
-        email: email.trim(),
+        email: formattedEmail,
         password,
       });
 
@@ -84,7 +89,7 @@ export default function Login() {
       const decoded = decodeJwt<JwtPayload>(token);
       localStorage.setItem('welinc_user', JSON.stringify({
         id: decoded.sub,
-        email: decoded.email || email,
+        email: decoded.email || formattedEmail,
         roles: decoded.roles || [],
       }));
 
@@ -232,16 +237,16 @@ export default function Login() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="block text-sm font-semibold text-white/70 mb-2">
-                  Email Address <span className="text-red-400">*</span>
+                  Email or Username <span className="text-red-400">*</span>
                 </label>
                 <input
                   id="login-email"
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@welinc.com"
+                  placeholder="you@welinc.com or username"
                   required
-                  autoComplete="email"
+                  autoComplete="username"
                   className="w-full px-4 py-3 text-base bg-white/[0.06] border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-brand-gold/40 focus:border-brand-gold/50 transition-all"
                 />
               </div>
