@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Env files: only .env.example and .env.development are committed
+.env
+.env.production
