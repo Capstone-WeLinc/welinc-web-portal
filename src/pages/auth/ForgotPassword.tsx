@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, CheckCircle, AlertCircle, Truck, Eye, EyeOff } from 'lucide-react';
+import { isAxiosError } from 'axios';
 import { api } from '../../lib/api';
-import { useToast } from '../../context/ToastContext';
 
 type Step = 'email' | 'otp' | 'newPassword' | 'done';
 
@@ -16,7 +16,6 @@ export default function ForgotPassword() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { showToast } = useToast();
 
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,8 +25,8 @@ export default function ForgotPassword() {
     try {
       await api.post('/auth/forgot-password', { email: email.trim().toLowerCase() });
       setStep('otp');
-    } catch (err: any) {
-      if (err.response?.status === 404) {
+    } catch (err) {
+      if (isAxiosError(err) && err.response?.status === 404) {
         setError('No account found with that email address.');
       } else {
         setError('Unable to send OTP. Please try again.');
@@ -48,8 +47,8 @@ export default function ForgotPassword() {
         otp: otp.trim(),
       });
       setStep('newPassword');
-    } catch (err: any) {
-      if (err.response?.status === 400) {
+    } catch (err) {
+      if (isAxiosError(err) && err.response?.status === 400) {
         setError('Invalid or expired OTP. Please check the code and try again.');
       } else {
         setError('Verification failed. Please try again.');
@@ -98,8 +97,8 @@ export default function ForgotPassword() {
         newPassword,
       });
       setStep('done');
-    } catch (err: any) {
-      if (err.response?.status === 400) {
+    } catch (err) {
+      if (isAxiosError(err) && err.response?.status === 400) {
         setError('Invalid or expired OTP. Please request a new one.');
       } else {
         setError('Password reset failed. Please try again.');

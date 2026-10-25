@@ -60,7 +60,7 @@ export function getCurrentUser(): AuthenticatedUser | null {
       email: decoded.email || '',
       roles: decoded.roles || [],
     };
-  } catch (e) {
+  } catch {
     logout();
     return null;
   }

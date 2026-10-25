@@ -11,10 +11,15 @@ export default function SessionMonitor() {
   const token = localStorage.getItem('welinc_token');
 
   useEffect(() => {
-    if (!token) {
+    if (!token) return;
+
+    const handleLogoutDueToInactivity = () => {
+      localStorage.clear();
       setShowWarning(false);
-      return;
-    }
+      navigate('/login?inactivity=true', { replace: true });
+      // Reload to clear auth states across contexts
+      window.location.reload();
+    };
 
     // Initialize last active if not present
     if (!localStorage.getItem('welinc_last_active')) {
@@ -23,7 +28,8 @@ export default function SessionMonitor() {
 
     const getInactivityLimit = () => {
       // Allow override via window global for quick testing (e.g., 30 seconds)
-      const devLimit = (window as any).__WELINC_INACTIVITY_LIMIT__;
+      const devLimit = (window as Window & { __WELINC_INACTIVITY_LIMIT__?: number })
+        .__WELINC_INACTIVITY_LIMIT__;
       if (typeof devLimit === 'number') {
         return devLimit * 1000;
       }
@@ -90,21 +96,12 @@ export default function SessionMonitor() {
       window.removeEventListener('scroll', handleUserActivity);
       clearInterval(checkInterval);
     };
-  }, [token, showWarning]);
+  }, [token, showWarning, navigate]);
 
   const handleExtend = () => {
     localStorage.setItem('welinc_last_active', Date.now().toString());
     setShowWarning(false);
   };
-
-  const handleLogoutDueToInactivity = () => {
-    localStorage.clear();
-    setShowWarning(false);
-    navigate('/login?inactivity=true', { replace: true });
-    // Reload to clear auth states across contexts
-    window.location.reload();
-  };
-
 
   if (!token || !showWarning) return null;
 

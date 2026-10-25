@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import Login, { SUBSYSTEMS } from './pages/auth/Login';
+import Login from './pages/auth/Login';
+import { SUBSYSTEMS } from './lib/subsystems';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import { getCurrentUser, getToken } from './lib/auth';
 import { ToastProvider } from './context/ToastContext';
