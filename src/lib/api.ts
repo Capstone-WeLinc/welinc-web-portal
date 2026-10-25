@@ -11,10 +11,7 @@ api.interceptors.request.use((config) => {
   try {
     const token = localStorage.getItem('welinc_token');
     if (token) {
-      if (!config.headers) {
-        config.headers = {} as any;
-      }
-      (config.headers as Record<string, string>).Authorization = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;
     }
   } catch (e) {
     console.error('[API Interceptor] Error:', e);

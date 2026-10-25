@@ -1,31 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle, Truck } from 'lucide-react';
+import { isAxiosError } from 'axios';
 import { api } from '../../lib/api';
 import { decodeJwt, type JwtPayload, getCurrentUser, setTokens } from '../../lib/auth';
-import { useToast } from '../../context/ToastContext';
-
-// Subsystem URL map — update these env vars for production
-export const SUBSYSTEMS = {
-  VRMS: {
-    name: 'Vehicle Repair & Maintenance (VRMS)',
-    url: import.meta.env.VITE_VRMS_URL || 'http://localhost:8001',
-    color: 'border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 text-blue-400',
-    iconColor: 'bg-blue-500 text-brand-dark',
-  },
-  VMMS: {
-    name: 'Vehicle Monitoring & Maintenance (VMMS)',
-    url: import.meta.env.VITE_VMMS_URL || 'http://localhost:8002',
-    color: 'border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400',
-    iconColor: 'bg-emerald-500 text-brand-dark',
-  },
-  BMS: {
-    name: 'Booking & Operations (BMS)',
-    url: import.meta.env.VITE_BMS_URL || 'http://localhost:8003',
-    color: 'border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 text-amber-400',
-    iconColor: 'bg-amber-500 text-brand-dark',
-  },
-};
+import { useToast } from '../../context/toast';
+import { SUBSYSTEMS } from '../../lib/subsystems';
 
 function redirectToSubsystem(systemUrl: string, token: string) {
   window.location.href = `${systemUrl}/login?token=${token}`;
@@ -63,7 +43,7 @@ export default function Login() {
     } else if (getCurrentUser()) {
       navigate('/', { replace: true });
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, showToast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,20 +112,21 @@ export default function Login() {
           redirectToSubsystem(firstConfig.url, token);
         }
       }, 800);
-    } catch (err: any) {
+    } catch (err) {
       console.error('[Login Error]', err);
-      const data = err.response?.data;
+      const axiosError = isAxiosError(err) ? err : undefined;
+      const data = axiosError?.response?.data;
       if (data?.isLocked) {
         setError('Your account is locked. Contact your Admin to unlock.');
       } else if (data?.remainingAttempts !== undefined) {
         setError(`Invalid credentials. ${data.remainingAttempts} attempts remaining.`);
-      } else if (err.response?.status === 401) {
+      } else if (axiosError?.response?.status === 401) {
         setError('Invalid email or password.');
-      } else if (err.response?.status === 400) {
+      } else if (axiosError?.response?.status === 400) {
         const msg = data?.message;
         setError(Array.isArray(msg) ? msg.join(', ') : msg || 'Validation error. Please check your inputs.');
       } else {
-        setError(`Unable to reach the authentication server (${err.message}). Please try again.`);
+        setError(`Unable to reach the authentication server (${err instanceof Error ? err.message : 'unknown error'}). Please try again.`);
       }
     } finally {
       setLoading(false);
