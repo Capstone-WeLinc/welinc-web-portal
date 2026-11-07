@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle, Truck } from 'lucide-react';
 import { isAxiosError } from 'axios';
 import { api } from '../../lib/api';
-import { decodeJwt, type JwtPayload, getCurrentUser, setTokens } from '../../lib/auth';
+import { getReturnSystem, logout, setSession, type SubsystemKey } from '../../lib/auth';
 import { useToast } from '../../context/toast';
 import { SUBSYSTEMS } from '../../lib/subsystems';
 
@@ -27,20 +27,18 @@ export default function Login() {
     if (searchParams.get('logout') === 'true') {
       if (!hasShownToast.current) {
         hasShownToast.current = true;
-        localStorage.removeItem('welinc_token');
-        localStorage.removeItem('welinc_user');
+        logout();
         showToast('Successfully logged out.', 'success');
         navigate('/login', { replace: true });
       }
     } else if (searchParams.get('inactivity') === 'true') {
       if (!hasShownToast.current) {
         hasShownToast.current = true;
-        localStorage.removeItem('welinc_token');
-        localStorage.removeItem('welinc_user');
+        logout();
         showToast('Signed out due to inactivity.', 'info');
         navigate('/login', { replace: true });
       }
-    } else if (getCurrentUser()) {
+    } else if (getReturnSystem()) {
       navigate('/', { replace: true });
     }
   }, [searchParams, navigate, showToast]);
@@ -62,61 +60,39 @@ export default function Login() {
         password,
       });
 
-      const token = response.data.accessToken;
-      setTokens(token);
-      api.defaults.headers.common.Authorization = `Bearer ${token}`;
-
-      const decoded = decodeJwt<JwtPayload>(token);
-      localStorage.setItem('welinc_user', JSON.stringify({
-        id: decoded.sub,
-        email: decoded.email || formattedEmail,
-        roles: decoded.roles || [],
-      }));
-
-
-      // Filter roles belonging to subsystems (VRMS, VMMS, BMS)
-      const subsystemRoles = (decoded.roles || []).filter((r) =>
-        ['VRMS', 'VMMS', 'BMS'].includes(r.system.toUpperCase())
-      );
-
-      if (subsystemRoles.length === 0) {
-        setError('Your account has no assigned subsystem access. Contact your administrator.');
-        localStorage.clear();
+      // Spec 0002, AC-7: welinc-auth picks the system and says which; the portal goes there
+      const { accessToken: token, system, user } = response.data as {
+        accessToken: string;
+        system: SubsystemKey;
+        user: { id: string; email: string; roles: { role: string; system: string }[] };
+      };
+      const config = SUBSYSTEMS[system];
+      if (!config) {
+        setError('Unable to open your workspace. Please try again.');
         return;
       }
+
+      setSession(token, system);
+      api.defaults.headers.common.Authorization = `Bearer ${token}`;
+      localStorage.setItem('welinc_user', JSON.stringify({
+        id: user.id,
+        email: user.email || formattedEmail,
+        roles: user.roles || [],
+      }));
 
       showToast('Welcome back! Logging you in...', 'success');
 
       setTimeout(() => {
-        if (subsystemRoles.length === 1) {
-          // Single system — redirect directly, no selection screen
-          const targetSystem = subsystemRoles[0].system.toUpperCase();
-          const config = SUBSYSTEMS[targetSystem as keyof typeof SUBSYSTEMS];
-          if (config) {
-            redirectToSubsystem(config.url, token);
-            return;
-          }
-        }
-
-        // Multi-system user (e.g. mechanic with VRMS + VMMS): redirect to VRMS as default
-        const vrmsRole = subsystemRoles.find((r) => r.system.toUpperCase() === 'VRMS');
-        if (vrmsRole) {
-          redirectToSubsystem(SUBSYSTEMS.VRMS.url, token);
-          return;
-        }
-
-        // Fallback: go to first available system
-        const firstSystem = subsystemRoles[0].system.toUpperCase();
-        const firstConfig = SUBSYSTEMS[firstSystem as keyof typeof SUBSYSTEMS];
-        if (firstConfig) {
-          redirectToSubsystem(firstConfig.url, token);
-        }
+        redirectToSubsystem(config.url, token);
       }, 800);
     } catch (err) {
       console.error('[Login Error]', err);
       const axiosError = isAxiosError(err) ? err : undefined;
       const data = axiosError?.response?.data;
-      if (data?.isLocked) {
+      if (data?.code === 'NO_SYSTEM_ACCESS') {
+        setError('Your account has no assigned subsystem access. Contact your administrator.');
+        logout();
+      } else if (data?.isLocked) {
         setError('Your account is locked. Contact your Admin to unlock.');
       } else if (data?.remainingAttempts !== undefined) {
         setError(`Invalid credentials. ${data.remainingAttempts} attempts remaining.`);
