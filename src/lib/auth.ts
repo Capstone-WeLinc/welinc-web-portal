@@ -25,6 +25,9 @@ export function noticeFor(params: URLSearchParams): Notice | null {
   if (reason === 'idle') {
     return { tone: 'info', message: 'You were signed out after 30 minutes without activity.' };
   }
+  if (reason === 'maxage') {
+    return { tone: 'info', message: 'Your session reached its 12 hour limit. Sign in again to keep working.' };
+  }
   switch (params.get('error')) {
     case 'LOGIN_REQUEST_EXPIRED':
       return { tone: 'error', message: 'Your sign in took too long and expired. Sign in again.' };
@@ -50,7 +53,7 @@ export function noticeFor(params: URLSearchParams): Notice | null {
 }
 
 /**
- * After a logout or an idle cutoff the form always shows (AC-36): the portal never skips ahead
+ * After a logout, an idle cutoff or the 12 hour limit the form always shows (AC-36): the portal never skips ahead
  * through `/auth/sso` then. Neither does it with an error to show.
  */
 export function mayContinueSession(params: URLSearchParams): boolean {

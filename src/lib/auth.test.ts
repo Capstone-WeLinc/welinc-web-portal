@@ -14,11 +14,14 @@ describe('portal session helpers', () => {
       'error=LOGIN_FAILED',
       'error=NO_SYSTEM_ACCESS&system=VRMS',
       'reason=idle',
+      'reason=maxage',
       'reason=logout',
     ]) {
       expect(noticeFor(params(query))?.message).toBeTruthy();
     }
     expect(noticeFor(params('error=NO_SYSTEM_ACCESS&system=VRMS'))?.message).toContain('VRMS');
+    expect(noticeFor(params('reason=maxage'))?.message).toContain('12 hour limit');
+    expect(noticeFor(params('reason=maxage'))?.message).not.toContain('30 minutes');
     expect(noticeFor(params('error=SOMETHING_ELSE'))).toBeNull();
     expect(noticeFor(params(''))).toBeNull();
   });
@@ -28,6 +31,7 @@ describe('portal session helpers', () => {
     expect(mayContinueSession(params(`request=${REQUEST}`))).toBe(true);
     expect(mayContinueSession(params('reason=logout'))).toBe(false);
     expect(mayContinueSession(params('reason=idle'))).toBe(false);
+    expect(mayContinueSession(params('reason=maxage'))).toBe(false);
     expect(mayContinueSession(params('error=LOGIN_FAILED'))).toBe(false);
   });
 
