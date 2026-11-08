@@ -1,47 +1,58 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Eye, EyeOff, AlertCircle, Truck } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, Info, Truck } from 'lucide-react';
 import { isAxiosError } from 'axios';
 import { api } from '../../lib/api';
-import { getReturnSystem, logout, setSession, type SubsystemKey } from '../../lib/auth';
-import { useToast } from '../../context/toast';
-import { SUBSYSTEMS } from '../../lib/subsystems';
+import {
+  loginRequest,
+  mayContinueSession,
+  nextAddress,
+  noticeFor,
+  type SsoAnswer,
+} from '../../lib/auth';
 
-function redirectToSubsystem(systemUrl: string, token: string) {
-  window.location.href = `${systemUrl}/login?token=${token}`;
-}
-
+/**
+ * The portal login (spec 0003, AC-36). Signing in sets welinc-auth's SSO cookie; the portal
+ * keeps nothing itself. Opened with a live session it goes straight on, unless the person just
+ * signed out or timed out, or there is an error to read.
+ */
 export default function Login() {
   const navigate = useNavigate();
-  const { showToast } = useToast();
+  const [searchParams] = useSearchParams();
+  const request = loginRequest(searchParams);
+  const notice = noticeFor(searchParams);
+  const canContinue = mayContinueSession(searchParams);
+  const emailRef = useRef<HTMLInputElement>(null);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const [searchParams] = useSearchParams();
-  const hasShownToast = useRef(false);
+  // The /auth/sso check runs before the form shows, so a signed in person never sees it flash
+  const [checking, setChecking] = useState(canContinue);
 
   useEffect(() => {
-    if (searchParams.get('logout') === 'true') {
-      if (!hasShownToast.current) {
-        hasShownToast.current = true;
-        logout();
-        showToast('Successfully logged out.', 'success');
-        navigate('/login', { replace: true });
-      }
-    } else if (searchParams.get('inactivity') === 'true') {
-      if (!hasShownToast.current) {
-        hasShownToast.current = true;
-        logout();
-        showToast('Signed out due to inactivity.', 'info');
-        navigate('/login', { replace: true });
-      }
-    } else if (getReturnSystem()) {
-      navigate('/', { replace: true });
-    }
-  }, [searchParams, navigate, showToast]);
+    if (!canContinue) return;
+    let cancelled = false;
+    api
+      .get<SsoAnswer>('/auth/sso')
+      .then(({ data }) => {
+        if (!cancelled) window.location.assign(nextAddress(request, data));
+      })
+      .catch(() => {
+        if (!cancelled) setChecking(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [canContinue, request]);
+
+  const signInAgain = () => {
+    // Drops the message; with a live session the check above goes straight on
+    navigate(request ? `/login?request=${request}` : '/login', { replace: true });
+    emailRef.current?.focus();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,43 +66,17 @@ export default function Login() {
         formattedEmail = `${formattedEmail}@welinc.com`;
       }
 
-      const response = await api.post('/auth/login', {
+      // Spec 0003, AC-11: sets the SSO cookie and answers where to go, never a token
+      const { data } = await api.post<SsoAnswer>('/auth/login', {
         email: formattedEmail,
         password,
       });
-
-      // Spec 0002, AC-7: welinc-auth picks the system and says which; the portal goes there
-      const { accessToken: token, system, user } = response.data as {
-        accessToken: string;
-        system: SubsystemKey;
-        user: { id: string; email: string; roles: { role: string; system: string }[] };
-      };
-      const config = SUBSYSTEMS[system];
-      if (!config) {
-        setError('Unable to open your workspace. Please try again.');
-        return;
-      }
-
-      setSession(token, system);
-      api.defaults.headers.common.Authorization = `Bearer ${token}`;
-      localStorage.setItem('welinc_user', JSON.stringify({
-        id: user.id,
-        email: user.email || formattedEmail,
-        roles: user.roles || [],
-      }));
-
-      showToast('Welcome back! Logging you in...', 'success');
-
-      setTimeout(() => {
-        redirectToSubsystem(config.url, token);
-      }, 800);
+      window.location.assign(nextAddress(request, data));
     } catch (err) {
-      console.error('[Login Error]', err);
       const axiosError = isAxiosError(err) ? err : undefined;
       const data = axiosError?.response?.data;
       if (data?.code === 'NO_SYSTEM_ACCESS') {
         setError('Your account has no assigned subsystem access. Contact your administrator.');
-        logout();
       } else if (data?.isLocked) {
         setError('Your account is locked. Contact your Admin to unlock.');
       } else if (data?.remainingAttempts !== undefined) {
@@ -102,12 +87,19 @@ export default function Login() {
         const msg = data?.message;
         setError(Array.isArray(msg) ? msg.join(', ') : msg || 'Validation error. Please check your inputs.');
       } else {
-        setError(`Unable to reach the authentication server (${err instanceof Error ? err.message : 'unknown error'}). Please try again.`);
+        setError('Unable to reach the sign in service. Check your connection and try again.');
       }
-    } finally {
       setLoading(false);
     }
   };
+
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-brand-darker text-slate-400 font-bold" aria-busy="true">
+        Loading your workspace...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-brand-dark">
@@ -184,8 +176,39 @@ export default function Login() {
               <p className="text-white/50 text-sm">Enter your credentials to access your workspace</p>
             </div>
 
+            {notice && !error && (
+              <div
+                role={notice.tone === 'error' ? 'alert' : 'status'}
+                className={`flex items-start gap-2.5 rounded-xl p-4 mb-5 border ${
+                  notice.tone === 'error'
+                    ? 'bg-red-500/10 border-red-400/20'
+                    : 'bg-white/[0.06] border-white/10'
+                }`}
+              >
+                {notice.tone === 'error' ? (
+                  <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                ) : (
+                  <Info className="w-4 h-4 text-brand-gold mt-0.5 flex-shrink-0" />
+                )}
+                <div className="flex-1">
+                  <p className={`text-sm ${notice.tone === 'error' ? 'text-red-300' : 'text-white/70'}`}>
+                    {notice.message}
+                  </p>
+                  {notice.tone === 'error' && (
+                    <button
+                      type="button"
+                      onClick={signInAgain}
+                      className="mt-2 text-sm font-semibold text-brand-gold/90 hover:text-brand-gold cursor-pointer"
+                    >
+                      Sign in again
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {error && (
-              <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-400/20 rounded-xl p-4 mb-5">
+              <div role="alert" className="flex items-start gap-2.5 bg-red-500/10 border border-red-400/20 rounded-xl p-4 mb-5">
                 <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-red-300">{error}</p>
               </div>
@@ -197,6 +220,7 @@ export default function Login() {
                   Email or Username <span className="text-red-400">*</span>
                 </label>
                 <input
+                  ref={emailRef}
                   id="login-email"
                   type="text"
                   value={email}
