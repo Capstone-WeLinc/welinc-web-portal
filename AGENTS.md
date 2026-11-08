@@ -2,19 +2,17 @@
 
 ## Overview
 
-The SSO portal: a React 19 + Vite SPA on port 8000. It is the front door for the suite. A user logs in against `welinc-auth` (through the gateway), welinc-auth answers which system the token is for (spec 0002), and the portal sends them to that subsystem app with the token in the URL (`<app>/login?token=...`). It also holds forgot password and the 15 minute inactivity monitor. This repo is shared, so keep changes small.
+The SSO portal: a React 19 + Vite SPA on port 8000. It is the front door for the suite. A user logs in against `welinc-auth` (through the gateway), which sets its HttpOnly `welinc_sso` cookie and answers the picked system's address, and the portal sends them there, or back into a system's code flow with `/auth/authorize/resume` (spec 0003). It holds no token and stores nothing about the session. It also holds forgot password. This repo is shared, so keep changes small.
 
 ## Key files
 
 | File | Owns |
 |---|---|
-| `src/App.tsx` | Routes, `PortalRootRedirect` (a return visit goes to the stored system of the last login, while the token is live), cross tab storage reload |
-| `src/pages/auth/Login.tsx` | Login form and the redirect to the chosen subsystem |
-| `src/lib/subsystems.ts` | The `SUBSYSTEMS` map (name, URL from `VITE_*_URL`, colors) |
+| `src/App.tsx` | Routes: `/` and `/login` both render `Login`, so `<portal>/?error=...` from an app shows its message |
+| `src/pages/auth/Login.tsx` | Login form. Opened with a live SSO session (`GET /auth/sso` answers 200) it skips the form, except with `reason=logout`, `reason=idle` or an `error`; it shows each error code's message with Sign in again |
 | `src/pages/auth/ForgotPassword.tsx` | OTP and password reset flow |
-| `src/lib/api.ts` | Axios client, base URL from `VITE_API_BASE_URL` or `VITE_API_URL`, adds the bearer token |
-| `src/lib/auth.ts` | JWT decode, token and system storage (`welinc_token`, `welinc_system`), `setSession`, `getReturnSystem`, `getCurrentUser`, `logout` |
-| `src/components/SessionMonitor.tsx` | Inactivity warning and sign out |
+| `src/lib/api.ts` | Axios client, base URL from `VITE_API_BASE_URL` or `VITE_API_URL`, `withCredentials` so the SSO cookie goes along; no token |
+| `src/lib/auth.ts` | The pure login helpers: `noticeFor` (the message per error code and reason), `mayContinueSession`, `loginRequest`, `nextAddress` |
 | `src/context/toast.ts`, `ToastContext.tsx` | `useToast()` hook and context, and the provider component |
 | `tailwind.config.js` | `brand` color tokens |
 
@@ -33,12 +31,12 @@ There is no `typecheck` script. `npm test` runs Vitest (jsdom, Testing Library; 
 
 - Tailwind is on v3 here (`tailwind.config.js`, `@tailwind` directives), unlike web-vrms which is on v4. Do not copy v4 syntax across.
 - Use the `brand` tokens from `tailwind.config.js`, not raw hex values. `design.md` at the workspace root governs the look.
-- Subsystem URLs come from `VITE_VRMS_URL`, `VITE_VMMS_URL`, `VITE_BMS_URL`, and the API from `VITE_API_URL`. `VITE_*` values ship to the browser, so never put secrets in them. Document new ones in `.env.example` only.
-- The token lives in `localStorage` under `welinc_token`. Keep that key, since the subsystem apps and the cross tab listener depend on it. Never work out the system from the token's roles: use the `system` the login answered, stored as `welinc_system`.
+- Each system's address comes from welinc-auth's login answer (`url`), and the API from `VITE_API_URL`. `VITE_*` values ship to the browser, so never put secrets in them. Document new ones in `.env.example` only.
+- Never keep a token, a user or a session flag in `localStorage` or a URL (spec 0003, AC-36). The session is welinc-auth's `welinc_sso` cookie, which no script can read.
 
 ## Gotchas
 
-- Only roles for systems `VRMS`, `VMMS` or `BMS` count. A user with none has storage cleared and is sent back to login.
+- Only roles for systems `VRMS`, `VMMS` or `BMS` count. A user with none gets 403 `NO_SYSTEM_ACCESS` from `/auth/login` and no session.
 - `.env.development` is committed with dev defaults. Personal overrides go in `.env.local`.
 - Changing the redirect or the token handoff touches auth and every subsystem, so it needs a spec first.
 
