@@ -9,7 +9,7 @@ The SSO portal: a React 19 + Vite SPA on port 8000. It is the front door for the
 | File | Owns |
 |---|---|
 | `src/App.tsx` | Routes: `/` and `/login` both render `Login`, so `<portal>/?error=...` from an app shows its message |
-| `src/pages/auth/Login.tsx` | Login form. Opened with a live SSO session (`GET /auth/sso` answers 200) it skips the form, except with `reason=logout`, `reason=idle` or an `error`; it shows each error code's message with Sign in again |
+| `src/pages/auth/Login.tsx` | Login form. Opened with a live SSO session (`GET /auth/sso` answers 200) it skips the form, except with any `reason` (`logout`, `idle`, `maxage`) or an `error`; it shows each error code's message with Sign in again |
 | `src/pages/auth/ForgotPassword.tsx` | OTP and password reset flow |
 | `src/lib/api.ts` | Axios client, base URL from `VITE_API_BASE_URL` or `VITE_API_URL`, `withCredentials` so the SSO cookie goes along; no token |
 | `src/lib/auth.ts` | The pure login helpers: `noticeFor` (the message per error code and reason), `mayContinueSession`, `loginRequest`, `nextAddress` |
