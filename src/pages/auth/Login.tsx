@@ -1,27 +1,26 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle, Info, Truck } from 'lucide-react';
 import { isAxiosError } from 'axios';
 import { api } from '../../lib/api';
-import {
-  loginRequest,
-  mayContinueSession,
-  nextAddress,
-  noticeFor,
-  type SsoAnswer,
-} from '../../lib/auth';
+import { loginRequest, noticeFor, type LauncherAnswer, type Notice } from '../../lib/auth';
+
+type LoginProps = {
+  /** Called with the login answer; the portal decides where to go next (spec 0007, AC-14). */
+  onSignedIn: (answer: LauncherAnswer) => void;
+  /** A message that wins over the address's, such as "Your session ended" (AC-18). */
+  notice?: Notice | null;
+};
 
 /**
- * The portal login (spec 0003, AC-36). Signing in sets welinc-auth's SSO cookie; the portal
- * keeps nothing itself. Opened with a live session it goes straight on, unless the person just
- * signed out or timed out, or there is an error to read.
+ * The portal login form (spec 0003, AC-36). Signing in sets welinc-auth's SSO cookie; the portal
+ * keeps nothing itself. Whether the form shows at all is the portal's choice (`Portal.tsx`).
  */
-export default function Login() {
+export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const request = loginRequest(searchParams);
-  const notice = noticeFor(searchParams);
-  const canContinue = mayContinueSession(searchParams);
+  const notice = noticeOverride ?? noticeFor(searchParams);
   const emailRef = useRef<HTMLInputElement>(null);
 
   const [email, setEmail] = useState('');
@@ -29,27 +28,9 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  // The /auth/sso check runs before the form shows, so a signed in person never sees it flash
-  const [checking, setChecking] = useState(canContinue);
-
-  useEffect(() => {
-    if (!canContinue) return;
-    let cancelled = false;
-    api
-      .get<SsoAnswer>('/auth/sso')
-      .then(({ data }) => {
-        if (!cancelled) window.location.assign(nextAddress(request, data));
-      })
-      .catch(() => {
-        if (!cancelled) setChecking(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [canContinue, request]);
 
   const signInAgain = () => {
-    // Drops the message; with a live session the check above goes straight on
+    // Drops the message; with a live session the portal's check goes straight on
     navigate(request ? `/login?request=${request}` : '/login', { replace: true });
     emailRef.current?.focus();
   };
@@ -66,12 +47,12 @@ export default function Login() {
         formattedEmail = `${formattedEmail}@welinc.com`;
       }
 
-      // Spec 0003, AC-11: sets the SSO cookie and answers where to go, never a token
-      const { data } = await api.post<SsoAnswer>('/auth/login', {
+      // Spec 0003, AC-11: sets the SSO cookie and answers the systems, never a token
+      const { data } = await api.post<LauncherAnswer>('/auth/login', {
         email: formattedEmail,
         password,
       });
-      window.location.assign(nextAddress(request, data));
+      onSignedIn(data);
     } catch (err) {
       const axiosError = isAxiosError(err) ? err : undefined;
       const data = axiosError?.response?.data;
@@ -92,14 +73,6 @@ export default function Login() {
       setLoading(false);
     }
   };
-
-  if (checking) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-brand-darker text-slate-400 font-bold" aria-busy="true">
-        Loading your workspace...
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex bg-brand-dark">
