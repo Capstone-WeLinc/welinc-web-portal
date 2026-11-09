@@ -1,8 +1,27 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, ArrowLeft, CheckCircle, AlertCircle, Truck, Eye, EyeOff } from 'lucide-react';
+import { Mail, ArrowLeft, CheckCircle, Truck, Eye, EyeOff } from 'lucide-react';
 import { isAxiosError } from 'axios';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import { api } from '../../lib/api';
+import { HeroCard, HeroLabel, HeroNotice, heroButton, heroInput } from './AuthHero';
+
+/** A show or hide password button inside a hero input, 44px square. */
+function RevealButton({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={shown ? 'Hide password' : 'Show password'}
+      aria-pressed={shown}
+      className="absolute top-0 right-0 flex size-11 cursor-pointer items-center justify-center rounded-xl text-white/40 transition-colors hover:text-white/70 focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
+    >
+      {shown ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+    </button>
+  );
+}
 
 type Step = 'email' | 'otp' | 'newPassword' | 'done';
 
@@ -108,146 +127,121 @@ export default function ForgotPassword() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-brand-darker p-6">
-      <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-brand-blueAccent/20 blur-3xl" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 rounded-full bg-brand-gold/10 blur-3xl" />
+  const errorNotice = error ? (
+    <HeroNotice tone="error">
+      <p>{error}</p>
+    </HeroNotice>
+  ) : null;
 
-      <div className="relative z-10 w-full max-w-md">
+  return (
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-hero-deep p-6">
+      <div className="absolute top-0 right-0 size-96 rounded-full bg-primary/20 blur-3xl" />
+      <div className="absolute bottom-0 left-0 size-96 rounded-full bg-highlight/10 blur-3xl" />
+
+      <main className="relative z-10 w-full max-w-md">
         <div className="mb-6">
-          <Link to="/login" className="inline-flex items-center gap-2 text-white/50 hover:text-white transition-colors text-sm">
-            <ArrowLeft className="w-4 h-4" />
+          <Link
+            to="/login"
+            className="inline-flex min-h-11 items-center gap-2 rounded-md text-sm text-white/50 transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
             Back to Sign In
           </Link>
         </div>
 
-        <div className="bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl shadow-black/40">
-          <div className="w-12 h-12 rounded-2xl bg-brand-gold flex items-center justify-center mb-5 shadow-lg shadow-brand-gold/20">
-            <Truck size={22} className="text-brand-blueAccent" strokeWidth={2.5} />
+        <HeroCard>
+          <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-highlight shadow-lg shadow-highlight/20">
+            <Truck size={22} className="text-primary" strokeWidth={2.5} aria-hidden="true" />
           </div>
 
           {step === 'done' ? (
-            <div className="text-center">
-              <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto mb-4" />
-              <h2 className="text-2xl font-black text-white mb-2">Password Reset!</h2>
-              <p className="text-white/60 mb-6">Your password has been successfully updated.</p>
-              <Link
-                to="/login"
-                className="w-full inline-block bg-brand-gold hover:bg-brand-goldHover text-brand-blueAccent font-black py-3.5 rounded-xl text-base text-center transition-all"
-              >
-                Sign In
-              </Link>
+            <div className="text-center" role="status">
+              <CheckCircle className="mx-auto mb-4 size-12 text-hero-success" aria-hidden="true" />
+              <h2 className="mb-2 text-2xl font-black text-white">Password Reset!</h2>
+              <p className="mb-6 text-white/60">Your password has been successfully updated.</p>
+              <Button asChild className={heroButton}>
+                <Link to="/login">Sign In</Link>
+              </Button>
             </div>
           ) : step === 'email' ? (
             <>
-              <h2 className="text-2xl font-black text-white mb-1">Forgot Password</h2>
-              <p className="text-white/50 text-sm mb-8">Enter your email and we'll send you a reset code.</p>
-
-              {error && (
-                <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-400/20 rounded-xl p-4 mb-5">
-                  <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-red-300">{error}</p>
-                </div>
-              )}
-
-              <form onSubmit={handleRequestOtp} className="space-y-5">
+              <h2 className="mb-1 text-2xl font-black text-white">Forgot Password</h2>
+              <p className="mb-8 text-sm text-white/50">Enter your email and we'll send you a reset code.</p>
+              {errorNotice}
+              <form onSubmit={handleRequestOtp} className="flex flex-col gap-5">
                 <div>
-                  <label className="block text-sm font-semibold text-white/70 mb-2">
-                    Email Address <span className="text-red-400">*</span>
-                  </label>
+                  <HeroLabel htmlFor="forgot-email">Email Address</HeroLabel>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-                    <input
+                    <Mail className="absolute top-1/2 left-4 size-4 -translate-y-1/2 text-white/30" aria-hidden="true" />
+                    <Input
                       id="forgot-email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@welinc.com"
                       required
-                      className="w-full pl-11 pr-4 py-3 text-base bg-white/[0.06] border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-brand-gold/40 focus:border-brand-gold/50 transition-all"
+                      autoComplete="email"
+                      className={cn(heroInput, 'pl-11')}
                     />
                   </div>
                 </div>
-                <button
-                  id="forgot-submit"
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-brand-gold hover:bg-brand-goldHover text-brand-blueAccent font-black py-3.5 rounded-xl text-base transition-all cursor-pointer disabled:opacity-60"
-                >
-                  {loading ? 'Sending OTP...' : 'Send Reset Code'}
-                </button>
+                <Button id="forgot-submit" type="submit" loading={loading} className={heroButton}>
+                  {loading ? 'Sending code' : 'Send Reset Code'}
+                </Button>
               </form>
             </>
           ) : step === 'otp' ? (
             <>
-              <h2 className="text-2xl font-black text-white mb-1">Enter Reset Code</h2>
-              <p className="text-white/50 text-sm mb-2">
-                A 6-digit code was sent to <span className="text-brand-gold">{email}</span>.
+              <h2 className="mb-1 text-2xl font-black text-white">Enter Reset Code</h2>
+              <p className="mb-2 text-sm text-white/50">
+                A 6-digit code was sent to <span className="text-highlight">{email}</span>.
               </p>
               <button
                 type="button"
-                onClick={() => { setStep('email'); setError(''); setOtp(''); }}
-                className="text-xs text-white/40 hover:text-white/70 transition-colors mb-6"
+                onClick={() => {
+                  setStep('email');
+                  setError('');
+                  setOtp('');
+                }}
+                className="mb-6 min-h-11 rounded-md text-xs text-white/50 transition-colors hover:text-white/70 focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
               >
                 Wrong email? Go back
               </button>
-
-              {error && (
-                <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-400/20 rounded-xl p-4 mb-5">
-                  <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-red-300">{error}</p>
-                </div>
-              )}
-
-              <form onSubmit={handleVerifyOtp} className="space-y-5">
+              {errorNotice}
+              <form onSubmit={handleVerifyOtp} className="flex flex-col gap-5">
                 <div>
-                  <label className="block text-sm font-semibold text-white/70 mb-2">
-                    OTP Code <span className="text-red-400">*</span>
-                  </label>
-                  <input
+                  <HeroLabel htmlFor="forgot-otp">OTP Code</HeroLabel>
+                  <Input
                     id="forgot-otp"
                     type="text"
                     inputMode="numeric"
+                    autoComplete="one-time-code"
                     pattern="[0-9]{6}"
                     maxLength={6}
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                     placeholder="000000"
                     required
-                    className="w-full px-4 py-3 text-base tracking-widest text-center bg-white/[0.06] border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-brand-gold/40 focus:border-brand-gold/50 transition-all"
+                    className={cn(heroInput, 'text-center tracking-widest')}
                   />
                 </div>
-                <button
-                  id="forgot-verify-submit"
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-brand-gold hover:bg-brand-goldHover text-brand-blueAccent font-black py-3.5 rounded-xl text-base transition-all cursor-pointer disabled:opacity-60"
-                >
-                  {loading ? 'Verifying...' : 'Verify Code'}
-                </button>
+                <Button id="forgot-verify-submit" type="submit" loading={loading} className={heroButton}>
+                  {loading ? 'Verifying' : 'Verify Code'}
+                </Button>
               </form>
             </>
           ) : (
             <>
-              <h2 className="text-2xl font-black text-white mb-1">Set New Password</h2>
-              <p className="text-white/50 text-sm mb-6">
-                Choose a new secure password for <span className="text-brand-gold">{email}</span>.
+              <h2 className="mb-1 text-2xl font-black text-white">Set New Password</h2>
+              <p className="mb-6 text-sm text-white/50">
+                Choose a new secure password for <span className="text-highlight">{email}</span>.
               </p>
-
-              {error && (
-                <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-400/20 rounded-xl p-4 mb-5">
-                  <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-red-300">{error}</p>
-                </div>
-              )}
-
-              <form onSubmit={handleVerifyAndReset} className="space-y-5">
+              {errorNotice}
+              <form onSubmit={handleVerifyAndReset} className="flex flex-col gap-5">
                 <div>
-                  <label className="block text-sm font-semibold text-white/70 mb-2">
-                    New Password <span className="text-red-400">*</span>
-                  </label>
+                  <HeroLabel htmlFor="forgot-new-password">New Password</HeroLabel>
                   <div className="relative">
-                    <input
+                    <Input
                       id="forgot-new-password"
                       type={showNewPassword ? 'text' : 'password'}
                       value={newPassword}
@@ -255,56 +249,40 @@ export default function ForgotPassword() {
                       placeholder="At least 8 characters"
                       required
                       minLength={8}
-                      className="w-full pl-4 pr-12 py-3 text-base bg-white/[0.06] border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-brand-gold/40 focus:border-brand-gold/50 transition-all"
+                      autoComplete="new-password"
+                      aria-describedby="forgot-password-rules"
+                      className={cn(heroInput, 'pr-12')}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPassword((v) => !v)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 cursor-pointer transition-colors"
-                    >
-                      {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
+                    <RevealButton shown={showNewPassword} onToggle={() => setShowNewPassword((v) => !v)} />
                   </div>
-                  <p className="text-[10px] text-white/40 mt-1.5 leading-normal">
+                  <p id="forgot-password-rules" className="mt-1.5 text-xs leading-normal text-white/50">
                     Password must be at least 8 characters and contain at least one uppercase letter, one lowercase letter, one number, and one special character.
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-white/70 mb-2">
-                    Confirm Password <span className="text-red-400">*</span>
-                  </label>
+                  <HeroLabel htmlFor="forgot-confirm-password">Confirm Password</HeroLabel>
                   <div className="relative">
-                    <input
+                    <Input
                       id="forgot-confirm-password"
                       type={showConfirmPassword ? 'text' : 'password'}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Repeat new password"
                       required
-                      className="w-full pl-4 pr-12 py-3 text-base bg-white/[0.06] border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-brand-gold/40 focus:border-brand-gold/50 transition-all"
+                      autoComplete="new-password"
+                      className={cn(heroInput, 'pr-12')}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword((v) => !v)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 cursor-pointer transition-colors"
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
+                    <RevealButton shown={showConfirmPassword} onToggle={() => setShowConfirmPassword((v) => !v)} />
                   </div>
                 </div>
-                <button
-                  id="forgot-reset-submit"
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-brand-gold hover:bg-brand-goldHover text-brand-blueAccent font-black py-3.5 rounded-xl text-base transition-all cursor-pointer disabled:opacity-60"
-                >
-                  {loading ? 'Resetting...' : 'Reset Password'}
-                </button>
+                <Button id="forgot-reset-submit" type="submit" loading={loading} className={heroButton}>
+                  {loading ? 'Resetting' : 'Reset Password'}
+                </Button>
               </form>
             </>
           )}
-        </div>
-      </div>
+        </HeroCard>
+      </main>
     </div>
   );
 }

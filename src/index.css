@@ -1,25 +1,136 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/*
+  Design tokens (design.md, spec 0007 AC-21). This file is the one place color values live.
+  Components use the token utilities (bg-primary, text-muted-foreground) or var(--token),
+  never hex. The same values as welinc-web-vrms, so both shared front ends match.
+*/
+:root {
+  color-scheme: light;
+
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #1a1f6e;
+  --primary-foreground: #ffffff;
+  --primary-hover: #151b4f;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --muted-strong: #475569;
+  --accent: #f1f5f9;
+  --accent-foreground: #0f172a;
+  --highlight: #e8b800;
+  --highlight-foreground: #0f172a;
+  --highlight-hover: #d4a600;
+  --destructive: #c0392b;
+  --destructive-foreground: #ffffff;
+  --success: #047857;
+  --success-fill: #10b981;
+  --border: #e2e8f0;
+  --input: #64748b;
+  --ring: #1a1f6e;
+  --white: #ffffff;
+  --black: #000000;
+
+  /*
+    The login hero only (spec 0007, AC-22): the split layout keeps today's dark navy, gradient
+    and gold glows, a deliberate exception to design.md's ban. Nothing else uses these.
+  */
+  --hero: #0d1240;
+  --hero-deep: #0a0e35;
+  --hero-danger: #fca5a5;
+  --hero-success: #34d399;
+
+  /* Role pills (design.md, shared across the suite) */
+  --role-admin-bg: #1a1f6e;
+  --role-admin-fg: #ffffff;
+  --role-chief-mechanic-bg: #e8b800;
+  --role-chief-mechanic-fg: #0f172a;
+  --role-mechanic-bg: #d1fae5;
+  --role-mechanic-fg: #065f46;
+  --role-operations-bg: #e8e9f1;
+  --role-operations-fg: #1a1f6e;
+  --role-customer-support-bg: #e0f2fe;
+  --role-customer-support-fg: #075985;
+  --role-driver-bg: #f1f5f9;
+  --role-driver-fg: #334155;
+
+  --radius: 0.5rem;
+}
+
+@theme inline {
+  /* Tailwind's default palette is off: only tokens exist as color utilities. Keep this first. */
+  --color-*: initial;
+
+  --font-sans: 'Inter Variable', system-ui, -apple-system, sans-serif;
+
+  --ease-snappy: cubic-bezier(0.23, 1, 0.32, 1);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-white: var(--white);
+  --color-black: var(--black);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted-strong: var(--muted-strong);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+  --color-highlight-hover: var(--highlight-hover);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-fill: var(--success-fill);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-hero: var(--hero);
+  --color-hero-deep: var(--hero-deep);
+  --color-hero-danger: var(--hero-danger);
+  --color-hero-success: var(--hero-success);
+
+  --color-role-admin-bg: var(--role-admin-bg);
+  --color-role-admin-fg: var(--role-admin-fg);
+  --color-role-chief-mechanic-bg: var(--role-chief-mechanic-bg);
+  --color-role-chief-mechanic-fg: var(--role-chief-mechanic-fg);
+  --color-role-mechanic-bg: var(--role-mechanic-bg);
+  --color-role-mechanic-fg: var(--role-mechanic-fg);
+  --color-role-operations-bg: var(--role-operations-bg);
+  --color-role-operations-fg: var(--role-operations-fg);
+  --color-role-customer-support-bg: var(--role-customer-support-bg);
+  --color-role-customer-support-fg: var(--role-customer-support-fg);
+  --color-role-driver-bg: var(--role-driver-bg);
+  --color-role-driver-fg: var(--role-driver-fg);
+}
 
 @layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
   body {
-    @apply bg-brand-darker text-slate-100 antialiased;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    @apply bg-background font-sans text-foreground antialiased;
   }
-}
-
-@keyframes slide-in {
-  from {
-    transform: translateX(120%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-.animate-slide-in {
-  animation: slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
