@@ -2,19 +2,22 @@
 
 ## Overview
 
-The SSO portal: a React 19 + Vite SPA on port 8000. It is the front door for the suite. A user logs in against `welinc-auth` (through the gateway), which sets its HttpOnly `welinc_sso` cookie and answers the picked system's address, and the portal sends them there, or back into a system's code flow with `/auth/authorize/resume` (spec 0003). It holds no token and stores nothing about the session. It also holds forgot password. This repo is shared, so keep changes small.
+The SSO portal: a React 19 + Vite SPA on port 8000. It is the front door for the suite. A user logs in against `welinc-auth` (through the gateway), which sets its HttpOnly `welinc_sso` cookie and answers the systems the user holds. The portal then shows the launcher, sends them straight into their one system, or returns them to a system's code flow with `/auth/authorize/resume` (specs 0003 and 0007). It holds no token and stores nothing about the session. It also holds forgot password. This repo is shared, so keep changes small.
 
 ## Key files
 
 | File | Owns |
 |---|---|
-| `src/App.tsx` | Routes: `/` and `/login` both render `Login`, so `<portal>/?error=...` from an app shows its message |
-| `src/pages/auth/Login.tsx` | Login form. Opened with a live SSO session (`GET /auth/sso` answers 200) it skips the form, except with any `reason` (`logout`, `idle`, `maxage`) or an `error`; it shows each error code's message with Sign in again |
+| `src/App.tsx` | Routes: `/` and `/login` both render `Portal`; also `/forgot-password` |
+| `src/pages/Portal.tsx` | Chooses the screen from the address and the SSO session: the form, the launcher, no access, or straight in. Re-checks when a tab comes back, at most every 10 seconds |
+| `src/pages/launcher/` | The launcher: cards (`SystemCard`), account menu and shell, Sign out dialog, the loading, error and no access states |
+| `src/pages/auth/Login.tsx` | Login form, with each error code's message and Sign in again. `Portal` decides when it shows |
 | `src/pages/auth/ForgotPassword.tsx` | OTP and password reset flow |
 | `src/lib/api.ts` | Axios client, base URL from `VITE_API_BASE_URL` or `VITE_API_URL`, `withCredentials` so the SSO cookie goes along; no token |
-| `src/lib/auth.ts` | The pure login helpers: `noticeFor` (the message per error code and reason), `mayContinueSession`, `loginRequest`, `nextAddress` |
-| `src/context/toast.ts`, `ToastContext.tsx` | `useToast()` hook and context, and the provider component |
-| `tailwind.config.js` | `brand` color tokens |
+| `src/lib/auth.ts` | The pure login helpers: `noticeFor` (the message per error code and reason), `loginRequest`, `startFor`, `screenForAnswer`, `screenForSso`, `resumeAddress`, `currentSystem` |
+| `src/lib/session.ts`, `src/lib/launcher.ts` | `checkSso` and `signOutEverywhere`; the launcher's display rules (greeting, initials, picture) |
+| `src/components/ui/` | shadcn components, including the sonner `Toaster`; `src/lib/notify.ts` has `notifyError` |
+| `src/index.css` | Tailwind v4 setup and the design tokens, the one place color values live |
 
 ## Commands
 
@@ -29,8 +32,8 @@ There is no `typecheck` script. `npm test` runs Vitest (jsdom, Testing Library; 
 
 ## Conventions
 
-- Tailwind is on v3 here (`tailwind.config.js`, `@tailwind` directives), unlike web-vrms which is on v4. Do not copy v4 syntax across.
-- Use the `brand` tokens from `tailwind.config.js`, not raw hex values. `design.md` at the workspace root governs the look.
+- Tailwind v4 and shadcn, like web-vrms. Use the token utilities from `src/index.css` (`bg-primary`, `text-muted-foreground`), never raw hex or arbitrary values: lint fails on them. `design.md` at the workspace root governs the look.
+- Routing rules are spec 0007, AC-10 to AC-14: an app initiated login never shows the launcher, and an `error` or `from` in the address never forwards.
 - Each system's address comes from welinc-auth's login answer (`url`), and the API from `VITE_API_URL`. `VITE_*` values ship to the browser, so never put secrets in them. Document new ones in `.env.example` only.
 - Never keep a token, a user or a session flag in `localStorage` or a URL (spec 0003, AC-36). The session is welinc-auth's `welinc_sso` cookie, which no script can read.
 
@@ -42,7 +45,7 @@ There is no `typecheck` script. `npm test` runs Vitest (jsdom, Testing Library; 
 
 ## Agent skills
 
-- [tailwind-4-docs](../.claude/skills/tailwind-4-docs/): `lombiq/tailwind-agent-skills`, for the v3 to v4 upgrade of this repo
+- [tailwind-4-docs](../.claude/skills/tailwind-4-docs/): `lombiq/tailwind-agent-skills`, Tailwind v4 reference
 - [vercel-react-best-practices](../.claude/skills/vercel-react-best-practices/), [vercel-composition-patterns](../.claude/skills/vercel-composition-patterns/): `vercel-labs/agent-skills`, React patterns
 - [shadcn](../.claude/skills/shadcn/): `shadcn-ui/ui`, component usage
 
