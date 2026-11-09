@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Portal from './pages/Portal';
 import ForgotPassword from './pages/auth/ForgotPassword';
-import { ToastProvider } from './context/ToastContext';
+import { Toaster } from '@/components/ui/sonner';
 
 /**
  * `/` and `/login` are the portal's front door (spec 0007): the form, the launcher, or straight
@@ -9,7 +9,7 @@ import { ToastProvider } from './context/ToastContext';
  */
 export default function App() {
   return (
-    <ToastProvider>
+    <>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Portal />} />
@@ -19,6 +19,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-    </ToastProvider>
+      <Toaster />
+    </>
   );
 }
