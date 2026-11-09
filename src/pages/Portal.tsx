@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Login from './auth/Login';
+import { LoginLoading } from './auth/AuthHero';
 import Launcher from './launcher/Launcher';
 import NoAccess from './launcher/NoAccess';
 import { LauncherError, LauncherLoading } from './launcher/LauncherStates';
@@ -120,6 +121,7 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
     case 'error':
       return <LauncherError onRetry={onRetry} />;
     default:
-      return <LauncherLoading />;
+      // An app initiated login most often ends on the form; a direct visit on the launcher
+      return start.kind === 'request' ? <LoginLoading /> : <LauncherLoading />;
   }
 }

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AxiosError } from 'axios';
 import Portal, { RECHECK_MS } from './Portal';
-import { ToastProvider } from '../context/ToastContext';
+import { Toaster } from '@/components/ui/sonner';
 import { api } from '../lib/api';
 
 vi.mock('../lib/api', () => ({
@@ -33,14 +33,15 @@ const TWO = {
 
 function renderPortal(path = '/') {
   return render(
-    <ToastProvider>
+    <>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path="/" element={<Portal />} />
           <Route path="/login" element={<Portal />} />
         </Routes>
       </MemoryRouter>
-    </ToastProvider>,
+      <Toaster />
+    </>,
   );
 }
 
@@ -48,6 +49,14 @@ function httpError(status: number, data: Record<string, unknown> = {}) {
   const error = new AxiosError('failed');
   error.response = { status, data } as AxiosError['response'];
   return error;
+}
+
+/** The alert holding `text`; the Toaster keeps its own empty alert region too. */
+async function alertWith(text: string) {
+  await waitFor(() =>
+    expect(screen.getAllByRole('alert').some((el) => el.textContent?.includes(text))).toBe(true),
+  );
+  return screen.getAllByRole('alert').find((el) => el.textContent?.includes(text))!;
 }
 
 async function submit(email: string, password = 'pw') {
@@ -126,7 +135,7 @@ describe('Portal', () => {
   it('never forwards while an error is in the address: one system shows its card and the banner', async () => {
     get.mockResolvedValue({ data: ONE });
     renderPortal('/?error=LOGIN_FAILED');
-    expect((await screen.findByRole('alert')).textContent).toContain("couldn't sign you in");
+    expect(await alertWith("couldn't sign you in")).toBeTruthy();
     expect(screen.getByRole('link').getAttribute('href')).toBe('http://localhost:8001');
     expect(replace).not.toHaveBeenCalled();
   });
@@ -134,7 +143,7 @@ describe('Portal', () => {
   it('shows the form with the error notice when there is no session', async () => {
     get.mockRejectedValue(httpError(401));
     renderPortal('/?error=NO_SYSTEM_ACCESS&system=VRMS');
-    expect((await screen.findByRole('alert')).textContent).toContain('no access to VRMS');
+    expect(await alertWith('no access to VRMS')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign in again' })).toBeTruthy();
   });
 
@@ -171,28 +180,40 @@ describe('Portal', () => {
       post.mockRejectedValueOnce(httpError(403, data));
       const view = renderPortal('/login');
       await submit('pedro');
-      expect((await screen.findByRole('alert')).textContent).toContain(text);
+      expect(await alertWith(text)).toBeTruthy();
       view.unmount();
     }
     expect(assign).not.toHaveBeenCalled();
     expect(replace).not.toHaveBeenCalled();
   });
 
-  it('signs out everywhere after the confirm, and keeps the launcher on a failure', async () => {
+  it('signs out everywhere from the account menu after the confirm, and keeps the launcher on a failure', async () => {
     get.mockResolvedValue({ data: TWO });
     post.mockRejectedValueOnce(httpError(500)).mockResolvedValueOnce({ data: {} });
     renderPortal('/');
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Sign out' }));
-    expect(screen.getByText('Sign out of every WeLinc system?')).toBeTruthy();
-    await user.click(screen.getAllByRole('button', { name: 'Sign out' }).at(-1)!);
-    expect(await screen.findByText(/couldn't sign you out/)).toBeTruthy();
+    const signOut = async () => {
+      await user.click(await screen.findByRole('button', { name: /Account menu for Pedro Cruz/ }));
+      await user.click(await screen.findByRole('menuitem', { name: 'Sign out' }));
+      expect(await screen.findByRole('alertdialog', { name: 'Sign out of every WeLinc system?' })).toBeTruthy();
+      await user.click(screen.getByRole('button', { name: 'Sign out' }));
+    };
+
+    await signOut();
+    expect((await screen.findAllByText(/couldn't sign you out/)).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('link')).toHaveLength(2);
 
-    await user.click(screen.getByRole('button', { name: 'Sign out' }));
-    await user.click(screen.getAllByRole('button', { name: 'Sign out' }).at(-1)!);
+    await signOut();
     await waitFor(() => expect(assign).toHaveBeenCalledWith('/login?reason=logout'));
     expect(post).toHaveBeenLastCalledWith('/auth/logout', {});
+  });
+
+  it('shows the greeting, the account details and the role pills', async () => {
+    get.mockResolvedValue({ data: TWO });
+    renderPortal('/');
+    expect(await screen.findByRole('heading', { level: 1, name: /^Good (morning|afternoon|evening), Pedro$/ })).toBeTruthy();
+    expect(screen.getAllByText('Mechanic')).toHaveLength(2);
+    expect(screen.getAllByText('PC').length).toBeGreaterThan(0);
   });
 
   it('checks again on focus at most every 10 seconds: redraws, or shows the form when the session ended', async () => {
