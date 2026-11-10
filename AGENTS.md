@@ -33,7 +33,7 @@ There is no `typecheck` script. `npm test` runs Vitest (jsdom, Testing Library; 
 ## Conventions
 
 - Tailwind v4 and shadcn, like web-vrms. Use the token utilities from `src/index.css` (`bg-primary`, `text-muted-foreground`), never raw hex or arbitrary values: lint fails on them. `design.md` at the workspace root governs the look.
-- Routing rules are spec 0007, AC-10 to AC-14: an app initiated login never shows the launcher, and an `error` or `from` in the address never forwards.
+- Routing rules are spec 0007, AC-10 to AC-14: an app initiated login never shows the launcher, and an `error` in the address never forwards (`from` only marks the current system's card, `currentSystem` in `lib/auth.ts`).
 - Each system's address comes from welinc-auth's login answer (`url`), and the API from `VITE_API_URL`. `VITE_*` values ship to the browser, so never put secrets in them. Document new ones in `.env.example` only.
 - Never keep a token, a user or a session flag in `localStorage` or a URL (spec 0003, AC-36). The session is welinc-auth's `welinc_sso` cookie, which no script can read.
 
