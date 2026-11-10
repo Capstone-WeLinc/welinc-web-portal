@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import EmailCodeStep from './EmailCodeStep';
 import { api } from '../../lib/api';
@@ -38,11 +38,32 @@ function setup(step: EmailStep = STEP) {
   return { onSignedIn, onBack, field: screen.getByLabelText(/^Code/) as HTMLInputElement };
 }
 
+// input-otp starts timers at 2, 5 and 6 seconds that its unmount does not clear. In CI they can fire
+// after the test environment is gone and fail the whole run with "window is not defined". Track every
+// timer a test starts and clear the leftovers once the test ends.
+const pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+const realSetTimeout = globalThis.setTimeout;
+
 beforeEach(() => {
   post.mockClear();
   post.mockImplementation(() => Promise.resolve({ data: ANSWER }));
+  vi.spyOn(globalThis, 'setTimeout').mockImplementation(((handler: TimerHandler, ms?: number, ...args: unknown[]) => {
+    const id: ReturnType<typeof setTimeout> = realSetTimeout(() => {
+      pendingTimers.delete(id);
+      if (typeof handler === 'function') handler(...args);
+    }, ms);
+    pendingTimers.add(id);
+    return id;
+  }) as typeof setTimeout);
 });
-afterEach(() => vi.useRealTimers());
+
+afterEach(() => {
+  vi.useRealTimers();
+  cleanup();
+  vi.mocked(globalThis.setTimeout).mockRestore();
+  for (const id of pendingTimers) clearTimeout(id);
+  pendingTimers.clear();
+});
 
 describe('EmailCodeStep (spec 0009)', () => {
   // covers: AC-25
