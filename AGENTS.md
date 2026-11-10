@@ -12,6 +12,7 @@ The SSO portal: a React 19 + Vite SPA on port 8000. It is the front door for the
 | `src/pages/Portal.tsx` | Chooses the screen from the address and the SSO session: the form, the launcher, no access, or straight in. Re-checks when a tab comes back, at most every 10 seconds |
 | `src/pages/launcher/` | The launcher: cards (`SystemCard`), account menu and shell, Sign out dialog, the loading, error and no access states |
 | `src/pages/auth/Login.tsx` | Login form, with each error code's message and Sign in again. `Portal` decides when it shows |
+| `src/pages/auth/EmailCodeStep.tsx` | Spec 0009: the sign in step for an unverified email (`/auth/login` answers `EMAIL_VERIFICATION_REQUIRED`; `isEmailStep` and `codeFailure` in `lib/auth.ts`). A six box `InputOTP` over one real `one-time-code` input, Resend countdown, and the ticket held in component state only. A new login client must check for the step body |
 | `src/pages/auth/ForgotPassword.tsx` | OTP and password reset flow |
 | `src/lib/api.ts` | Axios client, base URL from `VITE_API_BASE_URL`, `withCredentials` so the SSO cookie goes along; no token |
 | `src/lib/auth.ts` | The pure login helpers: `noticeFor` (the message per error code and reason), `loginRequest`, `startFor`, `screenForAnswer`, `screenForSso`, `resumeAddress`, `currentSystem` |
