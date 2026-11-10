@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 /**
  * The portal's one API client. It carries no token (spec 0003, AC-36): every call sends the
