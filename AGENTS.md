@@ -24,7 +24,8 @@ The SSO portal: a React 19 + Vite SPA on port 8000. It is the front door for the
 ```bash
 npm run dev       # Vite on 8000
 npm run lint
-npm run build     # tsc -b && vite build, this is the typecheck too
+npm run build     # tsc -b && the production build, this is the typecheck too; needs a real https VITE_API_BASE_URL (CI, hosting)
+npm run build:local  # same, with the committed .env.development (use this on your machine)
 npm test          # Vitest, run once
 ```
 
@@ -35,6 +36,7 @@ There is no `typecheck` script. `npm test` runs Vitest (jsdom, Testing Library; 
 - Tailwind v4 and shadcn, like web-vrms. Use the token utilities from `src/index.css` (`bg-primary`, `text-muted-foreground`), never raw hex or arbitrary values: lint fails on them. `design.md` at the workspace root governs the look.
 - Routing rules are spec 0007, AC-10 to AC-14: an app initiated login never shows the launcher, and an `error` in the address never forwards (`from` only marks the current system's card, `currentSystem` in `lib/auth.ts`).
 - Each system's address comes from welinc-auth's login answer (`url`), and the API from `VITE_API_BASE_URL`. `VITE_*` values ship to the browser, so never put secrets in them. Document new ones in `.env.example` only.
+- `VITE_API_BASE_URL` is checked by `env.schema.ts`, run from `vite.config.ts` before dev and every build (spec 0010): missing or malformed stops it, and a production build also refuses `http` and `localhost`. `src/` reads it with no `||` fallback (`no-localhost-fallback.test.ts` fails on a local address outside comments). A new `VITE_*` name goes in `env.schema.ts`, `.env.example`, `.env.development` and `src/vite-env.d.ts` (the drift test in `env.schema.test.ts` checks the first three), plus `env:` in `ci.yml` and an `ARG` in `Dockerfile.prod`.
 - Never keep a token, a user or a session flag in `localStorage` or a URL (spec 0003, AC-36). The session is welinc-auth's `welinc_sso` cookie, which no script can read.
 
 ## Gotchas
