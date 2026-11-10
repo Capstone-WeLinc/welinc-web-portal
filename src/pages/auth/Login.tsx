@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { api } from '../../lib/api';
-import { loginRequest, noticeFor, type LauncherAnswer, type Notice } from '../../lib/auth';
+import { isEmailStep, loginRequest, noticeFor, type EmailStep, type LauncherAnswer, type Notice } from '../../lib/auth';
+import EmailCodeStep from './EmailCodeStep';
 import {
   HeroBackdrop,
   HeroCard,
@@ -41,6 +42,15 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Suite spec 0009, AC-25: the code step's ticket lives here only, never in the URL or storage
+  const [step, setStep] = useState<EmailStep | null>(null);
+
+  const backToPassword = (message?: string) => {
+    setStep(null);
+    setPassword('');
+    setError(message ?? '');
+    setLoading(false);
+  };
 
   const signInAgain = () => {
     // Drops the message; with a live session the portal's check goes straight on
@@ -61,10 +71,14 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
       }
 
       // Spec 0003, AC-11: sets the SSO cookie and answers the systems, never a token
-      const { data } = await api.post<LauncherAnswer>('/auth/login', {
+      const { data } = await api.post<LauncherAnswer | EmailStep>('/auth/login', {
         email: formattedEmail,
         password,
       });
+      if (isEmailStep(data)) {
+        setStep(data);
+        return;
+      }
       onSignedIn(data);
     } catch (err) {
       const axiosError = isAxiosError(err) ? err : undefined;
@@ -101,88 +115,94 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
           </div>
 
           <HeroCard>
-            <div className="mb-8">
-              <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-highlight shadow-lg shadow-highlight/20">
-                <Truck size={22} className="text-primary" strokeWidth={2.5} aria-hidden="true" />
-              </div>
-              <h2 className="mb-1 text-2xl font-black text-white">Sign In</h2>
-              <p className="text-sm text-white/50">Enter your credentials to access your workspace</p>
-            </div>
+            {step ? (
+              <EmailCodeStep step={step} onSignedIn={onSignedIn} onBack={backToPassword} />
+            ) : (
+              <>
+                <div className="mb-8">
+                  <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-highlight shadow-lg shadow-highlight/20">
+                    <Truck size={22} className="text-primary" strokeWidth={2.5} aria-hidden="true" />
+                  </div>
+                  <h2 className="mb-1 text-2xl font-black text-white">Sign In</h2>
+                  <p className="text-sm text-white/50">Enter your credentials to access your workspace</p>
+                </div>
 
-            {notice && !error && (
-              <HeroNotice tone={notice.tone}>
-                <p>{notice.message}</p>
-                {notice.tone === 'error' && (
-                  <button
-                    type="button"
-                    onClick={signInAgain}
-                    className="mt-2 min-h-11 cursor-pointer rounded-md text-sm font-semibold text-highlight hover:text-highlight-hover focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
-                  >
-                    Sign in again
-                  </button>
+                {notice && !error && (
+                  <HeroNotice tone={notice.tone}>
+                    <p>{notice.message}</p>
+                    {notice.tone === 'error' && (
+                      <button
+                        type="button"
+                        onClick={signInAgain}
+                        className="mt-2 min-h-11 cursor-pointer rounded-md text-sm font-semibold text-highlight hover:text-highlight-hover focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
+                      >
+                        Sign in again
+                      </button>
+                    )}
+                  </HeroNotice>
                 )}
-              </HeroNotice>
+
+                {error && (
+                  <HeroNotice tone="error">
+                    <p>{error}</p>
+                  </HeroNotice>
+                )}
+
+                <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate={false}>
+                  <div>
+                    <HeroLabel htmlFor="login-email">Email or Username</HeroLabel>
+                    <Input
+                      ref={emailRef}
+                      id="login-email"
+                      type="text"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@welinc.com or username"
+                      required
+                      autoComplete="username"
+                      className={heroInput}
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <HeroLabel htmlFor="login-password">Password</HeroLabel>
+                      <Link
+                        to="/forgot-password"
+                        className="mb-2 rounded-md text-xs text-highlight/80 transition-colors hover:text-highlight focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
+                      >
+                        Forgot password?
+                      </Link>
+                    </div>
+                    <div className="relative">
+                      <Input
+                        id="login-password"
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter password"
+                        required
+                        autoComplete="current-password"
+                        className={cn(heroInput, 'pr-12')}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((v) => !v)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        aria-pressed={showPassword}
+                        className="absolute top-0 right-0 flex size-11 cursor-pointer items-center justify-center rounded-xl text-white/40 transition-colors hover:text-white/70 focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
+                      >
+                        {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button id="login-submit" type="submit" loading={loading} className={heroButton}>
+                    {loading ? 'Signing in' : 'Sign In'}
+                  </Button>
+                </form>
+              </>
             )}
-
-            {error && (
-              <HeroNotice tone="error">
-                <p>{error}</p>
-              </HeroNotice>
-            )}
-
-            <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate={false}>
-              <div>
-                <HeroLabel htmlFor="login-email">Email or Username</HeroLabel>
-                <Input
-                  ref={emailRef}
-                  id="login-email"
-                  type="text"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@welinc.com or username"
-                  required
-                  autoComplete="username"
-                  className={heroInput}
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between">
-                  <HeroLabel htmlFor="login-password">Password</HeroLabel>
-                  <Link
-                    to="/forgot-password"
-                    className="mb-2 rounded-md text-xs text-highlight/80 transition-colors hover:text-highlight focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Input
-                    id="login-password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter password"
-                    required
-                    autoComplete="current-password"
-                    className={cn(heroInput, 'pr-12')}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    aria-pressed={showPassword}
-                    className="absolute top-0 right-0 flex size-11 cursor-pointer items-center justify-center rounded-xl text-white/40 transition-colors hover:text-white/70 focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
-                  >
-                    {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-                  </button>
-                </div>
-              </div>
-
-              <Button id="login-submit" type="submit" loading={loading} className={heroButton}>
-                {loading ? 'Signing in' : 'Sign In'}
-              </Button>
-            </form>
           </HeroCard>
         </main>
       </div>

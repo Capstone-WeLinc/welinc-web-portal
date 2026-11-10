@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
+  CODE_EXPIRED_MESSAGE,
+  codeFailure,
   currentSystem,
+  isEmailStep,
   loginRequest,
   noticeFor,
   resumeAddress,
@@ -100,5 +103,61 @@ describe('portal routing rules', () => {
     expect(currentSystem(params('from=https://evil.test'), three)).toBeNull();
     expect(currentSystem(params('from=BMS'), one)).toBeNull();
     expect(currentSystem(params(''), three)).toBeNull();
+  });
+});
+
+// covers: suite spec 0009 AC-25 (the step answer and each code error's message)
+describe('the email code step', () => {
+  const fail = (data: unknown, status = 400, headers: Record<string, string> = {}) => ({
+    response: { status, data, headers },
+  });
+
+  it('recognises the step answer and nothing else', () => {
+    const step = {
+      status: 'EMAIL_VERIFICATION_REQUIRED',
+      challengeId: 'c'.repeat(43),
+      email: 'p@welinc.com',
+      resendAfter: 60,
+    };
+    expect(isEmailStep(step)).toBe(true);
+    expect(isEmailStep(answer)).toBe(false);
+    expect(isEmailStep({ status: 'EMAIL_VERIFICATION_REQUIRED' })).toBe(false);
+    expect(isEmailStep(null)).toBe(false);
+  });
+
+  it('says how many tries are left and clears the boxes on a wrong code', () => {
+    expect(codeFailure(fail({ code: 'INVALID_CODE', attemptsLeft: 3 }))).toEqual({
+      kind: 'message',
+      message: "That code isn't right. 3 tries left.",
+      clearCode: true,
+    });
+    expect(codeFailure(fail({ code: 'INVALID_CODE', attemptsLeft: 1 }))).toMatchObject({
+      message: "That code isn't right. 1 try left.",
+    });
+  });
+
+  it('sends a dead code or ticket back to the password step', () => {
+    expect(codeFailure(fail({ code: 'CODE_EXPIRED' }))).toEqual({
+      kind: 'expired',
+    });
+    expect(CODE_EXPIRED_MESSAGE).toBe('That code expired. Sign in again to get a new one.');
+  });
+
+  it('turns Retry-After into minutes for the send limit', () => {
+    expect(codeFailure(fail({ code: 'CODE_SEND_LIMIT' }, 429, { 'retry-after': '600' }))).toMatchObject({
+      message: 'Too many codes sent. Try again in 10 minutes.',
+    });
+    expect(codeFailure(fail({ code: 'CODE_SEND_LIMIT' }, 429, { 'retry-after': '42' }))).toMatchObject({
+      message: 'Too many codes sent. Try again in 1 minute.',
+    });
+  });
+
+  it('has a message for a mail failure and for no connection', () => {
+    expect(codeFailure(fail({ code: 'MAIL_FAILED' }, 503))).toMatchObject({
+      message: "We couldn't send your code. Try again in a minute.",
+    });
+    expect(codeFailure(new Error('Network Error'))).toMatchObject({
+      kind: 'message',
+    });
   });
 });
