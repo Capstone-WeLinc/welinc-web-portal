@@ -12,6 +12,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // Spec 0010: no code falls back to localhost any more, so tests get the address here
+    env: { VITE_API_BASE_URL: 'http://localhost:3000' },
     css: false,
   },
 });
