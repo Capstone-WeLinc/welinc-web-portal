@@ -144,3 +144,100 @@ export function currentSystem(params: URLSearchParams, answer: LauncherAnswer): 
   const from = params.get('from');
   return from && answer.systems.some((s) => s.system === from) ? from : null;
 }
+
+/**
+ * The `/auth/login` answer for an unverified email (suite spec 0009, AC-7): no session yet, a
+ * ticket for the code step instead. The ticket stays in component state, never in the URL or
+ * browser storage (AC-25).
+ */
+export type EmailStep = {
+  status: 'EMAIL_VERIFICATION_REQUIRED';
+  challengeId: string;
+  email: string;
+  resendAfter: number;
+};
+
+export function isEmailStep(data: unknown): data is EmailStep {
+  const step = data as Partial<EmailStep> | null;
+  return (
+    step?.status === 'EMAIL_VERIFICATION_REQUIRED' &&
+    typeof step.challengeId === 'string' &&
+    typeof step.email === 'string'
+  );
+}
+
+/** Shown back on the password step when the ticket or code has died (AC-25). */
+export const CODE_EXPIRED_MESSAGE = 'That code expired. Sign in again to get a new one.';
+
+/** What the code step does with a failed verify or resend (AC-25). */
+export type CodeFailure = { kind: 'expired' } | { kind: 'message'; message: string; clearCode: boolean };
+
+const minutes = (seconds: number) => {
+  const n = Math.max(1, Math.ceil(seconds / 60));
+  return `${n} minute${n === 1 ? '' : 's'}`;
+};
+
+/** Turns a failed `/auth/login/verify-email` or resend (an Axios error or anything) into a failure. */
+export function codeFailure(error: unknown): CodeFailure {
+  const response = (
+    error as {
+      response?: {
+        status?: number;
+        data?: unknown;
+        headers?: Record<string, unknown>;
+      };
+    } | null
+  )?.response;
+  const data = response?.data as { code?: string; attemptsLeft?: number; isLocked?: boolean } | undefined;
+  switch (data?.code) {
+    case 'INVALID_CODE': {
+      const left = data.attemptsLeft ?? 0;
+      return {
+        kind: 'message',
+        message: `That code isn't right. ${left} ${left === 1 ? 'try' : 'tries'} left.`,
+        clearCode: true,
+      };
+    }
+    case 'CODE_EXPIRED':
+      return { kind: 'expired' };
+    case 'MAIL_FAILED':
+      return {
+        kind: 'message',
+        message: "We couldn't send your code. Try again in a minute.",
+        clearCode: false,
+      };
+    case 'CODE_SEND_LIMIT': {
+      const retryAfter = Number(response?.headers?.['retry-after']);
+      return {
+        kind: 'message',
+        message: `Too many codes sent. Try again in ${minutes(Number.isFinite(retryAfter) ? retryAfter : 60)}.`,
+        clearCode: false,
+      };
+    }
+    case 'RATE_LIMITED':
+      return {
+        kind: 'message',
+        message: 'Too many tries from this network. Wait a minute and try again.',
+        clearCode: false,
+      };
+    case 'NO_SYSTEM_ACCESS':
+      return {
+        kind: 'message',
+        message: 'Your account has no assigned subsystem access. Contact your administrator.',
+        clearCode: false,
+      };
+  }
+  if (data?.isLocked) {
+    return {
+      kind: 'message',
+      message: 'Your account is locked. Contact your Admin to unlock.',
+      clearCode: false,
+    };
+  }
+  if (response?.status === 401) return { kind: 'expired' };
+  return {
+    kind: 'message',
+    message: 'Unable to reach the sign in service. Check your connection and try again.',
+    clearCode: false,
+  };
+}
