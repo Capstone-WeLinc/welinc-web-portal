@@ -20,5 +20,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts", "env.schema.ts", "env.schema.test.ts"]
+  "include": ["vite.config.ts", "env.schema.ts", "env.schema.test.ts", "no-localhost-fallback.test.ts"]
 }

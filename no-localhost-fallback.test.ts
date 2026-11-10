@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 // covers: spec 0010 AC-7 (no code in src/ falls back to a localhost address)
 
-const SRC = __dirname;
+const SRC = join(__dirname, 'src');
 
 /** Every app source file: tests and type declarations are not shipped code. */
 function sourceFiles(dir: string): string[] {
