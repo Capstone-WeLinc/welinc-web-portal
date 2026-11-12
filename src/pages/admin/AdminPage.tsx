@@ -7,6 +7,11 @@ import { askForCode, errorStatus, fetchAdminMe, isAdmin, needsCode, type AdminMe
 import { cn } from '@/lib/utils';
 import { LauncherShell } from '../launcher/LauncherShell';
 import { landingView, viewsFor } from './adminViews';
+import { ActivityView } from './activity/ActivityView';
+import { DeletionRequestsView } from './deletion/DeletionRequestsView';
+import { AddPersonPage } from './people/AddPersonPage';
+import { PeopleView } from './people/PeopleView';
+import { PersonPage } from './people/PersonPage';
 
 type Load = { kind: 'loading' } | { kind: 'signed-out' } | { kind: 'error' } | { kind: 'ready'; me: AdminMe };
 
@@ -52,7 +57,9 @@ export default function AdminPage() {
 }
 
 function AdminShell({ me }: { me: AdminMe }) {
-  const { view } = useParams();
+  const params = useParams();
+  // /admin/people/:id and /admin/people/new sit under People
+  const view = params.id ? 'people' : params.view;
   const views = viewsFor(me);
   const current = views.find((v) => v.path === view);
   if (!current) return <Navigate to={`/admin/${landingView(me)}`} replace />;
@@ -77,7 +84,7 @@ function AdminShell({ me }: { me: AdminMe }) {
                   className={({ isActive }) =>
                     cn(
                       'flex min-h-11 items-center rounded-lg border-l-2 px-3 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
-                      isActive
+                      isActive || v.path === view
                         ? 'border-highlight bg-card font-medium text-foreground'
                         : 'border-transparent text-muted-foreground hover:bg-accent hover:text-foreground',
                     )
@@ -90,8 +97,29 @@ function AdminShell({ me }: { me: AdminMe }) {
           </ul>
         </nav>
         <section aria-labelledby="admin-view-title" className="min-w-0 flex-1 rounded-lg border border-border bg-card p-4 sm:p-5">
+          <AdminViewBody me={me} view={current.path} label={current.label} id={params.id} />
+        </section>
+      </div>
+    </LauncherShell>
+  );
+}
+
+/** The body of one admin view; the views slice 3 and 5 build still show the placeholder. */
+function AdminViewBody({ me, view, label, id }: { me: AdminMe; view: string; label: string; id?: string }) {
+  switch (view) {
+    case 'people':
+      if (id === 'new') return <AddPersonPage me={me} />;
+      if (id) return <PersonPage me={me} />;
+      return <PeopleView me={me} />;
+    case 'deletion-requests':
+      return <DeletionRequestsView me={me} />;
+    case 'activity':
+      return <ActivityView me={me} />;
+    default:
+      return (
+        <>
           <h2 id="admin-view-title" className="text-lg font-semibold text-foreground">
-            {current.label}
+            {label}
           </h2>
           <div className="flex flex-col items-start gap-3 py-8">
             <div className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-strong">
@@ -99,10 +127,9 @@ function AdminShell({ me }: { me: AdminMe }) {
             </div>
             <p className="text-sm text-muted-foreground">Nothing to show here yet.</p>
           </div>
-        </section>
-      </div>
-    </LauncherShell>
-  );
+        </>
+      );
+  }
 }
 
 /** AC-22: the session owes the code. The dialog opens at once; the button opens it again. */
