@@ -8,7 +8,7 @@ The SSO portal: a React 19 + Vite SPA on port 8000. It is the front door for the
 
 | File | Owns |
 |---|---|
-| `src/App.tsx` | Routes: `/` and `/login` both render `Portal`; also `/forgot-password` |
+| `src/App.tsx` | Routes: `/` and `/login` both render `Portal`; also `/forgot-password`, and the lazy loaded `/admin`, `/admin/:view` and `/admin/people/:id` (spec 0013, see `src/pages/admin/AGENTS.md`) |
 | `src/pages/Portal.tsx` | Chooses the screen from the address and the SSO session: the form, the launcher, no access, or straight in. Re-checks when a tab comes back, at most every 10 seconds |
 | `src/pages/launcher/` | The launcher: cards (`SystemCard`), account menu and shell, Sign out dialog, the loading, error and no access states |
 | `src/pages/auth/Login.tsx` | Login form, with each error code's message and Sign in again. `Portal` decides when it shows |
@@ -51,5 +51,9 @@ There is no `typecheck` script. `npm test` runs Vitest (jsdom, Testing Library; 
 - [tailwind-4-docs](../.claude/skills/tailwind-4-docs/): `lombiq/tailwind-agent-skills`, Tailwind v4 reference
 - [vercel-react-best-practices](../.claude/skills/vercel-react-best-practices/), [vercel-composition-patterns](../.claude/skills/vercel-composition-patterns/): `vercel-labs/agent-skills`, React patterns
 - [shadcn](../.claude/skills/shadcn/): `shadcn-ui/ui`, component usage
+
+## Context files
+
+- [src/pages/admin/AGENTS.md](src/pages/admin/AGENTS.md): the `/admin` section (suite spec 0013): people, permissions, temporary access, suite admins, and the step up and reauth wrappers every admin call uses
 
 _Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
