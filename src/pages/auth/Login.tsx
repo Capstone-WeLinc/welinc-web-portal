@@ -105,7 +105,7 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
     <div className="flex min-h-screen bg-hero">
       <HeroPane />
 
-      <div className="relative flex flex-1 items-center justify-center p-6 lg:p-12">
+      <div className="relative flex min-w-0 flex-1 items-center justify-center p-6 lg:p-12">
         <HeroBackdrop />
 
         <main className="relative z-10 w-full max-w-md">
