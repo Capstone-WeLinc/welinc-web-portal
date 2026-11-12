@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Portal from './pages/Portal';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import { Toaster } from '@/components/ui/sonner';
+import AdminPage from './pages/admin/AdminPage';
+import { StepUpDialog } from './pages/admin/StepUpDialog';
 
 /**
  * `/` and `/login` are the portal's front door (spec 0007): the form, the launcher, or straight
@@ -15,10 +17,15 @@ export default function App() {
           <Route path="/" element={<Portal />} />
           <Route path="/login" element={<Portal />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          {/* Suite spec 0013, AC-23: the admin section, one route per view */}
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin/:view" element={<AdminPage />} />
           <Route path="/portal" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      {/* AC-22: one step up dialog for every admin call that answers ADMIN_CODE_REQUIRED */}
+      <StepUpDialog />
       <Toaster />
     </>
   );

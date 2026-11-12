@@ -8,7 +8,7 @@ import { SignOutDialog } from './SignOutDialog';
 export default function NoAccess({ email }: { email: string | null }) {
   const [signingOut, setSigningOut] = useState(false);
   return (
-    <LauncherShell>
+    <LauncherShell signedIn>
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
         <div className="flex size-12 items-center justify-center rounded-lg bg-muted text-muted-strong">
           <ShieldOff className="size-6" aria-hidden="true" />

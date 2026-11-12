@@ -146,12 +146,13 @@ export function currentSystem(params: URLSearchParams, answer: LauncherAnswer): 
 }
 
 /**
- * The `/auth/login` answer for an unverified email (suite spec 0009, AC-7): no session yet, a
- * ticket for the code step instead. The ticket stays in component state, never in the URL or
+ * The `/auth/login` answer when a code is needed: an unverified email (suite spec 0009, AC-7), or
+ * an admin confirming their sign in (suite spec 0013, AC-5). No session yet, a ticket for the code
+ * step instead, finished the same way. The ticket stays in component state, never in the URL or
  * browser storage (AC-25).
  */
 export type EmailStep = {
-  status: 'EMAIL_VERIFICATION_REQUIRED';
+  status: 'EMAIL_VERIFICATION_REQUIRED' | 'SIGN_IN_CODE_REQUIRED';
   challengeId: string;
   email: string;
   resendAfter: number;
@@ -160,7 +161,7 @@ export type EmailStep = {
 export function isEmailStep(data: unknown): data is EmailStep {
   const step = data as Partial<EmailStep> | null;
   return (
-    step?.status === 'EMAIL_VERIFICATION_REQUIRED' &&
+    (step?.status === 'EMAIL_VERIFICATION_REQUIRED' || step?.status === 'SIGN_IN_CODE_REQUIRED') &&
     typeof step.challengeId === 'string' &&
     typeof step.email === 'string'
   );
