@@ -39,12 +39,14 @@ There is no `typecheck` script. `npm test` runs Vitest (jsdom, Testing Library; 
 - Each system's address comes from welinc-auth's login answer (`url`), and the API from `VITE_API_BASE_URL`. `VITE_*` values ship to the browser, so never put secrets in them. Document new ones in `.env.example` only.
 - `VITE_API_BASE_URL` is checked by `env.schema.ts`, run from `vite.config.ts` before dev and every build (spec 0010): missing or malformed stops it, and a production build also refuses `http` and `localhost`. `src/` reads it with no `||` fallback (`no-localhost-fallback.test.ts` fails on a local address outside comments). A new `VITE_*` name goes in `env.schema.ts`, `.env.example`, `.env.development` and `src/vite-env.d.ts` (the drift test in `env.schema.test.ts` checks the first three), plus `env:` in `ci.yml` and an `ARG` in `Dockerfile.prod`.
 - Never keep a token, a user or a session flag in `localStorage` or a URL (spec 0003, AC-36). The session is welinc-auth's `welinc_sso` cookie, which no script can read.
+- Touch targets are 44px on phones: the default `Button` size adds `max-sm:h-11` and the dialog Close is `size-11` below `sm`. Keep new controls at that height.
 
 ## Gotchas
 
 - Only roles for systems `VRMS`, `VMMS` or `BMS` count. A user with none gets 403 `NO_SYSTEM_ACCESS` from `/auth/login` and no session.
 - `.env.development` is committed with dev defaults. Personal overrides go in `.env.local`.
 - Changing the redirect or the token handoff touches auth and every subsystem, so it needs a spec first.
+- On Windows, run Vitest from a path with an uppercase drive letter (`C:/Users/...`). From Git Bash's `/c/Users/...` every test file fails with "Vitest failed to find the current suite".
 
 ## Agent skills
 

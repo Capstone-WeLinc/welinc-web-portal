@@ -38,7 +38,8 @@ The portal's admin screens from suite spec 0013: people, deletion requests, acti
 - `?system=all` means suite wide only for a suite admin; the overview's links use it.
 - The step up and reauth hosts are module singletons registered by the two dialogs' effects; without the dialogs mounted, `askForCode` resolves false and the call fails.
 - Ending your own temporary grant signs you out (`/login?reason=logout`).
-- Only `permissions/matrixDraft.test.ts` lives here; `lib/admin.test.ts` covers standing, the landing view and `withStepUp`.
+- Tests here: `permissions/matrixDraft.test.ts` and `people/PersonForm.test.tsx` (the locked email on your own page); `lib/admin.test.ts` covers standing, the landing view and `withStepUp`, and `lib/adminApi.test.ts` covers `deletePerson`.
+- A bodiless `DELETE` needs `data: {}` in `adminApi.ts`: axios drops the JSON content type without a body, and welinc-auth's CSRF guard then answers 403 `CSRF_REJECTED` (see `deletePerson`).
 
 ## Related specs
 
