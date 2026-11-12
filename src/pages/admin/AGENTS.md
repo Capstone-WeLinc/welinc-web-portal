@@ -34,7 +34,7 @@ The portal's admin screens from suite spec 0013: people, deletion requests, acti
 ## Gotchas
 
 - Nothing here touches `localStorage` or `sessionStorage`: passwords, reauth tokens and the step up ticket live in component state only (spec 0003, AC-36).
-- The sidebar links and the landing redirect drop `?system=`, so changing view resets the system to the default.
+- The sidebar links and the landing redirect go through `viewHref` (`adminViews.ts`), which keeps `?system=` and drops every other query; a new link between views should use it too.
 - `?system=all` means suite wide only for a suite admin; the overview's links use it.
 - The step up and reauth hosts are module singletons registered by the two dialogs' effects; without the dialogs mounted, `askForCode` resolves false and the call fails.
 - Ending your own temporary grant signs you out (`/login?reason=logout`).

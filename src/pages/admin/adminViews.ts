@@ -26,3 +26,12 @@ export function viewsFor(me: AdminMe): AdminView[] {
 export function landingView(me: AdminMe): string {
   return me.suiteAdmin ? 'overview' : 'people';
 }
+
+/**
+ * The address of a view, keeping the chosen `?system=` (or `all`) so switching views keeps the
+ * system. Every other query (`q`, `status`, `cursor`) belongs to one view and is dropped.
+ */
+export function viewHref(path: string, search: string): string {
+  const system = new URLSearchParams(search).get('system');
+  return system ? `/admin/${path}?${new URLSearchParams({ system })}` : `/admin/${path}`;
+}

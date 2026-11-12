@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { landingView, viewsFor } from '../pages/admin/adminViews';
+import { landingView, viewHref, viewsFor } from '../pages/admin/adminViews';
 import { isAdmin, needsCode, registerStepUpHost, withStepUp, type AdminMe } from './admin';
 import { isEmailStep } from './auth';
 
@@ -41,6 +41,13 @@ describe('admin standing', () => {
     expect(viewsFor(system).map((v) => v.path)).not.toContain('suite-admins');
     expect(landingView(suite)).toBe('overview');
     expect(landingView(system)).toBe('people');
+  });
+
+  it('keeps the chosen system when switching views and drops the rest of the query', () => {
+    expect(viewHref('activity', '?system=VMMS&q=ana&status=locked&cursor=x')).toBe('/admin/activity?system=VMMS');
+    expect(viewHref('people', '?system=all')).toBe('/admin/people?system=all');
+    expect(viewHref('overview', '?q=ana')).toBe('/admin/overview');
+    expect(viewHref('people', '')).toBe('/admin/people');
   });
 
   it('reads the admin sign in step as a code step', () => {

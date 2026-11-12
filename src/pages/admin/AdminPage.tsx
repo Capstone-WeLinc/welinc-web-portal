@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, Navigate, NavLink, useParams } from 'react-router-dom';
+import { Link, Navigate, NavLink, useLocation, useParams } from 'react-router-dom';
 import { ArrowLeft, Inbox, RotateCw, ShieldCheck, ShieldOff, TriangleAlert } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { askForCode, errorStatus, fetchAdminMe, isAdmin, needsCode, type AdminMe } from '@/lib/admin';
 import { cn } from '@/lib/utils';
 import { LauncherShell } from '../launcher/LauncherShell';
-import { landingView, viewsFor } from './adminViews';
+import { landingView, viewHref, viewsFor } from './adminViews';
 import { ActivityView } from './activity/ActivityView';
 import { PermissionsView } from './permissions/PermissionsView';
 import { DeletionRequestsView } from './deletion/DeletionRequestsView';
@@ -70,11 +70,12 @@ export default function AdminPage() {
 
 function AdminShell({ me, onChanged }: { me: AdminMe; onChanged: () => void }) {
   const params = useParams();
+  const { search } = useLocation();
   // /admin/people/:id and /admin/people/new sit under People
   const view = params.id ? 'people' : params.view;
   const views = viewsFor(me);
   const current = views.find((v) => v.path === view);
-  if (!current) return <Navigate to={`/admin/${landingView(me)}`} replace />;
+  if (!current) return <Navigate to={viewHref(landingView(me), search)} replace />;
 
   return (
     <LauncherShell user={me.user}>
@@ -93,7 +94,7 @@ function AdminShell({ me, onChanged }: { me: AdminMe; onChanged: () => void }) {
             {views.map((v) => (
               <li key={v.path}>
                 <NavLink
-                  to={`/admin/${v.path}`}
+                  to={viewHref(v.path, search)}
                   className={({ isActive }) =>
                     cn(
                       'flex min-h-11 items-center rounded-lg border-l-2 px-3 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
