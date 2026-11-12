@@ -261,7 +261,9 @@ export function personActivity(id: string, system: Scope, cursor?: string): Prom
 
 export function deletePerson(id: string, system: Scope): Promise<void> {
   return withStepUp(async () => {
-    await api.delete(`/auth/admin/users/${id}`, { params: scoped(system) });
+    // `data: {}` keeps the JSON content type: axios drops it on a bodiless DELETE, and the portal
+    // CSRF guard refuses a write without it (403 CSRF_REJECTED).
+    await api.delete(`/auth/admin/users/${id}`, { params: scoped(system), data: {} });
   });
 }
 

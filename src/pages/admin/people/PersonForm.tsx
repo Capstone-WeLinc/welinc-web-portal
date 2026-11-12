@@ -21,6 +21,7 @@ export function PersonForm({
   submitting,
   serverError,
   emailHint,
+  emailLocked = false,
   onSubmit,
   footer,
 }: {
@@ -31,6 +32,8 @@ export function PersonForm({
   submitting: boolean;
   serverError: string;
   emailHint?: string;
+  /** Locks the email field (your own address changes from your profile, AC-16). */
+  emailLocked?: boolean;
   onSubmit: (values: PersonFormValues) => void;
   footer: React.ReactNode;
 }) {
@@ -77,7 +80,7 @@ export function PersonForm({
           autoComplete="off"
           value={values.email}
           maxLength={255}
-          disabled={submitting}
+          disabled={submitting || emailLocked}
           onChange={(e) => setValues({ ...values, email: e.target.value })}
           {...field('email')}
         />

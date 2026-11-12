@@ -467,6 +467,7 @@ function EditDialog({
             submitting={submitting}
             serverError={serverError}
             emailHint={self ? 'Change your own email from your profile, with a code.' : undefined}
+            emailLocked={self}
             onSubmit={(values) => void save(self ? { ...values, email: person.email, role: current } : values)}
             footer={
               <DialogFooter>
