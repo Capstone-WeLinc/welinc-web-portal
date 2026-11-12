@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { LauncherShell } from '../launcher/LauncherShell';
 import { landingView, viewsFor } from './adminViews';
 import { ActivityView } from './activity/ActivityView';
+import { PermissionsView } from './permissions/PermissionsView';
 import { DeletionRequestsView } from './deletion/DeletionRequestsView';
 import { AddPersonPage } from './people/AddPersonPage';
 import { PeopleView } from './people/PeopleView';
@@ -116,7 +117,7 @@ function AdminShell({ me, onChanged }: { me: AdminMe; onChanged: () => void }) {
   );
 }
 
-/** The body of one admin view; Permissions (slice 5) still shows the placeholder. */
+/** The body of one admin view. */
 function AdminViewBody({
   me,
   view,
@@ -145,6 +146,8 @@ function AdminViewBody({
       return <DeletionRequestsView me={me} />;
     case 'activity':
       return <ActivityView me={me} />;
+    case 'permissions':
+      return <PermissionsView me={me} />;
     default:
       return (
         <>

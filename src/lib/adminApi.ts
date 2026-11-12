@@ -439,6 +439,72 @@ export function fetchReport(): Promise<AdminReport> {
   return withStepUp(async () => (await api.get<AdminReport>('/auth/admin/report')).data);
 }
 
+// ---- permission matrix (AC-27) --------------------------------------------------------------
+
+export type MatrixPermission = {
+  key: string;
+  label: string;
+  group: string;
+  description: string;
+  /** Roles whose cell always keeps its default. */
+  lockedRoles: string[];
+};
+
+export type PermissionMatrix = {
+  system: SystemCode;
+  version: number;
+  roles: { code: string; name: string }[];
+  permissions: MatrixPermission[];
+  /** Each role's keys that are on. */
+  grants: Record<string, string[]>;
+  /** Only suite admins save; a system admin reads. */
+  canEdit: boolean;
+};
+
+export type MatrixCellChange = { role: string; key: string; allowed: boolean };
+
+export type MatrixHistoryItem = {
+  id: string;
+  role: string;
+  roleName: string;
+  key: string;
+  label: string;
+  /** Null: the cell was created. */
+  before: boolean | null;
+  /** Null: the cell was removed with its key or role. */
+  after: boolean | null;
+  actorName: string;
+  actorEmail: string | null;
+  note: string | null;
+  /** Copied from VRMS when the matrix moved here. */
+  imported: boolean;
+  createdAt: string;
+};
+
+export type MatrixHistoryPage = { items: MatrixHistoryItem[]; nextCursor: string | null };
+
+export function fetchMatrix(system: SystemCode): Promise<PermissionMatrix> {
+  return withStepUp(async () => (await api.get<PermissionMatrix>(`/auth/admin/permissions/${system}`)).data);
+}
+
+export function saveMatrix(
+  system: SystemCode,
+  input: { version: number; changes: MatrixCellChange[]; note?: string },
+): Promise<PermissionMatrix> {
+  return withStepUp(async () => (await api.patch<PermissionMatrix>(`/auth/admin/permissions/${system}`, input)).data);
+}
+
+export function matrixHistory(system: SystemCode, cursor?: string): Promise<MatrixHistoryPage> {
+  return withStepUp(
+    async () =>
+      (
+        await api.get<MatrixHistoryPage>(`/auth/admin/permissions/${system}/changes`, {
+          params: cursor ? { cursor } : {},
+        })
+      ).data,
+  );
+}
+
 /** The message welinc-auth sent with an error, when there is one. */
 export function errorMessage(error: unknown, fallback: string): string {
   const data = (error as { response?: { data?: { message?: unknown } } } | null)?.response?.data;
