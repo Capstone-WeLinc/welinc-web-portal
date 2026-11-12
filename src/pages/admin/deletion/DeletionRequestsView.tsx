@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
-import type { AdminMe, SystemCode } from '@/lib/admin';
+import type { AdminMe } from '@/lib/admin';
 import {
   approveDeletion,
   errorMessage,
@@ -26,11 +26,13 @@ import {
   restorePerson,
   type DeletionRequest,
   type GraceItem,
+  type Scope,
 } from '@/lib/adminApi';
+import { OrphanBadge } from '../people/Badges';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { NoSystemScope, SystemSwitcher, ViewEmpty, ViewError, ViewHeader } from '../AdminStates';
-import { useAdminSystem } from '../useAdminSystem';
+import { useAdminScope } from '../useAdminSystem';
 import { useAsync } from '../useAsync';
 
 type Tab = 'pending' | 'grace';
@@ -44,8 +46,9 @@ export const NOTE_MAX = 500;
  * their grace period (spec 0012). Any one admin of the person's systems decides.
  */
 export function DeletionRequestsView({ me }: { me: AdminMe }) {
-  const scope = useAdminSystem(me);
+  const scope = useAdminScope(me);
   const system = scope.kind === 'ok' ? scope.system : null;
+  const key = system ?? 'all';
   const [tab, setTab] = useState<Tab>('pending');
 
   return (
@@ -56,12 +59,17 @@ export function DeletionRequestsView({ me }: { me: AdminMe }) {
       />
       {scope.kind !== 'none' && (
         <div className="mb-4">
-          <SystemSwitcher value={system} choices={scope.choices} onChange={scope.choose} />
+          <SystemSwitcher
+            value={system}
+            choices={scope.choices}
+            onChange={scope.choose}
+            allLabel={scope.kind === 'ok' && scope.allowAll ? 'All systems' : undefined}
+          />
         </div>
       )}
       {scope.kind === 'none' && <NoSystemScope />}
       {scope.kind === 'not-admin' && <NoSystemScope asked={scope.asked} />}
-      {system && (
+      {scope.kind === 'ok' && (
         <>
           <div role="tablist" aria-label="Deletion views" className="mb-4 flex gap-2">
             {(
@@ -87,18 +95,18 @@ export function DeletionRequestsView({ me }: { me: AdminMe }) {
               </button>
             ))}
           </div>
-          {tab === 'pending' ? <PendingList key={system} system={system} /> : <GraceList key={system} system={system} />}
+          {tab === 'pending' ? <PendingList key={key} system={system} /> : <GraceList key={key} system={system} />}
         </>
       )}
     </>
   );
 }
 
-function PendingList({ system }: { system: SystemCode }) {
+function PendingList({ system }: { system: Scope }) {
   const [attempt, setAttempt] = useState(0);
   const [rejecting, setRejecting] = useState<DeletionRequest | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const { state, replace } = useAsync(`${system}|${attempt}`, async () => (await pendingDeletions(system)).data);
+  const { state, replace } = useAsync(`${system ?? 'all'}|${attempt}`, async () => (await pendingDeletions(system)).data);
 
   const drop = (id: string) => replace((current) => current.filter((r) => r.id !== id));
 
@@ -135,12 +143,15 @@ function PendingList({ system }: { system: SystemCode }) {
           <li key={request.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               {request.user && (
-                <Link
-                  to={`/admin/people/${request.user.id}?system=${system}`}
-                  className="text-sm font-medium break-words text-primary underline-offset-4 hover:underline"
-                >
-                  {request.user.name}
-                </Link>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    to={personLink(request.user.id, system ?? request.user.systems[0])}
+                    className="text-sm font-medium break-words text-primary underline-offset-4 hover:underline"
+                  >
+                    {request.user.name}
+                  </Link>
+                  {request.orphan && <OrphanBadge />}
+                </div>
               )}
               <p className="text-xs break-all text-muted-foreground">{request.user?.email}</p>
               <p className="mt-1 text-sm break-words text-foreground">
@@ -179,7 +190,7 @@ function RejectDialog({
   onRejected,
 }: {
   request: DeletionRequest | null;
-  system: SystemCode;
+  system: Scope;
   onClose: () => void;
   onRejected: (id: string) => void;
 }) {
@@ -256,10 +267,10 @@ function RejectDialog({
   );
 }
 
-function GraceList({ system }: { system: SystemCode }) {
+function GraceList({ system }: { system: Scope }) {
   const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
-  const { state, replace } = useAsync(`${system}|${attempt}`, async () => (await graceAccounts(system)).data);
+  const { state, replace } = useAsync(`${system ?? 'all'}|${attempt}`, async () => (await graceAccounts(system)).data);
 
   const restore = async (item: GraceItem) => {
     setBusy(item.user.id);
@@ -292,7 +303,10 @@ function GraceList({ system }: { system: SystemCode }) {
       {rows.map((item) => (
         <li key={item.user.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <p className="text-sm font-medium break-words text-foreground">{item.user.name}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium break-words text-foreground">{item.user.name}</p>
+              {item.orphan && <OrphanBadge />}
+            </div>
             <p className="text-xs break-all text-muted-foreground">{item.user.email}</p>
             <p className="text-xs text-muted-foreground tabular-nums">
               Deleted {formatDate(item.deletedAt)} · erased for good on {formatDate(item.eraseAfter)}
@@ -322,4 +336,9 @@ function ListSkeleton() {
       ))}
     </div>
   );
+}
+
+/** The person page, in a system when there is one to act in. */
+function personLink(id: string, system: string | undefined): string {
+  return system ? `/admin/people/${id}?system=${system}` : `/admin/people/${id}`;
 }

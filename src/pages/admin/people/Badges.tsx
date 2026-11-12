@@ -35,3 +35,18 @@ export function RoleBadge({ code, name }: { code: string; name: string }) {
 export function DeletedBadge() {
   return <span className={cn(PILL, 'bg-destructive text-destructive-foreground')}>Deleted</span>;
 }
+
+/** AC-23: a role that ends on its own (temporary access, AC-11). */
+export function TemporaryBadge({ until }: { until: string }) {
+  const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(until));
+  return <span className={cn(PILL, 'border border-highlight text-foreground')}>Temporary until {time}</span>;
+}
+
+export function SuiteAdminBadge() {
+  return <span className={cn(PILL, 'bg-primary text-primary-foreground')}>Suite admin</span>;
+}
+
+/** AC-21: no other active admin of the person's systems is left to decide. */
+export function OrphanBadge() {
+  return <span className={cn(PILL, 'bg-destructive/10 text-destructive')}>No admin left</span>;
+}

@@ -26,7 +26,8 @@ export function ActivityList({
   load: (cursor?: string) => Promise<EventPage>;
   reloadKey: string;
   showPerson?: boolean;
-  system: SystemCode;
+  /** Null on a suite wide feed: the person link then picks the event's system, if any. */
+  system: SystemCode | null;
   emptyMessage: string;
 }) {
   const catalog = useEventCatalog();
@@ -85,7 +86,11 @@ export function ActivityList({
                   {showPerson && event.user && (
                     <>
                       <Link
-                        to={`/admin/people/${event.user.id}?system=${system}`}
+                        to={
+                          (system ?? event.system)
+                            ? `/admin/people/${event.user.id}?system=${system ?? event.system}`
+                            : `/admin/people/${event.user.id}`
+                        }
                         className="font-medium break-words text-primary underline-offset-4 hover:underline"
                       >
                         {event.user.name}

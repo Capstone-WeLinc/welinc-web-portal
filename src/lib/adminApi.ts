@@ -23,9 +23,13 @@ export type ManagedPerson = {
   lockedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  /** Only the roles of the system the page acts in. */
+  /** Only the roles of the system the page acts in (every system's in a suite wide list). */
   roles: RoleAssignment[];
   otherSystems: SystemCode[];
+  /** When a temporary role in this system ends (AC-11), else null. */
+  temporaryUntil?: string | null;
+  /** The person is a suite admin (lists and the person page). */
+  suiteAdmin?: boolean;
   pendingDeletion?: boolean;
   /** Set on a soft deleted account still in its grace period (the person page only). */
   deletedAt?: string | null;
@@ -75,6 +79,8 @@ export type DeletionRequest = {
   decisionNote: string | null;
   eraseAfter: string | null;
   user?: { id: string; name: string; email: string; systems: SystemCode[] };
+  /** Suite view only (AC-21). */
+  orphan?: boolean;
 };
 
 export type GraceItem = {
@@ -82,7 +88,14 @@ export type GraceItem = {
   deletedAt: string;
   eraseAfter: string;
   requestId: string | null;
+  /** Suite view only (AC-21). */
+  orphan?: boolean;
 };
+
+/** A system, or null for the suite wide view (suite admins, AC-17). */
+export type Scope = SystemCode | null;
+
+const scoped = (system: Scope) => (system ? { system } : {});
 
 export type CatalogRole = { code: string; name: string; description: string; isSystemAdmin: boolean };
 export type CatalogSystem = { code: SystemCode; name: string; maxRolesPerUser: number; roles: CatalogRole[] };
@@ -125,10 +138,12 @@ export async function withReauth<T>(call: (reauthToken?: string) => Promise<T>):
   }
 }
 
-export async function verifyPassword(password: string): Promise<string> {
+export type ReauthPurpose = 'ADMIN_ACTION' | 'TEMPORARY_ACCESS';
+
+export async function verifyPassword(password: string, purpose: ReauthPurpose = 'ADMIN_ACTION'): Promise<string> {
   const { data } = await api.post<{ reauthToken: string }>('/auth/admin/verify-password', {
     password,
-    purpose: 'ADMIN_ACTION',
+    purpose,
   });
   return data.reauthToken;
 }
@@ -148,16 +163,21 @@ export async function fetchEventCatalog(): Promise<EventCatalog> {
 // ---- people ---------------------------------------------------------------------------------
 
 export function listPeople(params: {
-  system: SystemCode;
+  system: Scope;
   q?: string;
   status?: PeopleStatus;
   cursor?: string;
 }): Promise<PeoplePage> {
-  return withStepUp(async () => (await api.get<PeoplePage>('/auth/admin/users', { params })).data);
+  const { system, ...rest } = params;
+  return withStepUp(
+    async () => (await api.get<PeoplePage>('/auth/admin/users', { params: { ...rest, ...scoped(system) } })).data,
+  );
 }
 
-export function getPerson(id: string, system: SystemCode): Promise<ManagedPerson> {
-  return withStepUp(async () => (await api.get<ManagedPerson>(`/auth/admin/users/${id}`, { params: { system } })).data);
+export function getPerson(id: string, system: Scope): Promise<ManagedPerson> {
+  return withStepUp(
+    async () => (await api.get<ManagedPerson>(`/auth/admin/users/${id}`, { params: scoped(system) })).data,
+  );
 }
 
 export function lookupPeople(system: SystemCode, q: string): Promise<LookupPerson[]> {
@@ -228,72 +248,195 @@ export function endPersonSessions(id: string, system: SystemCode): Promise<void>
   });
 }
 
-export function personActivity(id: string, system: SystemCode, cursor?: string): Promise<EventPage> {
+export function personActivity(id: string, system: Scope, cursor?: string): Promise<EventPage> {
   return withStepUp(
     async () =>
-      (await api.get<EventPage>(`/auth/admin/users/${id}/activity`, { params: { system, cursor, limit: 20 } })).data,
+      (
+        await api.get<EventPage>(`/auth/admin/users/${id}/activity`, {
+          params: { ...scoped(system), cursor, limit: 20 },
+        })
+      ).data,
   );
 }
 
-export function deletePerson(id: string, system: SystemCode): Promise<void> {
+export function deletePerson(id: string, system: Scope): Promise<void> {
   return withStepUp(async () => {
-    await api.delete(`/auth/admin/users/${id}`, { params: { system } });
+    await api.delete(`/auth/admin/users/${id}`, { params: scoped(system) });
   });
 }
 
-export function restorePerson(id: string, system: SystemCode): Promise<ManagedPerson> {
+export function restorePerson(id: string, system: Scope): Promise<ManagedPerson> {
   return withStepUp(
-    async () => (await api.post<ManagedPerson>(`/auth/admin/users/${id}/restore`, { system })).data,
+    async () => (await api.post<ManagedPerson>(`/auth/admin/users/${id}/restore`, scoped(system))).data,
   );
 }
 
 // ---- activity and deletion requests ---------------------------------------------------------
 
-export function systemActivity(system: SystemCode, cursor?: string): Promise<EventPage> {
+export function systemActivity(system: Scope, cursor?: string): Promise<EventPage> {
   return withStepUp(
-    async () => (await api.get<EventPage>('/auth/admin/activity', { params: { system, cursor, limit: 30 } })).data,
+    async () =>
+      (await api.get<EventPage>('/auth/admin/activity', { params: { ...scoped(system), cursor, limit: 30 } })).data,
   );
 }
 
 export function pendingDeletions(
-  system: SystemCode,
+  system: Scope,
   cursor?: string,
 ): Promise<{ data: DeletionRequest[]; nextCursor: string | null }> {
   return withStepUp(
     async () =>
       (
         await api.get<{ data: DeletionRequest[]; nextCursor: string | null }>('/auth/admin/deletion-requests', {
-          params: { system, view: 'pending', cursor },
+          params: { ...scoped(system), view: 'pending', cursor },
         })
       ).data,
   );
 }
 
 export function graceAccounts(
-  system: SystemCode,
+  system: Scope,
   cursor?: string,
 ): Promise<{ data: GraceItem[]; nextCursor: string | null }> {
   return withStepUp(
     async () =>
       (
         await api.get<{ data: GraceItem[]; nextCursor: string | null }>('/auth/admin/deletion-requests', {
-          params: { system, view: 'grace', cursor },
+          params: { ...scoped(system), view: 'grace', cursor },
         })
       ).data,
   );
 }
 
-export function approveDeletion(id: string, system: SystemCode): Promise<DeletionRequest> {
+export function approveDeletion(id: string, system: Scope): Promise<DeletionRequest> {
   return withStepUp(
-    async () => (await api.post<DeletionRequest>(`/auth/admin/deletion-requests/${id}/approve`, { system })).data,
+    async () =>
+      (await api.post<DeletionRequest>(`/auth/admin/deletion-requests/${id}/approve`, scoped(system))).data,
   );
 }
 
-export function rejectDeletion(id: string, system: SystemCode, note: string): Promise<DeletionRequest> {
+export function rejectDeletion(id: string, system: Scope, note: string): Promise<DeletionRequest> {
   return withStepUp(
     async () =>
-      (await api.post<DeletionRequest>(`/auth/admin/deletion-requests/${id}/reject`, { system, note })).data,
+      (await api.post<DeletionRequest>(`/auth/admin/deletion-requests/${id}/reject`, { ...scoped(system), note }))
+        .data,
   );
+}
+
+// ---- suite admins, temporary access and the report (AC-1, AC-2, AC-9 to AC-11, AC-19) ----------
+
+export type Named = { id: string; name: string } | null;
+
+export type SuiteAdmin = {
+  id: string;
+  name: string;
+  email: string;
+  grantedAt: string;
+  grantedBy: Named;
+  reason: string | null;
+};
+
+export function listSuiteAdmins(): Promise<SuiteAdmin[]> {
+  return withStepUp(async () => (await api.get<{ items: SuiteAdmin[] }>('/auth/admin/suite-admins')).data.items);
+}
+
+export function addSuiteAdmin(input: { userId: string; reason: string; reauthToken: string }): Promise<SuiteAdmin> {
+  return withStepUp(async () => (await api.post<SuiteAdmin>('/auth/admin/suite-admins', input)).data);
+}
+
+export function removeSuiteAdmin(userId: string, input: { reason: string; reauthToken: string }): Promise<void> {
+  return withStepUp(async () => {
+    await api.post(`/auth/admin/suite-admins/${userId}/remove`, input);
+  });
+}
+
+export type TemporaryGrant = {
+  id: string;
+  holder: { id: string; name: string; email: string };
+  system: SystemCode;
+  role: string;
+  roleName: string;
+  reason: string;
+  startedAt: string;
+  expiresAt: string;
+  endedAt: string | null;
+  endReason: 'EXPIRED' | 'ENDED_EARLY' | 'SUITE_ADMIN_REMOVED' | null;
+  endedBy: Named;
+};
+
+export function listGrants(params: {
+  state: 'live' | 'all';
+  system?: SystemCode;
+  cursor?: string;
+}): Promise<{ items: TemporaryGrant[]; next: string | null }> {
+  return withStepUp(
+    async () =>
+      (await api.get<{ items: TemporaryGrant[]; next: string | null }>('/auth/admin/temporary-grants', { params }))
+        .data,
+  );
+}
+
+export function startGrant(input: {
+  system: SystemCode;
+  role: string;
+  hours: number;
+  reason: string;
+  reauthToken: string;
+}): Promise<TemporaryGrant> {
+  return withStepUp(async () => (await api.post<TemporaryGrant>('/auth/admin/temporary-grants', input)).data);
+}
+
+export function endGrant(id: string): Promise<void> {
+  return withStepUp(async () => {
+    await api.delete(`/auth/admin/temporary-grants/${id}`, { data: {} });
+  });
+}
+
+type Person = { id: string; name: string; email: string };
+
+export type AdminReport = {
+  suiteAdmins: SuiteAdmin[];
+  systems: {
+    system: SystemCode;
+    name: string;
+    adminRole: { code: string; name: string } | null;
+    admins: (Person & { since: string; grantedBy: Named })[];
+    temporaryGrants: {
+      id: string;
+      holder: Person;
+      role: string;
+      roleName: string;
+      reason: string;
+      startedAt: string;
+      expiresAt: string;
+    }[];
+  }[];
+  attention: {
+    locked: { count: number; first: (Person & { lockedAt: string })[] };
+    setupPending: { count: number; first: (Person & { createdAt: string })[] };
+    emailNotVerified: { count: number; first: (Person & { createdAt: string })[] };
+    deletionRequests: {
+      count: number;
+      first: { id: string; user: Person; requestedAt: string; orphan: boolean }[];
+    };
+    inGrace: { count: number; first: (Person & { deletedAt: string; eraseAfter: string; orphan: boolean })[] };
+  };
+  systemsWithoutAdmin: SystemCode[];
+  recentAdminChanges: {
+    id: string;
+    type: string;
+    at: string;
+    user: Person;
+    actor: Named;
+    system: SystemCode | null;
+    oldValue: string | null;
+    newValue: string | null;
+    reason: string | null;
+  }[];
+};
+
+export function fetchReport(): Promise<AdminReport> {
+  return withStepUp(async () => (await api.get<AdminReport>('/auth/admin/report')).data);
 }
 
 /** The message welinc-auth sent with an error, when there is one. */

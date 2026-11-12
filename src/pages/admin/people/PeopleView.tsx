@@ -5,33 +5,41 @@ import { buttonVariants } from '@/components/ui/button';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { AdminMe, SystemCode } from '@/lib/admin';
-import { errorMessage, listPeople, type ManagedPerson, type PeopleStatus } from '@/lib/adminApi';
+import type { AdminMe } from '@/lib/admin';
+import { errorMessage, listPeople, type ManagedPerson, type PeopleStatus, type Scope } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAsync } from '../useAsync';
 import { NoSystemScope, SystemSwitcher, ViewEmpty, ViewError, ViewHeader } from '../AdminStates';
 import { roleNames, useSystemsCatalog } from '../useCatalogs';
-import { useAdminSystem } from '../useAdminSystem';
-import { RoleBadge, StatusBadge } from './Badges';
+import type { CatalogSystem } from '@/lib/adminApi';
+import { useAdminScope } from '../useAdminSystem';
+import { RoleBadge, StatusBadge, SuiteAdminBadge, TemporaryBadge } from './Badges';
 import { accountStatus, parseStatus, roleName, STATUS_FILTERS, STATUS_LABELS } from './personStatus';
 
 /** How long typing waits before the search runs. */
 const SEARCH_DELAY_MS = 300;
 
 /**
- * Suite spec 0013, AC-23: People for one system, with search, a status filter and Load more.
- * The system, search and status live in the address, so a link reopens the same list.
+ * Suite spec 0013, AC-17, AC-23: People for one system, or (suite admins) "All people" in the
+ * suite, people with no role included, with search, a status filter and Load more. The system,
+ * search and status live in the address, so a link reopens the same list.
  */
 export function PeopleView({ me }: { me: AdminMe }) {
-  const scope = useAdminSystem(me);
+  const scope = useAdminScope(me);
   const system = scope.kind === 'ok' ? scope.system : null;
 
   return (
     <>
       <ViewHeader
         title="People"
-        context={system ? `Everyone who holds a ${system} role.` : undefined}
+        context={
+          scope.kind !== 'ok'
+            ? undefined
+            : system
+              ? `Everyone who holds a ${system} role.`
+              : 'Everyone in the suite, people with no role included. Pick a system to add someone.'
+        }
         action={
           system && (
             <Link
@@ -46,17 +54,22 @@ export function PeopleView({ me }: { me: AdminMe }) {
       />
       {scope.kind !== 'none' && (
         <div className="mb-4">
-          <SystemSwitcher value={system} choices={scope.choices} onChange={scope.choose} />
+          <SystemSwitcher
+            value={system}
+            choices={scope.choices}
+            onChange={scope.choose}
+            allLabel={scope.kind === 'ok' && scope.allowAll ? 'All people' : undefined}
+          />
         </div>
       )}
       {scope.kind === 'none' && <NoSystemScope />}
       {scope.kind === 'not-admin' && <NoSystemScope asked={scope.asked} />}
-      {system && <PeopleList system={system} />}
+      {scope.kind === 'ok' && <PeopleList key={system ?? 'all'} system={system} />}
     </>
   );
 }
 
-function PeopleList({ system }: { system: SystemCode }) {
+function PeopleList({ system }: { system: Scope }) {
   const [params, setParams] = useSearchParams();
   const q = params.get('q') ?? '';
   const status = parseStatus(params.get('status'));
@@ -64,7 +77,6 @@ function PeopleList({ system }: { system: SystemCode }) {
   const [attempt, setAttempt] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const catalog = useSystemsCatalog();
-  const names = roleNames(catalog, system);
 
   const setParam = (key: string, value: string | undefined) =>
     setParams(
@@ -86,7 +98,7 @@ function PeopleList({ system }: { system: SystemCode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typed, q]);
 
-  const { state: load, replace } = useAsync(`${system}|${q}|${status ?? ''}|${attempt}`, () =>
+  const { state: load, replace } = useAsync(`${system ?? 'all'}|${q}|${status ?? ''}|${attempt}`, () =>
     listPeople({ system, q: q || undefined, status }),
   );
 
@@ -133,7 +145,13 @@ function PeopleList({ system }: { system: SystemCode }) {
       {load.kind === 'ready' && load.value.items.length === 0 && (
         <ViewEmpty
           icon={<Users className="size-5" aria-hidden="true" />}
-          message={q || status ? 'Nobody matches this search.' : `Nobody holds a ${system} role yet.`}
+          message={
+            q || status
+              ? 'Nobody matches this search.'
+              : system
+                ? `Nobody holds a ${system} role yet.`
+                : 'Nobody has an account yet.'
+          }
         />
       )}
       {load.kind === 'ready' && load.value.items.length > 0 && (
@@ -141,7 +159,7 @@ function PeopleList({ system }: { system: SystemCode }) {
           <ul className="divide-y divide-border rounded-lg border border-border">
             {load.value.items.map((person) => (
               <li key={person.id}>
-                <PersonRow person={person} system={system} names={names} />
+                <PersonRow person={person} system={system} catalog={catalog} />
               </li>
             ))}
           </ul>
@@ -159,24 +177,36 @@ function PeopleList({ system }: { system: SystemCode }) {
 function PersonRow({
   person,
   system,
-  names,
+  catalog,
 }: {
   person: ManagedPerson;
-  system: SystemCode;
-  names: ReadonlyMap<string, string>;
+  system: Scope;
+  catalog: CatalogSystem[] | null;
 }) {
+  // In "All people" the page opens in the person's first system (a suite admin can switch there)
+  const opensIn = system ?? person.roles[0]?.system;
   return (
     <Link
-      to={`/admin/people/${person.id}?system=${system}`}
+      to={opensIn ? `/admin/people/${person.id}?system=${opensIn}` : `/admin/people/${person.id}`}
       className="flex min-h-11 items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset"
     >
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium break-words text-foreground">{person.name}</p>
         <p className="text-xs break-all text-muted-foreground">{person.email}</p>
         <div className="mt-2 flex flex-wrap gap-1.5">
+          {person.suiteAdmin && <SuiteAdminBadge />}
           {person.roles.map((r) => (
-            <RoleBadge key={r.role} code={r.role} name={roleName(r.role, names)} />
+            <RoleBadge
+              key={`${r.system}:${r.role}`}
+              code={r.role}
+              name={
+                system
+                  ? roleName(r.role, roleNames(catalog, r.system))
+                  : `${r.system} ${roleName(r.role, roleNames(catalog, r.system))}`
+              }
+            />
           ))}
+          {person.temporaryUntil && <TemporaryBadge until={person.temporaryUntil} />}
           <StatusBadge status={accountStatus(person)} />
           {person.pendingDeletion && <StatusBadge status="PENDING_DELETION" />}
           {person.otherSystems.length > 0 && (

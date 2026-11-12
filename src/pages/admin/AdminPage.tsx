@@ -12,6 +12,10 @@ import { DeletionRequestsView } from './deletion/DeletionRequestsView';
 import { AddPersonPage } from './people/AddPersonPage';
 import { PeopleView } from './people/PeopleView';
 import { PersonPage } from './people/PersonPage';
+import { OverviewView } from './overview/OverviewView';
+import { SuiteAdminsView } from './suite/SuiteAdminsView';
+import { TemporaryAccessBanner } from './temporary/TemporaryAccessBanner';
+import { TemporaryAccessView } from './temporary/TemporaryAccessView';
 
 type Load = { kind: 'loading' } | { kind: 'signed-out' } | { kind: 'error' } | { kind: 'ready'; me: AdminMe };
 
@@ -42,6 +46,13 @@ export default function AdminPage() {
     setAttempt((n) => n + 1);
   }, []);
 
+  // After a change to the caller's own standing (temporary access): no loading screen
+  const refresh = useCallback(() => {
+    fetchAdminMe()
+      .then((me) => setLoad({ kind: 'ready', me }))
+      .catch(() => undefined);
+  }, []);
+
   switch (load.kind) {
     case 'loading':
       return <AdminLoading />;
@@ -52,11 +63,11 @@ export default function AdminPage() {
     case 'ready':
       if (!isAdmin(load.me)) return <NotAnAdmin me={load.me} />;
       if (needsCode(load.me)) return <CodeOwed me={load.me} onPassed={reload} />;
-      return <AdminShell me={load.me} />;
+      return <AdminShell me={load.me} onChanged={refresh} />;
   }
 }
 
-function AdminShell({ me }: { me: AdminMe }) {
+function AdminShell({ me, onChanged }: { me: AdminMe; onChanged: () => void }) {
   const params = useParams();
   // /admin/people/:id and /admin/people/new sit under People
   const view = params.id ? 'people' : params.view;
@@ -66,6 +77,7 @@ function AdminShell({ me }: { me: AdminMe }) {
 
   return (
     <LauncherShell user={me.user}>
+      <TemporaryAccessBanner grants={me.temporaryGrants} />
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-foreground">Admin</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -97,16 +109,34 @@ function AdminShell({ me }: { me: AdminMe }) {
           </ul>
         </nav>
         <section aria-labelledby="admin-view-title" className="min-w-0 flex-1 rounded-lg border border-border bg-card p-4 sm:p-5">
-          <AdminViewBody me={me} view={current.path} label={current.label} id={params.id} />
+          <AdminViewBody me={me} view={current.path} label={current.label} id={params.id} onChanged={onChanged} />
         </section>
       </div>
     </LauncherShell>
   );
 }
 
-/** The body of one admin view; the views slice 3 and 5 build still show the placeholder. */
-function AdminViewBody({ me, view, label, id }: { me: AdminMe; view: string; label: string; id?: string }) {
+/** The body of one admin view; Permissions (slice 5) still shows the placeholder. */
+function AdminViewBody({
+  me,
+  view,
+  label,
+  id,
+  onChanged,
+}: {
+  me: AdminMe;
+  view: string;
+  label: string;
+  id?: string;
+  onChanged: () => void;
+}) {
   switch (view) {
+    case 'overview':
+      return <OverviewView />;
+    case 'suite-admins':
+      return <SuiteAdminsView me={me} />;
+    case 'temporary-access':
+      return <TemporaryAccessView me={me} onChanged={onChanged} />;
     case 'people':
       if (id === 'new') return <AddPersonPage me={me} />;
       if (id) return <PersonPage me={me} />;

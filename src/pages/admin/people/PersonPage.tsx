@@ -52,12 +52,12 @@ import {
 } from '@/lib/adminApi';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { ActivityList } from '../activity/ActivityList';
-import { NoSystemScope, ViewError, ViewHeader } from '../AdminStates';
+import { NoSystemScope, SystemSwitcher, ViewError, ViewHeader } from '../AdminStates';
 import { roleNames, useSystemsCatalog } from '../useCatalogs';
 import { useAdminSystem } from '../useAdminSystem';
 import { useAsync } from '../useAsync';
 import { BackToPeople } from './AddPersonPage';
-import { DeletedBadge, RoleBadge, StatusBadge } from './Badges';
+import { DeletedBadge, RoleBadge, StatusBadge, SuiteAdminBadge, TemporaryBadge } from './Badges';
 import { PersonForm } from './PersonForm';
 import type { PersonFormValues } from './personValues';
 import { accountStatus, roleName } from './personStatus';
@@ -92,7 +92,16 @@ export function PersonPage({ me }: { me: AdminMe }) {
   if (scope.kind === 'none') return <NoSystemScope />;
   if (scope.kind === 'not-admin') return <NoSystemScope asked={scope.asked} />;
   if (!id) return null;
-  return <Person key={`${id}:${scope.system}`} id={id} system={scope.system} me={me} />;
+  return (
+    <>
+      {me.suiteAdmin && (
+        <div className="mb-4">
+          <SystemSwitcher value={scope.system} choices={scope.choices} onChange={(next) => next && scope.choose(next)} />
+        </div>
+      )}
+      <Person key={`${id}:${scope.system}`} id={id} system={scope.system} me={me} />
+    </>
+  );
 }
 
 function Person({ id, system, me }: { id: string; system: SystemCode; me: AdminMe }) {
@@ -131,6 +140,7 @@ function Person({ id, system, me }: { id: string; system: SystemCode; me: AdminM
       {load.kind === 'missing' && (
         <p role="alert" className="py-8 text-sm text-foreground">
           This person isn't in {system}, or the account no longer exists.
+          {me.suiteAdmin && ' Pick another system above.'}
         </p>
       )}
       {load.kind === 'error' && <ViewError message={load.message} onRetry={() => setAttempt((n) => n + 1)} />}
@@ -284,6 +294,8 @@ function PersonDetails({
         {person.roles.map((r) => (
           <RoleBadge key={r.role} code={r.role} name={roleName(r.role, names)} />
         ))}
+        {person.suiteAdmin && <SuiteAdminBadge />}
+        {person.temporaryUntil && <TemporaryBadge until={person.temporaryUntil} />}
         {deleted ? <DeletedBadge /> : <StatusBadge status={status} />}
         {person.pendingDeletion && <StatusBadge status="PENDING_DELETION" />}
       </div>

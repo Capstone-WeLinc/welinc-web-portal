@@ -14,6 +14,14 @@ export type AdminMe = {
   adminOf: SystemCode[];
   codeRequired: boolean;
   codePassed: boolean;
+  /** AC-24: a suite admin's own live temporary access, for the top bar banner. */
+  temporaryGrants?: {
+    id: string;
+    system: SystemCode;
+    role: string;
+    roleName: string;
+    expiresAt: string;
+  }[];
 };
 
 export function isAdmin(me: AdminMe | null): boolean {

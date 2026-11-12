@@ -45,30 +45,38 @@ export function ViewEmpty({ icon, message, action }: { icon: ReactNode; message:
 }
 
 /**
- * AC-23: the system switcher, shown when the admin holds two or more systems. One selected style
- * everywhere (design.md): solid primary for the chosen one, a card outline for the rest.
+ * AC-23: the system switcher, shown when the admin holds two or more systems, or (suite admins)
+ * with an "All" choice first. One selected style everywhere (design.md): solid primary for the
+ * chosen one, a card outline for the rest.
  */
 export function SystemSwitcher({
   value,
   choices,
   onChange,
+  allLabel,
 }: {
   value: SystemCode | null;
   choices: SystemCode[];
-  onChange: (next: SystemCode) => void;
+  onChange: (next: SystemCode | null) => void;
+  /** Adds a suite wide choice (value null) with this label. */
+  allLabel?: string;
 }) {
-  if (choices.length < 2) return null;
+  if (choices.length < 2 && !allLabel) return null;
+  const options: { value: SystemCode | null; label: string }[] = [
+    ...(allLabel ? [{ value: null, label: allLabel }] : []),
+    ...choices.map((system) => ({ value: system, label: system })),
+  ];
   return (
     <div role="radiogroup" aria-label="System" className="flex flex-wrap gap-2">
-      {choices.map((system) => {
-        const selected = system === value;
+      {options.map((option) => {
+        const selected = option.value === value;
         return (
           <button
-            key={system}
+            key={option.label}
             type="button"
             role="radio"
             aria-checked={selected}
-            onClick={() => onChange(system)}
+            onClick={() => onChange(option.value)}
             className={cn(
               'min-h-11 rounded-lg border px-4 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden md:min-h-9',
               selected
@@ -76,7 +84,7 @@ export function SystemSwitcher({
                 : 'border-border bg-card text-foreground hover:bg-accent',
             )}
           >
-            {system}
+            {option.label}
           </button>
         );
       })}
@@ -84,13 +92,13 @@ export function SystemSwitcher({
   );
 }
 
-/** A deep link for a system the admin doesn't run, or a suite admin before suite scope. */
+/** A deep link for a system the admin doesn't run. */
 export function NoSystemScope({ asked }: { asked?: SystemCode }) {
   return (
     <p role="alert" className="py-8 text-sm text-foreground">
       {asked
         ? `You aren't an admin of ${asked}. Pick one of your systems above.`
-        : 'Suite wide views of people arrive with the next part of the admin section.'}
+        : 'You are not an admin of any system.'}
     </p>
   );
 }
