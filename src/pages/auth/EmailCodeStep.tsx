@@ -34,6 +34,8 @@ export default function EmailCodeStep({ step, onSignedIn, onBack }: EmailCodeSte
   const [resending, setResending] = useState(false);
   const [wait, setWait] = useState(step.resendAfter);
   const codeRef = useRef<HTMLInputElement>(null);
+  // Suite spec 0013, AC-22: the same step, worded for an admin's sign in
+  const adminStep = step.status === 'SIGN_IN_CODE_REQUIRED';
 
   // The field is disabled while a code is checked; put focus back once it is usable again
   useEffect(() => {
@@ -100,8 +102,11 @@ export default function EmailCodeStep({ step, onSignedIn, onBack }: EmailCodeSte
         <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-highlight shadow-lg shadow-highlight/20">
           <MailCheck size={22} className="text-primary" strokeWidth={2.5} aria-hidden="true" />
         </div>
-        <h2 className="mb-1 text-2xl font-black text-white">Check your email</h2>
+        <h2 className="mb-1 text-2xl font-black text-white">
+          {adminStep ? "Confirm it's you" : 'Check your email'}
+        </h2>
         <p className="text-sm break-words text-white/50">
+          {adminStep ? 'Admin accounts confirm each sign in. ' : ''}
           We sent a 6 digit code to <span className="font-semibold text-white/80">{step.email}</span>
         </p>
       </div>

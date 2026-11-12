@@ -80,7 +80,7 @@ export function HeroBackdrop() {
 /** The glass card the form sits in. */
 export function HeroCard({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/4 p-8 shadow-2xl shadow-black/40 backdrop-blur-xl">
+    <div className="rounded-3xl border border-white/10 bg-white/4 p-6 shadow-2xl sm:p-8 shadow-black/40 backdrop-blur-xl">
       {children}
     </div>
   );

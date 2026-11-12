@@ -1,4 +1,6 @@
-import { AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { AlertCircle, ShieldCheck } from 'lucide-react';
+import { buttonVariants } from '@/components/ui/button';
 import { currentSystem, type LauncherAnswer, type Notice } from '@/lib/auth';
 import { firstName, greetingFor } from '@/lib/launcher';
 import { LauncherShell } from './LauncherShell';
@@ -40,13 +42,31 @@ export default function Launcher({ answer, params, banner }: LauncherProps) {
           <p>{banner.message}</p>
         </div>
       )}
-      <ul className={CARD_GRID}>
-        {answer.systems.map((system) => (
-          <li key={system.system}>
-            <SystemCard system={system} here={here === system.system} />
-          </li>
-        ))}
-      </ul>
+      {answer.systems.length === 0 ? (
+        // Suite spec 0013, AC-5: a suite admin holds no system role by design
+        <div className="flex flex-col items-start gap-4 rounded-lg border border-border bg-card p-5">
+          <div className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-strong">
+            <ShieldCheck className="size-5" aria-hidden="true" />
+          </div>
+          <div>
+            <p className="font-medium text-foreground">You hold no role in any system.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              As a suite admin you manage accounts and roles from Admin.
+            </p>
+          </div>
+          <Link to="/admin" className={buttonVariants({ size: 'touch' })}>
+            Open Admin
+          </Link>
+        </div>
+      ) : (
+        <ul className={CARD_GRID}>
+          {answer.systems.map((system) => (
+            <li key={system.system}>
+              <SystemCard system={system} here={here === system.system} />
+            </li>
+          ))}
+        </ul>
+      )}
     </LauncherShell>
   );
 }

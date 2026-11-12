@@ -12,6 +12,9 @@ vi.mock("../lib/api", () => ({
   api: { post: vi.fn(), get: vi.fn() },
 }));
 
+// These tests count /auth/sso calls; the Admin entry's own /auth/admin/me is tested on its own
+vi.mock("./admin/AdminEntry", () => ({ AdminEntry: () => null }));
+
 const post = vi.mocked(api.post);
 const get = vi.mocked(api.get);
 const assign = vi.fn();

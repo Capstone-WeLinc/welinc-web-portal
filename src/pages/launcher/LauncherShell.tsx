@@ -13,6 +13,7 @@ import {
 import type { LauncherAnswer } from '@/lib/auth';
 import { initialsOf, pictureUrl } from '@/lib/launcher';
 import { LOGO_URL } from '../auth/AuthHero';
+import { AdminEntry } from '../admin/AdminEntry';
 import { SignOutDialog } from './SignOutDialog';
 
 type User = LauncherAnswer['user'];
@@ -66,8 +67,19 @@ function AccountMenu({ user }: { user: User }) {
   );
 }
 
-/** The launcher's frame: the top bar (logo, wordmark, account menu) and the page column (AC-15). */
-export function LauncherShell({ user, children }: { user?: User; children: ReactNode }) {
+/**
+ * The launcher's frame: the top bar (logo, wordmark, Admin entry, account menu) and the page
+ * column (AC-15). `signedIn` shows the Admin entry without an account menu (the no access screen).
+ */
+export function LauncherShell({
+  user,
+  signedIn = Boolean(user),
+  children,
+}: {
+  user?: User;
+  signedIn?: boolean;
+  children: ReactNode;
+}) {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
@@ -78,7 +90,10 @@ export function LauncherShell({ user, children }: { user?: User; children: React
             </div>
             <span className="text-lg font-semibold text-foreground">WeLinc</span>
           </div>
-          {user && <AccountMenu user={user} />}
+          <div className="flex items-center gap-2">
+            {signedIn && <AdminEntry />}
+            {user && <AccountMenu user={user} />}
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10">{children}</main>
