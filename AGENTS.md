@@ -17,8 +17,9 @@ The SSO portal: a React 19 + Vite SPA on port 8000. It is the front door for the
 | `src/lib/api.ts` | Axios client, base URL from `VITE_API_BASE_URL`, `withCredentials` so the SSO cookie goes along; no token |
 | `src/lib/auth.ts` | The pure login helpers: `noticeFor` (the message per error code and reason), `loginRequest`, `startFor`, `screenForAnswer`, `screenForSso`, `resumeAddress`, `currentSystem` |
 | `src/lib/session.ts`, `src/lib/launcher.ts` | `checkSso` and `signOutEverywhere`; the launcher's display rules (greeting, initials, picture) |
+| `src/components/LogoMark.tsx`, `src/assets/` | The SVG logo mark (design.md: never the square `welinc-logo.jpg` at icon size) and the bundled login images |
 | `src/components/ui/` | shadcn components, including the sonner `Toaster`; `src/lib/notify.ts` has `notifyError` |
-| `src/index.css` | Tailwind v4 setup and the design tokens, the one place color values live |
+| `src/index.css` | Tailwind v4 setup and the design tokens, the one place color values live; also the `brand-grid` and `pb-safe` utilities, since lint refuses bracketed values in components |
 
 ## Commands
 
