@@ -63,12 +63,12 @@ describe("launcher Admin card", () => {
     ]);
   });
 
-  it("adds the card below the systems for a system admin, with their own shortcuts", () => {
+  it("adds a compact card beside the systems for a system admin, one link to Admin", () => {
     adminMe.current = me({ adminOf: ["VRMS"] });
     renderLauncher([VRMS]);
     expect(screen.getByText("Pick where you want to work today.")).toBeInTheDocument();
     expect(screen.getByText("Accounts and roles in VRMS.")).toBeInTheDocument();
-    expect(hrefs(manage()!).map(([label]) => label)).toEqual(["Admin", "People", "Deletion requests", "Activity"]);
+    expect(within(manage()!).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual(["/admin"]);
   });
 
   it("shows no Manage section to someone who administers nothing, or before the check answers", () => {

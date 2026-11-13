@@ -22,7 +22,7 @@ export function OverviewView() {
   const { state } = useAsync(String(attempt), fetchReport);
   return (
     <>
-      <ViewHeader title="Overview" context="Who can do what across the suite, and what needs a look." />
+      <ViewHeader title="Overview" context="Admins per system, what needs a look, and recent changes." />
       {state.kind === 'loading' && <OverviewSkeleton />}
       {state.kind === 'error' && (
         <ViewError
@@ -79,19 +79,23 @@ function AdminsPerSystem({ report }: { report: Report }) {
                 {system.admins.length === 1 ? '' : 's'}
               </p>
             </div>
-            <ul className="flex flex-col gap-2">
+            {/* One line per admin: name, then the date it started; who granted it is on their page */}
+            <ul className="flex flex-col gap-1.5">
               {system.admins.map((admin) => (
-                <li key={admin.id} className="min-w-0">
+                <li key={admin.id} className="flex min-w-0 items-baseline justify-between gap-3">
                   <Link
                     to={`/admin/people/${admin.id}?system=${system.system}`}
-                    className="text-sm break-words text-primary underline-offset-4 hover:underline"
+                    className="min-w-0 truncate text-sm text-primary underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
                   >
                     {admin.name}
                   </Link>
-                  <p className="text-xs text-muted-foreground tabular-nums">
-                    Since {formatDate(admin.since)}
-                    {admin.grantedBy ? ` · by ${admin.grantedBy.name}` : ''}
-                  </p>
+                  <time
+                    dateTime={admin.since}
+                    className="shrink-0 text-xs text-muted-foreground tabular-nums"
+                    aria-label={`admin since ${formatDate(admin.since)}`}
+                  >
+                    {formatDate(admin.since)}
+                  </time>
                 </li>
               ))}
             </ul>
@@ -99,11 +103,14 @@ function AdminsPerSystem({ report }: { report: Report }) {
               <ul className="flex flex-col gap-2 border-t border-border pt-3">
                 {system.temporaryGrants.map((grant) => (
                   <li key={grant.id} className="flex items-start gap-2 text-xs text-foreground">
-                    <Clock className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                    <span className="min-w-0 break-words">
+                    <Clock className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <Link
+                      to="/admin/temporary-access"
+                      className="min-w-0 break-words underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+                    >
                       {grant.holder.name}, temporary {grant.roleName} until{' '}
-                      <span className="tabular-nums">{formatDateTime(grant.expiresAt)}</span>: "{grant.reason}"
-                    </span>
+                      <span className="tabular-nums">{formatDateTime(grant.expiresAt)}</span>
+                    </Link>
                   </li>
                 ))}
               </ul>

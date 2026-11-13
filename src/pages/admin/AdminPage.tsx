@@ -16,7 +16,7 @@ import { PeopleView } from './people/PeopleView';
 import { PersonPage } from './people/PersonPage';
 import { OverviewView } from './overview/OverviewView';
 import { SuiteAdminsView } from './suite/SuiteAdminsView';
-import { TemporaryAccessBanner } from './temporary/TemporaryAccessBanner';
+import { TemporaryAccessBanner, TemporaryAccessChip } from './temporary/TemporaryAccessBanner';
 import { TemporaryAccessView } from './temporary/TemporaryAccessView';
 
 type Load = { kind: 'loading' } | { kind: 'signed-out' } | { kind: 'error' } | { kind: 'ready'; me: AdminMe };
@@ -78,14 +78,25 @@ function AdminConsole({ me, onChanged }: { me: AdminMe; onChanged: () => void })
   const current = views.find((v) => v.path === view);
   if (!current) return <Navigate to={viewHref(landingView(me), search)} replace />;
 
+  const grants = me.temporaryGrants?.length ? me.temporaryGrants : undefined;
+  // The full band, with Open and End now, where temporary access is the subject; a pill elsewhere
+  const fullBand = current.path === 'overview' || current.path === 'temporary-access';
+  // Lists and the matrix sit on the canvas in their own bordered tables; one person's page and
+  // the Add person form get a card, since their sections have no surface of their own
+  const onCard = Boolean(params.id);
+
   return (
     <AdminShell
       me={me}
       views={views}
       current={current.path}
-      banner={me.temporaryGrants?.length ? <TemporaryAccessBanner grants={me.temporaryGrants} /> : undefined}
+      banner={grants && fullBand ? <TemporaryAccessBanner grants={grants} /> : undefined}
+      status={grants && !fullBand ? <TemporaryAccessChip grants={grants} /> : undefined}
     >
-      <section aria-labelledby="admin-view-title" className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-xs sm:p-6">
+      <section
+        aria-labelledby="admin-view-title"
+        className={cn('min-w-0', onCard && 'rounded-lg border border-border bg-card p-4 shadow-xs sm:p-6')}
+      >
         <AdminViewBody me={me} view={current.path} id={params.id} onChanged={onChanged} />
       </section>
     </AdminShell>

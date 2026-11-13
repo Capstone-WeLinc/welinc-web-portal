@@ -24,6 +24,8 @@ export type AdminViewPath =
 export type AdminView = {
   path: AdminViewPath;
   label: string;
+  /** The phone bottom bar's label, short enough for a fifth of 375px. */
+  short: string;
   /** Only suite admins see it. */
   suiteOnly: boolean;
   /** The same icon in the sidebar and the launcher's Admin card shortcuts. */
@@ -35,19 +37,22 @@ export type AdminView = {
 export type AdminViewGroup = 'Accounts' | 'Access' | 'Audit';
 
 export const ADMIN_VIEWS: readonly AdminView[] = [
-  { path: 'overview', label: 'Overview', suiteOnly: true, icon: LayoutDashboard, group: null },
-  { path: 'people', label: 'People', suiteOnly: false, icon: Users, group: 'Accounts' },
-  { path: 'deletion-requests', label: 'Deletion requests', suiteOnly: false, icon: UserX, group: 'Accounts' },
-  { path: 'suite-admins', label: 'Suite admins', suiteOnly: true, icon: ShieldCheck, group: 'Accounts' },
-  { path: 'permissions', label: 'Permissions', suiteOnly: false, icon: SlidersHorizontal, group: 'Access' },
-  { path: 'temporary-access', label: 'Temporary access', suiteOnly: false, icon: KeyRound, group: 'Access' },
-  { path: 'activity', label: 'Activity', suiteOnly: false, icon: History, group: 'Audit' },
+  { path: 'overview', label: 'Overview', short: 'Overview', suiteOnly: true, icon: LayoutDashboard, group: null },
+  { path: 'people', label: 'People', short: 'People', suiteOnly: false, icon: Users, group: 'Accounts' },
+  { path: 'deletion-requests', label: 'Deletion requests', short: 'Deletions', suiteOnly: false, icon: UserX, group: 'Accounts' },
+  { path: 'suite-admins', label: 'Suite admins', short: 'Suite', suiteOnly: true, icon: ShieldCheck, group: 'Accounts' },
+  { path: 'permissions', label: 'Permissions', short: 'Permissions', suiteOnly: false, icon: SlidersHorizontal, group: 'Access' },
+  { path: 'temporary-access', label: 'Temporary access', short: 'Temporary', suiteOnly: false, icon: KeyRound, group: 'Access' },
+  { path: 'activity', label: 'Activity', short: 'Activity', suiteOnly: false, icon: History, group: 'Audit' },
 ];
 
 /** One view by path; every path is in `ADMIN_VIEWS`. */
 export function adminView(path: AdminViewPath): AdminView {
   return ADMIN_VIEWS.find((view) => view.path === path)!;
 }
+
+/** design.md: on phones, a bottom tab bar for at most this many views, a sheet menu past it. */
+export const BOTTOM_BAR_MAX = 5;
 
 export function viewsFor(me: AdminMe): AdminView[] {
   return ADMIN_VIEWS.filter((view) => me.suiteAdmin || !view.suiteOnly);

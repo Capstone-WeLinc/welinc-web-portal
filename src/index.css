@@ -169,3 +169,8 @@
     @apply bg-background font-sans text-foreground antialiased;
   }
 }
+
+/* The phone bottom bar clears the iPhone home indicator */
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}

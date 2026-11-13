@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronRight, Search, UserPlus, Users } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, UserPlus, Users } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAsync } from '../useAsync';
-import { NoSystemScope, SystemSwitcher, ViewEmpty, ViewError, ViewHeader } from '../AdminStates';
+import { NoSystemScope, SystemSwitcher, Toolbar, ViewEmpty, ViewError, ViewHeader } from '../AdminStates';
 import { roleNames, useSystemsCatalog } from '../useCatalogs';
 import type { CatalogSystem } from '@/lib/adminApi';
 import { useAdminScope } from '../useAdminSystem';
@@ -39,7 +39,7 @@ export function PeopleView({ me }: { me: AdminMe }) {
             ? undefined
             : system
               ? `Everyone who holds a ${system} role.`
-              : 'Everyone in the suite, people with no role included. Pick a system to add someone.'
+              : 'Everyone in the suite. Pick a system to add someone.'
         }
         action={
           system && (
@@ -54,14 +54,14 @@ export function PeopleView({ me }: { me: AdminMe }) {
         }
       />
       {scope.kind !== 'none' && (
-        <div className="mb-4">
+        <Toolbar>
           <SystemSwitcher
             value={system}
             choices={scope.choices}
             onChange={scope.choose}
-            allLabel={scope.kind === 'ok' && scope.allowAll ? 'All people' : undefined}
+            allowAll={scope.kind === 'ok' && scope.allowAll}
           />
-        </div>
+        </Toolbar>
       )}
       {scope.kind === 'none' && <NoSystemScope />}
       {scope.kind === 'not-admin' && <NoSystemScope asked={scope.asked} />}
@@ -118,8 +118,8 @@ function PeopleList({ system }: { system: Scope }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3">
-        <div className="relative">
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="relative flex-1">
           <Search
             className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
@@ -334,6 +334,7 @@ function PersonRow({
   );
 }
 
+/** The status filter: a select beside the search, so it doesn't look like a second system switcher. */
 function StatusFilter({
   value,
   onChange,
@@ -341,32 +342,25 @@ function StatusFilter({
   value: PeopleStatus | undefined;
   onChange: (next: PeopleStatus | undefined) => void;
 }) {
-  const options: { value: PeopleStatus | undefined; label: string }[] = [
-    { value: undefined, label: 'All' },
-    ...STATUS_FILTERS.map((s) => ({ value: s, label: STATUS_LABELS[s] })),
-  ];
   return (
-    <div role="radiogroup" aria-label="Status" className="flex flex-wrap gap-2">
-      {options.map((option) => {
-        const selected = option.value === value;
-        return (
-          <button
-            key={option.label}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            onClick={() => onChange(option.value)}
-            className={cn(
-              'min-h-11 rounded-lg border px-3 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden md:min-h-9',
-              selected
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border bg-card text-foreground hover:bg-accent',
-            )}
-          >
-            {option.label}
-          </button>
-        );
-      })}
+    <div className="relative sm:w-56">
+      <select
+        aria-label="Status"
+        value={value ?? ''}
+        onChange={(e) => onChange(parseStatus(e.target.value))}
+        className="h-11 w-full appearance-none rounded-lg border border-input bg-card pr-9 pl-3 text-base text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden md:h-10 md:text-sm"
+      >
+        <option value="">Every status</option>
+        {STATUS_FILTERS.map((s) => (
+          <option key={s} value={s}>
+            {STATUS_LABELS[s]}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground"
+        aria-hidden="true"
+      />
     </div>
   );
 }

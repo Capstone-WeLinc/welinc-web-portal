@@ -45,7 +45,7 @@ function suiteAdminFailure(error: unknown, fallback: string): string {
     case 'ALREADY_SUITE_ADMIN':
       return 'This person is a suite admin already.';
     case 'HOLDS_SYSTEM_ROLES':
-      return 'This account holds a system role. A suite admin needs a separate account with no roles.';
+      return 'This account holds a system role. A suite admin needs an account with none.';
     case 'NOT_ELIGIBLE':
       return 'Only an active, unlocked account with a verified email can be a suite admin.';
     case 'LAST_SUITE_ADMIN':
@@ -71,7 +71,7 @@ export function SuiteAdminsView({ me }: { me: AdminMe }) {
     <>
       <ViewHeader
         title="Suite admins"
-        context={`One to ${MAX_SUITE_ADMINS} people who manage every account. They hold no system role, so they see no system's work.`}
+        context={`Up to ${MAX_SUITE_ADMINS} people who manage every account. They hold no system role.`}
         action={
           <Button
             size="touch"
@@ -84,7 +84,7 @@ export function SuiteAdminsView({ me }: { me: AdminMe }) {
           </Button>
         }
       />
-      {full && <p className="mb-4 text-sm text-muted-foreground">There are 3 suite admins, the most allowed.</p>}
+      {full && <p className="mb-4 text-sm text-muted-foreground">{MAX_SUITE_ADMINS} suite admins, the most allowed.</p>}
       {state.kind === 'loading' && (
         <div aria-busy="true" className="flex flex-col gap-2">
           <span className="sr-only">Loading</span>
@@ -122,7 +122,7 @@ export function SuiteAdminsView({ me }: { me: AdminMe }) {
                 </Muted>
               </Cell>
               <Cell>
-                <Muted>{admin.grantedBy ? admin.grantedBy.name : 'Setup or the recovery script'}</Muted>
+                <Muted>{admin.grantedBy ? admin.grantedBy.name : 'WeLinc setup'}</Muted>
               </Cell>
               <Cell className="max-w-sm">
                 {admin.reason ? (

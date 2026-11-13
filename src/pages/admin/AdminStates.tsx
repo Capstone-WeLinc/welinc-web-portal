@@ -46,29 +46,27 @@ export function ViewEmpty({ icon, message, action }: { icon: ReactNode; message:
 }
 
 /**
- * AC-23: the system switcher, shown when the admin holds two or more systems, or (suite admins)
- * with an "All" choice first. One selected style everywhere (design.md): solid primary for the
- * chosen one, a card outline for the rest.
+ * One segmented control for every admin filter (design.md: the selected option is solid primary,
+ * the rest sit on the card): the options touch inside one bordered group, so a filter reads as
+ * one control, not a row of separate buttons.
  */
-export function SystemSwitcher({
+export function Segmented<T>({
+  label,
   value,
-  choices,
+  options,
   onChange,
-  allLabel,
 }: {
-  value: SystemCode | null;
-  choices: SystemCode[];
-  onChange: (next: SystemCode | null) => void;
-  /** Adds a suite wide choice (value null) with this label. */
-  allLabel?: string;
+  label: string;
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (next: T) => void;
 }) {
-  if (choices.length < 2 && !allLabel) return null;
-  const options: { value: SystemCode | null; label: string }[] = [
-    ...(allLabel ? [{ value: null, label: allLabel }] : []),
-    ...choices.map((system) => ({ value: system, label: system })),
-  ];
   return (
-    <div role="radiogroup" aria-label="System" className="flex flex-wrap gap-2">
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className="inline-flex max-w-full gap-1 overflow-x-auto rounded-lg border border-border bg-card p-1"
+    >
       {options.map((option) => {
         const selected = option.value === value;
         return (
@@ -79,10 +77,8 @@ export function SystemSwitcher({
             aria-checked={selected}
             onClick={() => onChange(option.value)}
             className={cn(
-              'min-h-11 rounded-lg border px-4 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden md:min-h-9',
-              selected
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border bg-card text-foreground hover:bg-accent',
+              'min-h-10 shrink-0 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden md:min-h-8',
+              selected ? 'bg-primary text-primary-foreground' : 'text-muted-strong hover:bg-accent hover:text-foreground',
             )}
           >
             {option.label}
@@ -91,6 +87,36 @@ export function SystemSwitcher({
       })}
     </div>
   );
+}
+
+/**
+ * AC-23: the system switcher, the same on every view: "All systems" first for a suite admin on
+ * the views that allow it, then each system. Hidden when there is nothing to pick (an admin of
+ * one system).
+ */
+export function SystemSwitcher({
+  value,
+  choices,
+  onChange,
+  allowAll = false,
+}: {
+  value: SystemCode | null;
+  choices: SystemCode[];
+  onChange: (next: SystemCode | null) => void;
+  /** Adds the suite wide choice (value null). */
+  allowAll?: boolean;
+}) {
+  if (choices.length < 2 && !allowAll) return null;
+  const options: { value: SystemCode | null; label: string }[] = [
+    ...(allowAll ? [{ value: null, label: 'All systems' }] : []),
+    ...choices.map((system) => ({ value: system, label: system })),
+  ];
+  return <Segmented label="System" value={value} options={options} onChange={onChange} />;
+}
+
+/** The row under a view header that holds its filters; nothing when every filter is hidden. */
+export function Toolbar({ children }: { children: ReactNode }) {
+  return <div className="mb-4 flex flex-col gap-3 empty:hidden md:flex-row md:flex-wrap md:items-center">{children}</div>;
 }
 
 /** A deep link for a system the admin doesn't run. */

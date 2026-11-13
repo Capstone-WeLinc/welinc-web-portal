@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { AdminMe } from '@/lib/admin';
 import { errorMessage, fetchMatrix, type MatrixCellChange, type PermissionMatrix } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
-import { NoSystemScope, SystemSwitcher, ViewError, ViewHeader } from '../AdminStates';
+import { NoSystemScope, SystemSwitcher, Toolbar, ViewError, ViewHeader } from '../AdminStates';
 import { useAdminSystem } from '../useAdminSystem';
 import { useAsync } from '../useAsync';
 import { MatrixHistory } from './MatrixHistory';
@@ -34,15 +34,15 @@ export function PermissionsView({ me }: { me: AdminMe }) {
         context={
           system
             ? me.suiteAdmin
-              ? `What each ${system} role may do. Changes reach ${system} within about a minute.`
+              ? `What each ${system} role may do. Changes apply within a minute.`
               : `What each ${system} role may do. Only suite admins change it.`
             : undefined
         }
       />
       {scope.kind !== 'none' && (
-        <div className="mb-4">
+        <Toolbar>
           <SystemSwitcher value={system} choices={scope.choices} onChange={(next) => next && scope.choose(next)} />
-        </div>
+        </Toolbar>
       )}
       {scope.kind === 'none' && <NoSystemScope />}
       {scope.kind === 'not-admin' && <NoSystemScope asked={scope.asked} />}
@@ -54,7 +54,7 @@ export function PermissionsView({ me }: { me: AdminMe }) {
         />
       )}
       {system && state.kind === 'ready' && state.value && (
-        <>
+        <div className="flex max-w-5xl flex-col gap-8">
           {state.value.permissions.length === 0 ? (
             <p className="py-8 text-sm text-muted-foreground">
               {system} has no permission matrix yet. Its roles alone decide what people may do.
@@ -72,7 +72,7 @@ export function PermissionsView({ me }: { me: AdminMe }) {
             />
           )}
           <MatrixHistory system={system} reloadKey={`${system}|${historyKey}`} />
-        </>
+        </div>
       )}
     </>
   );
@@ -92,36 +92,51 @@ function MatrixEditor({
   const changes: MatrixCellChange[] = pendingChanges(matrix, draft);
   const editable = matrix.canEdit;
 
+  const groups = groupsOf(matrix);
+  const all = groups.flatMap((g) => g.permissions);
+  const allowedCount = (role: string) => all.filter((p) => shownValue(matrix, draft, role, p.key)).length;
+  const anyLocked = all.some((p) => matrix.roles.some((r) => isLocked(p, r.code)));
+
   return (
-    <div className="flex flex-col gap-6">
-      {groupsOf(matrix).map(({ group, permissions }) => (
-        <section key={group} aria-labelledby={`matrix-group-${group}`}>
-          <h3
-            id={`matrix-group-${group}`}
-            className="mb-2 text-xs font-semibold tracking-wide text-muted-strong uppercase"
-          >
-            {group}
-          </h3>
-          <div className="overflow-hidden rounded-lg border border-border">
-            <div aria-hidden="true" className="hidden items-center gap-3 bg-muted px-4 py-2 md:flex">
-              <span className="flex-1 text-xs font-semibold tracking-wide text-muted-strong uppercase">Permission</span>
-              {matrix.roles.map((role) => (
-                <span
-                  key={role.code}
-                  className="w-28 shrink-0 text-center text-xs font-semibold tracking-wide text-muted-strong uppercase"
-                >
-                  {role.name}
-                </span>
-              ))}
-            </div>
+    <div className="flex flex-col gap-3">
+      {anyLocked && (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Lock className="size-3.5 shrink-0" aria-hidden="true" />
+          Locked: that role always keeps this setting.
+        </p>
+      )}
+      {/* One table: a sticky role header with each role's count, a muted row per group */}
+      <div className="rounded-lg border border-border bg-card">
+        <div
+          aria-hidden="true"
+          className="sticky top-16 z-1 hidden items-end gap-3 rounded-t-lg border-b border-border bg-muted px-4 py-2 md:flex"
+        >
+          <span className="flex-1 text-xs font-medium tracking-wide text-muted-strong uppercase">Permission</span>
+          {matrix.roles.map((role) => (
+            <span key={role.code} className="flex w-28 shrink-0 flex-col items-center text-center">
+              <span className="text-xs font-medium tracking-wide text-muted-strong uppercase">{role.name}</span>
+              <span className="text-xs text-muted-strong tabular-nums">
+                {allowedCount(role.code)} of {all.length}
+              </span>
+            </span>
+          ))}
+        </div>
+        {groups.map(({ group, permissions }) => (
+          <section key={group} aria-labelledby={`matrix-group-${group}`} className="border-t border-border first-of-type:border-t-0">
+            <h3
+              id={`matrix-group-${group}`}
+              className="border-b border-border bg-muted/50 px-4 py-2 text-xs font-medium tracking-wide text-muted-strong uppercase max-md:first:rounded-t-lg"
+            >
+              {group}
+            </h3>
             <ul className="divide-y divide-border">
               {permissions.map((p) => (
-                <li key={p.key} className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center">
+                <li key={p.key} className="flex flex-col gap-2 px-4 py-3 md:flex-row md:items-center md:gap-3 md:py-2.5">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium break-words text-foreground">{p.label}</p>
                     {p.description && <p className="text-xs break-words text-muted-foreground">{p.description}</p>}
                   </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-2 md:flex-nowrap md:gap-0">
+                  <div className="flex flex-wrap gap-x-2 gap-y-1 md:flex-nowrap md:gap-3">
                     {matrix.roles.map((role) => {
                       const locked = isLocked(p, role.code);
                       const value = shownValue(matrix, draft, role.code, p.key);
@@ -130,9 +145,9 @@ function MatrixEditor({
                         <label
                           key={role.code}
                           className={cn(
-                            'flex min-h-11 items-center gap-2 rounded-md px-2 md:w-28 md:min-h-9 md:justify-center',
+                            'flex min-h-11 items-center gap-2 rounded-md px-2 md:min-h-9 md:w-28 md:justify-center',
                             changed && 'bg-highlight/20 ring-1 ring-highlight',
-                            editable && !locked && 'cursor-pointer',
+                            editable && !locked && 'cursor-pointer hover:bg-muted',
                           )}
                           title={locked ? `${role.name} always keeps this setting` : undefined}
                         >
@@ -153,9 +168,9 @@ function MatrixEditor({
                 </li>
               ))}
             </ul>
-          </div>
-        </section>
-      ))}
+          </section>
+        ))}
+      </div>
 
       {editable && changes.length > 0 && (
         <div

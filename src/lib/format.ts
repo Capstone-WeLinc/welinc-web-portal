@@ -23,3 +23,8 @@ export function formatDateTime(iso: string): string {
   const at = new Date(iso);
   return `${DATE.format(at)} ${TIME.format(at)}`;
 }
+
+/** The time alone (`05:40`), for a short label whose date is shown nearby or is today. */
+export function formatTime(iso: string): string {
+  return TIME.format(new Date(iso));
+}

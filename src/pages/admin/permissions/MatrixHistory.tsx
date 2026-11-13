@@ -29,7 +29,7 @@ export function MatrixHistory({ system, reloadKey }: { system: SystemCode; reloa
   };
 
   return (
-    <section aria-labelledby="matrix-history-title" className="mt-8">
+    <section aria-labelledby="matrix-history-title">
       <h3 id="matrix-history-title" className="mb-2 text-base font-semibold text-foreground">
         Change history
       </h3>
@@ -50,7 +50,7 @@ export function MatrixHistory({ system, reloadKey }: { system: SystemCode; reloa
       )}
       {state.kind === 'ready' && state.value.items.length > 0 && (
         <>
-          <ul className="divide-y divide-border rounded-lg border border-border">
+          <ul className="divide-y divide-border rounded-lg border border-border bg-card">
             {state.value.items.map((item) => (
               <li key={item.id} className="flex flex-col gap-1 px-4 py-3">
                 <p className="text-sm break-words text-foreground">

@@ -37,9 +37,11 @@ function scopeLine(me: Pick<AdminMe, 'suiteAdmin' | 'adminOf'>): string {
 /**
  * The launcher's Admin card, in the system card's look. The title is a stretched link so the whole
  * card opens `/admin`, while the shortcuts stay their own links above it (links can't nest).
- * `wide` lays the shortcuts out in a grid with a hint each, for when the card spans the page.
+ * `wide` (a suite admin with no systems, the card alone on the page) adds the shortcuts, in a grid
+ * with a hint each; beside system cards it is the compact card instead.
  */
 export function AdminCard({ me, wide = false }: { me: Pick<AdminMe, 'suiteAdmin' | 'adminOf'>; wide?: boolean }) {
+  if (!wide) return <CompactAdminCard me={me} />;
   return (
     <div className="group relative flex h-full flex-col rounded-lg border border-border bg-card shadow-xs transition-colors duration-150 has-[a[data-card-link]:hover]:border-primary/40 motion-reduce:transition-none">
       <div className="flex items-start gap-4 p-4 sm:p-5">
@@ -88,6 +90,34 @@ export function AdminCard({ me, wide = false }: { me: Pick<AdminMe, 'suiteAdmin'
         ))}
       </ul>
     </div>
+  );
+}
+
+/**
+ * Beside the system cards: the same anatomy and height as a system card (icon, title, a name line,
+ * one line of scope), one link to `/admin`. Its navy square marks it as the brand item.
+ */
+function CompactAdminCard({ me }: { me: Pick<AdminMe, 'suiteAdmin' | 'adminOf'> }) {
+  return (
+    <Link
+      to="/admin"
+      className="group flex h-full items-start gap-4 rounded-lg border border-border bg-card p-4 shadow-xs transition-colors duration-150 hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden motion-reduce:transition-none sm:p-5"
+    >
+      <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary text-highlight">
+        <ShieldCheck className="size-5" aria-hidden="true" />
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <h3 className="text-lg font-semibold text-foreground">Admin</h3>
+        <p className="text-sm font-medium text-foreground">
+          {me.suiteAdmin ? 'Suite administration' : `${me.adminOf.join(', ')} administration`}
+        </p>
+        <p className="text-sm text-muted-foreground">{scopeLine(me)}</p>
+      </div>
+      <ChevronRight
+        className="mt-3 size-5 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0 motion-reduce:group-focus-visible:translate-x-0"
+        aria-hidden="true"
+      />
+    </Link>
   );
 }
 

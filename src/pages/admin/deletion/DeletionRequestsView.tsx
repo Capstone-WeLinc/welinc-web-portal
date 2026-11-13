@@ -31,7 +31,7 @@ import {
 import { OrphanBadge } from '../people/Badges';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { NoSystemScope, SystemSwitcher, ViewEmpty, ViewError, ViewHeader } from '../AdminStates';
+import { NoSystemScope, Segmented, SystemSwitcher, Toolbar, ViewEmpty, ViewError, ViewHeader } from '../AdminStates';
 import { useAdminScope } from '../useAdminSystem';
 import { Cell, DataTable, Muted, PersonCell, Row } from '../AdminTable';
 import { useAsync } from '../useAsync';
@@ -56,46 +56,33 @@ export function DeletionRequestsView({ me }: { me: AdminMe }) {
     <>
       <ViewHeader
         title="Deletion requests"
-        context="People who asked to delete their account, and deleted accounts you can still restore."
+        context="Requests to delete an account, and deleted accounts you can still restore."
       />
       {scope.kind !== 'none' && (
-        <div className="mb-4">
+        <Toolbar>
           <SystemSwitcher
             value={system}
             choices={scope.choices}
             onChange={scope.choose}
-            allLabel={scope.kind === 'ok' && scope.allowAll ? 'All systems' : undefined}
+            allowAll={scope.kind === 'ok' && scope.allowAll}
           />
-        </div>
+          {scope.kind === 'ok' && (
+            <Segmented
+              label="Deletion views"
+              value={tab}
+              onChange={setTab}
+              options={[
+                { value: 'pending', label: 'Waiting for a decision' },
+                { value: 'grace', label: 'Deleted, can restore' },
+              ]}
+            />
+          )}
+        </Toolbar>
       )}
       {scope.kind === 'none' && <NoSystemScope />}
       {scope.kind === 'not-admin' && <NoSystemScope asked={scope.asked} />}
       {scope.kind === 'ok' && (
         <>
-          <div role="tablist" aria-label="Deletion views" className="mb-4 flex gap-2">
-            {(
-              [
-                ['pending', 'Waiting for a decision'],
-                ['grace', 'Deleted, can restore'],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                role="tab"
-                aria-selected={tab === value}
-                onClick={() => setTab(value)}
-                className={cn(
-                  'min-h-11 rounded-lg border px-3 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden md:min-h-9',
-                  tab === value
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border bg-card text-foreground hover:bg-accent',
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
           {tab === 'pending' ? <PendingList key={key} system={system} /> : <GraceList key={key} system={system} />}
         </>
       )}

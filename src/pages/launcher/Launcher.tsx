@@ -17,11 +17,39 @@ type LauncherProps = {
 export const CARD_GRID = 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3';
 
 /**
- * The Admin card's own section below the systems, apart from them like a suite's admin app. As the
- * page's only section (a suite admin) its heading is for screen readers only, since the card sits
- * on the navy band's edge, and the card spans the row.
+ * With one or two systems the Admin card joins their row (three columns from 1024px), so the page
+ * isn't one card wide with an empty canvas beside it. Static class names, for Tailwind's scanner.
  */
-function ManageSection({ only = false, children }: { only?: boolean; children: ReactNode }) {
+const ROW = 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
+const SYSTEMS_IN_ROW: Record<number, { section: string; list: string }> = {
+  1: { section: '', list: 'grid grid-cols-1 gap-4' },
+  2: { section: 'sm:col-span-2', list: 'grid grid-cols-1 gap-4 sm:grid-cols-2' },
+};
+
+/**
+ * The Admin card's own section, apart from the systems like a suite's admin app. Its heading shows
+ * only when the card sits in a row of its own below three or more systems; beside the systems, or
+ * as the page's only section (a suite admin), the card's navy icon marks it and the heading is for
+ * screen readers.
+ */
+function ManageSection({
+  layout,
+  children,
+}: {
+  layout: 'only' | 'in-row' | 'below';
+  children: ReactNode;
+}) {
+  if (layout === 'in-row') {
+    return (
+      <section aria-labelledby="launcher-manage">
+        <h2 id="launcher-manage" className="sr-only">
+          Manage
+        </h2>
+        {children}
+      </section>
+    );
+  }
+  const only = layout === 'only';
   return (
     <section aria-labelledby="launcher-manage" className={only ? undefined : 'mt-10'}>
       <h2
@@ -47,6 +75,7 @@ export default function Launcher({ answer, params, banner }: LauncherProps) {
   const name = firstName(answer.user.name);
   const phoneOnly = mobileSystemsOf(answer);
   const suiteAdminOnly = answer.systems.length === 0;
+  const inRow = SYSTEMS_IN_ROW[answer.systems.length];
   return (
     <LauncherShell
       user={answer.user}
@@ -78,36 +107,49 @@ export default function Launcher({ answer, params, banner }: LauncherProps) {
       {suiteAdminOnly ? (
         // Suite spec 0013, AC-5: a suite admin holds no system role by design. welinc-auth answers an
         // empty list only to a suite admin; anyone else with no role gets 403 NO_SYSTEM_ACCESS.
-        <ManageSection only>
+        <ManageSection layout="only">
           <AdminCard me={{ suiteAdmin: true, adminOf: [] }} wide />
         </ManageSection>
       ) : (
         <>
-          <section aria-labelledby="launcher-systems">
-            <h2 id="launcher-systems" className="sr-only">
-              Systems
-            </h2>
-            <ul className={CARD_GRID}>
-              {answer.systems.map((system) => (
-                <li key={system.system}>
-                  <SystemCard system={system} here={here === system.system} />
-                </li>
-              ))}
-            </ul>
-          </section>
+          <div className={inRow ? ROW : undefined}>
+            <section aria-labelledby="launcher-systems" className={inRow?.section}>
+              <h2 id="launcher-systems" className="sr-only">
+                Systems
+              </h2>
+              <ul className={inRow?.list ?? CARD_GRID}>
+                {answer.systems.map((system) => (
+                  <li key={system.system}>
+                    <SystemCard system={system} here={here === system.system} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+            {inRow && (
+              <AdminCardIfAdmin>
+                {(me) => (
+                  <ManageSection layout="in-row">
+                    <AdminCard me={me} />
+                  </ManageSection>
+                )}
+              </AdminCardIfAdmin>
+            )}
+          </div>
           {phoneOnly.length > 0 && (
             // Suite spec 0014, AC-7: the systems held only on a phone, named quietly
             <p className="mt-6 text-sm text-muted-foreground">
               On the mobile app: {phoneOnly.map((s) => s.system).join(', ')}
             </p>
           )}
-          <AdminCardIfAdmin>
-            {(me) => (
-              <ManageSection>
-                <AdminCard me={me} />
-              </ManageSection>
-            )}
-          </AdminCardIfAdmin>
+          {!inRow && (
+            <AdminCardIfAdmin>
+              {(me) => (
+                <ManageSection layout="below">
+                  <AdminCard me={me} />
+                </ManageSection>
+              )}
+            </AdminCardIfAdmin>
+          )}
         </>
       )}
     </LauncherShell>

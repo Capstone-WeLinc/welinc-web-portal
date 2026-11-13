@@ -76,7 +76,7 @@ export function MatrixReviewDialog({
         stale: code === 'MATRIX_STALE',
         message:
           code === 'MATRIX_STALE'
-            ? 'Someone saved this matrix after you opened it. Reload it to see their changes, then make yours again.'
+            ? 'Someone saved this matrix after you opened it. Reload, then make your changes again.'
             : errorMessage(error, "We couldn't save the permissions."),
       });
     } finally {

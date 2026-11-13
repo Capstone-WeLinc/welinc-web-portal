@@ -1,6 +1,6 @@
 import type { AdminMe } from '@/lib/admin';
 import { systemActivity } from '@/lib/adminApi';
-import { NoSystemScope, SystemSwitcher, ViewHeader } from '../AdminStates';
+import { NoSystemScope, SystemSwitcher, Toolbar, ViewHeader } from '../AdminStates';
 import { useAdminScope } from '../useAdminSystem';
 import { ActivityList } from './ActivityList';
 
@@ -21,18 +21,18 @@ export function ActivityView({ me }: { me: AdminMe }) {
             ? undefined
             : system
               ? `Sign ins and account changes of ${system} people.`
-              : 'Sign ins and account changes of everyone in the suite, former members included.'
+              : 'Sign ins and account changes across the suite.'
         }
       />
       {scope.kind !== 'none' && (
-        <div className="mb-4">
+        <Toolbar>
           <SystemSwitcher
             value={system}
             choices={scope.choices}
             onChange={scope.choose}
-            allLabel={scope.kind === 'ok' && scope.allowAll ? 'Suite wide' : undefined}
+            allowAll={scope.kind === 'ok' && scope.allowAll}
           />
-        </div>
+        </Toolbar>
       )}
       {scope.kind === 'none' && <NoSystemScope />}
       {scope.kind === 'not-admin' && <NoSystemScope asked={scope.asked} />}

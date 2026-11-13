@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Clock, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -14,7 +15,7 @@ import {
 import { Button, buttonVariants } from '@/components/ui/button';
 import type { AdminMe } from '@/lib/admin';
 import { endGrant, errorMessage } from '@/lib/adminApi';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime, formatTime } from '@/lib/format';
 import { checkSso, goToSignedOut } from '@/lib/session';
 import { cn } from '@/lib/utils';
 
@@ -43,7 +44,7 @@ export function TemporaryAccessBanner({ grants }: { grants: AdminMe['temporaryGr
 
   if (live.length === 0) return null;
   return (
-    <div className="mb-6 flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       {live.map((grant) => (
         <GrantBand key={grant.id} grant={grant} url={urls[grant.system]} />
       ))}
@@ -76,7 +77,7 @@ function GrantBand({ grant, url }: { grant: Grant; url?: string }) {
       <p className="flex items-start gap-2 text-sm text-foreground">
         <Clock className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
         <span>
-          You have temporary <strong>{grant.system} {grant.roleName}</strong> access until{' '}
+          Temporary <strong>{grant.system} {grant.roleName}</strong> until{' '}
           <time dateTime={grant.expiresAt} className="tabular-nums">
             {formatDateTime(grant.expiresAt)}
           </time>
@@ -90,7 +91,12 @@ function GrantBand({ grant, url }: { grant: Grant; url?: string }) {
             Open {grant.system}
           </a>
         )}
-        <Button variant="destructive" className="flex-1 sm:flex-none" onClick={() => setConfirming(true)}>
+        {/* design.md: a destructive action beside a primary one is a quiet button, never a second fill */}
+        <Button
+          variant="outline"
+          className="flex-1 text-destructive hover:text-destructive sm:flex-none"
+          onClick={() => setConfirming(true)}
+        >
           End now
         </Button>
       </div>
@@ -99,13 +105,13 @@ function GrantBand({ grant, url }: { grant: Grant; url?: string }) {
           <AlertDialogHeader>
             <AlertDialogTitle>End your {grant.system} access now?</AlertDialogTitle>
             <AlertDialogDescription>
-              This signs you out everywhere, the portal included, so you will sign in again. {grant.system}'s admins
-              get an email that you ended it.
+              This signs you out everywhere, the portal too. {grant.system}'s admins get an email.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Keep access</AlertDialogCancel>
             <AlertDialogAction
+              variant="destructive"
               disabled={busy}
               onClick={(e) => {
                 e.preventDefault();
@@ -118,5 +124,31 @@ function GrantBand({ grant, url }: { grant: Grant; url?: string }) {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+/**
+ * The top bar's reminder on every Admin page while a grant is live: system, role and end time in
+ * one small pill, linking to Temporary access, where the full band has Open and End now.
+ */
+export function TemporaryAccessChip({ grants }: { grants: AdminMe['temporaryGrants'] }) {
+  const live = grants ?? [];
+  if (live.length === 0) return null;
+  const first = live[0];
+  return (
+    <Link
+      to="/admin/temporary-access"
+      className="flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border border-highlight bg-highlight/20 px-3 text-xs font-medium text-foreground hover:bg-highlight/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+    >
+      <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+      <span className="max-sm:sr-only">
+        {first.system} {first.roleName} until
+      </span>
+      <time dateTime={first.expiresAt} className="tabular-nums">
+        {formatTime(first.expiresAt)}
+      </time>
+      {live.length > 1 && <span className="tabular-nums">+{live.length - 1}</span>}
+      <span className="sr-only">: temporary access, open the details</span>
+    </Link>
   );
 }
