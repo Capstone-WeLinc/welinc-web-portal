@@ -47,19 +47,24 @@ export function UserAvatar({
   );
 }
 
-/** The account menu: who is signed in, and Sign out everywhere (AC-17). */
-function AccountMenu({ user }: { user: User }) {
+/** The account menu: who is signed in, and Sign out everywhere (AC-17). `onDark` for the navy band. */
+export function AccountMenu({ user, onDark = true }: { user: User; onDark?: boolean }) {
   const [signingOut, setSigningOut] = useState(false);
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger
-          className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
+          className={cn(
+            'flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium focus-visible:ring-2 focus-visible:outline-hidden',
+            onDark
+              ? 'text-white hover:bg-white/10 focus-visible:ring-highlight'
+              : 'text-foreground hover:bg-accent focus-visible:ring-ring',
+          )}
           aria-label={`Account menu for ${user.name}`}
         >
-          <UserAvatar user={user} onDark />
+          <UserAvatar user={user} onDark={onDark} />
           <span className="hidden max-w-40 truncate sm:inline">{user.name}</span>
-          <ChevronDown className="size-4 text-white/60" aria-hidden="true" />
+          <ChevronDown className={cn('size-4', onDark ? 'text-white/60' : 'text-muted-foreground')} aria-hidden="true" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
           <DropdownMenuLabel className="flex items-center gap-3 font-normal">
@@ -83,7 +88,7 @@ function AccountMenu({ user }: { user: User }) {
   );
 }
 
-function Brand() {
+export function Brand() {
   return (
     <div className="flex items-center gap-2.5">
       <LogoMark className="h-5 text-highlight" />

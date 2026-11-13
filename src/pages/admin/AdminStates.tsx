@@ -9,9 +9,10 @@ export function ViewHeader({ title, context, action }: { title: string; context?
   return (
     <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
-        <h2 id="admin-view-title" className="text-lg font-semibold text-foreground">
+        {/* The page's one h1: the Admin shell has no title of its own */}
+        <h1 id="admin-view-title" className="text-xl font-semibold tracking-tight text-foreground">
           {title}
-        </h2>
+        </h1>
         {context && <p className="mt-1 text-sm text-muted-foreground">{context}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}

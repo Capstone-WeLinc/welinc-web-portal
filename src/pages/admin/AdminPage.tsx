@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, Navigate, NavLink, useLocation, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { ArrowLeft, RotateCw, ShieldCheck, ShieldOff, TriangleAlert } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { askForCode, errorStatus, fetchAdminMe, isAdmin, needsCode, type AdminMe } from '@/lib/admin';
 import { cn } from '@/lib/utils';
 import { LauncherShell } from '../launcher/LauncherShell';
+import { AdminShell } from './AdminShell';
 import { landingView, viewHref, viewsFor, type AdminViewPath } from './adminViews';
 import { ActivityView } from './activity/ActivityView';
 import { PermissionsView } from './permissions/PermissionsView';
@@ -64,11 +65,11 @@ export default function AdminPage() {
     case 'ready':
       if (!isAdmin(load.me)) return <NotAnAdmin me={load.me} />;
       if (needsCode(load.me)) return <CodeOwed me={load.me} onPassed={reload} />;
-      return <AdminShell me={load.me} onChanged={refresh} />;
+      return <AdminConsole me={load.me} onChanged={refresh} />;
   }
 }
 
-function AdminShell({ me, onChanged }: { me: AdminMe; onChanged: () => void }) {
+function AdminConsole({ me, onChanged }: { me: AdminMe; onChanged: () => void }) {
   const params = useParams();
   const { search } = useLocation();
   // /admin/people/:id and /admin/people/new sit under People
@@ -78,65 +79,16 @@ function AdminShell({ me, onChanged }: { me: AdminMe; onChanged: () => void }) {
   if (!current) return <Navigate to={viewHref(landingView(me), search)} replace />;
 
   return (
-    <LauncherShell
-      user={me.user}
-      adminEntry={false}
-      homeLink
-      overlap={false}
-      hero={
-        <>
-          <Link
-            to="/"
-            className="-ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden sm:min-h-9"
-          >
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            Home
-          </Link>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">Admin</h1>
-          <p className="mt-1 text-sm text-white/70">
-            {me.suiteAdmin
-              ? 'Suite admin: every account and every system.'
-              : `Admin of ${me.adminOf.join(' and ')}: your system's people only.`}
-          </p>
-        </>
-      }
+    <AdminShell
+      me={me}
+      views={views}
+      current={current.path}
+      banner={me.temporaryGrants?.length ? <TemporaryAccessBanner grants={me.temporaryGrants} /> : undefined}
     >
-      <TemporaryAccessBanner grants={me.temporaryGrants} />
-      <div className="flex flex-col gap-4 md:flex-row md:gap-6">
-        <nav aria-label="Admin sections" className="md:w-56 md:shrink-0">
-          {/* Phones: one scrolling strip of tabs; from md: the sidebar column */}
-          <ul className="no-scrollbar -mx-4 flex gap-1 overflow-x-auto px-4 md:mx-0 md:flex-col md:overflow-visible md:px-0">
-            {views.map((v) => {
-              const active = v.path === view;
-              const Icon = v.icon;
-              return (
-                <li key={v.path} className="shrink-0">
-                  <NavLink
-                    to={viewHref(v.path, search)}
-                    aria-current={active ? 'page' : undefined}
-                    className={cn(
-                      'flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-sm whitespace-nowrap focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden md:border-l-2',
-                      active
-                        ? 'bg-card font-medium text-foreground shadow-xs md:border-highlight'
-                        : 'text-muted-foreground hover:bg-accent hover:text-foreground md:border-transparent',
-                    )}
-                  >
-                    <Icon
-                      className={cn('size-4 shrink-0', active ? 'text-primary' : 'text-muted-foreground')}
-                      aria-hidden="true"
-                    />
-                    {v.label}
-                  </NavLink>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-        <section aria-labelledby="admin-view-title" className="min-w-0 flex-1 rounded-lg border border-border bg-card p-4 sm:p-5">
-          <AdminViewBody me={me} view={current.path} id={params.id} onChanged={onChanged} />
-        </section>
-      </div>
-    </LauncherShell>
+      <section aria-labelledby="admin-view-title" className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-xs sm:p-6">
+        <AdminViewBody me={me} view={current.path} id={params.id} onChanged={onChanged} />
+      </section>
+    </AdminShell>
   );
 }
 

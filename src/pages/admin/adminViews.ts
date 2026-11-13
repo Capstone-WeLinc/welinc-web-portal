@@ -20,7 +20,7 @@ export type AdminViewPath =
   | 'suite-admins'
   | 'permissions';
 
-/** The `/admin` views (suite spec 0013, AC-23), in sidebar order. */
+/** The `/admin` views (suite spec 0013, AC-23), in sidebar order, grouped by task. */
 export type AdminView = {
   path: AdminViewPath;
   label: string;
@@ -28,16 +28,20 @@ export type AdminView = {
   suiteOnly: boolean;
   /** The same icon in the sidebar and the launcher's Admin card shortcuts. */
   icon: LucideIcon;
+  /** The sidebar group it sits under; `null` sits on top with no label. */
+  group: AdminViewGroup | null;
 };
 
+export type AdminViewGroup = 'Accounts' | 'Access' | 'Audit';
+
 export const ADMIN_VIEWS: readonly AdminView[] = [
-  { path: 'overview', label: 'Overview', suiteOnly: true, icon: LayoutDashboard },
-  { path: 'people', label: 'People', suiteOnly: false, icon: Users },
-  { path: 'deletion-requests', label: 'Deletion requests', suiteOnly: false, icon: UserX },
-  { path: 'activity', label: 'Activity', suiteOnly: false, icon: History },
-  { path: 'temporary-access', label: 'Temporary access', suiteOnly: false, icon: KeyRound },
-  { path: 'suite-admins', label: 'Suite admins', suiteOnly: true, icon: ShieldCheck },
-  { path: 'permissions', label: 'Permissions', suiteOnly: false, icon: SlidersHorizontal },
+  { path: 'overview', label: 'Overview', suiteOnly: true, icon: LayoutDashboard, group: null },
+  { path: 'people', label: 'People', suiteOnly: false, icon: Users, group: 'Accounts' },
+  { path: 'deletion-requests', label: 'Deletion requests', suiteOnly: false, icon: UserX, group: 'Accounts' },
+  { path: 'suite-admins', label: 'Suite admins', suiteOnly: true, icon: ShieldCheck, group: 'Accounts' },
+  { path: 'permissions', label: 'Permissions', suiteOnly: false, icon: SlidersHorizontal, group: 'Access' },
+  { path: 'temporary-access', label: 'Temporary access', suiteOnly: false, icon: KeyRound, group: 'Access' },
+  { path: 'activity', label: 'Activity', suiteOnly: false, icon: History, group: 'Audit' },
 ];
 
 /** One view by path; every path is in `ADMIN_VIEWS`. */

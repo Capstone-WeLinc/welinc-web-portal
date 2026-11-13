@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { AdminMe } from '@/lib/admin';
 import { errorMessage, listPeople, type ManagedPerson, type PeopleStatus, type Scope } from '@/lib/adminApi';
+import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAsync } from '../useAsync';
@@ -156,7 +157,9 @@ function PeopleList({ system }: { system: Scope }) {
       )}
       {load.kind === 'ready' && load.value.items.length > 0 && (
         <>
-          <ul className="divide-y divide-border rounded-lg border border-border">
+          {/* design.md: a table from md up, stacked rows on phones */}
+          <PeopleTable people={load.value.items} system={system} catalog={catalog} />
+          <ul className="divide-y divide-border rounded-lg border border-border md:hidden">
             {load.value.items.map((person) => (
               <li key={person.id}>
                 <PersonRow person={person} system={system} catalog={catalog} />
@@ -174,6 +177,133 @@ function PeopleList({ system }: { system: Scope }) {
   );
 }
 
+/** Where a person's page opens: the listed system, or (All people) their first system. */
+function personHref(person: ManagedPerson, system: Scope): string {
+  const opensIn = system ?? person.roles[0]?.system;
+  return opensIn ? `/admin/people/${person.id}?system=${opensIn}` : `/admin/people/${person.id}`;
+}
+
+function PersonRoles({
+  person,
+  system,
+  catalog,
+}: {
+  person: ManagedPerson;
+  system: Scope;
+  catalog: CatalogSystem[] | null;
+}) {
+  return (
+    <>
+      {person.suiteAdmin && <SuiteAdminBadge />}
+      {person.roles.map((r) => (
+        <RoleBadge
+          key={`${r.system}:${r.role}`}
+          code={r.role}
+          name={
+            system
+              ? roleName(r.role, roleNames(catalog, r.system))
+              : `${r.system} ${roleName(r.role, roleNames(catalog, r.system))}`
+          }
+        />
+      ))}
+      {person.temporaryUntil && <TemporaryBadge until={person.temporaryUntil} />}
+    </>
+  );
+}
+
+function PersonStatus({ person }: { person: ManagedPerson }) {
+  return (
+    <>
+      <StatusBadge status={accountStatus(person)} />
+      {person.pendingDeletion && <StatusBadge status="PENDING_DELETION" />}
+    </>
+  );
+}
+
+const TH = 'px-4 py-2.5 text-left text-xs font-medium tracking-wide text-muted-strong uppercase';
+
+/**
+ * design.md tables: a light header, divided rows, the whole row one link (the name cell's link
+ * stretches over the row, so the row reads and tabs as one stop).
+ */
+function PeopleTable({
+  people,
+  system,
+  catalog,
+}: {
+  people: ManagedPerson[];
+  system: Scope;
+  catalog: CatalogSystem[] | null;
+}) {
+  const showOther = people.some((p) => p.otherSystems.length > 0);
+  return (
+    <div className="hidden overflow-hidden rounded-lg border border-border md:block">
+      <table className="w-full text-sm">
+        <thead className="bg-muted">
+          <tr>
+            <th scope="col" className={TH}>
+              Person
+            </th>
+            <th scope="col" className={TH}>
+              {system ? `${system} roles` : 'Roles'}
+            </th>
+            {showOther && (
+              <th scope="col" className={cn(TH, 'hidden lg:table-cell')}>
+                Also in
+              </th>
+            )}
+            <th scope="col" className={TH}>
+              Status
+            </th>
+            <th scope="col" className={cn(TH, 'hidden lg:table-cell')}>
+              Added
+            </th>
+            <th scope="col" className="w-10">
+              <span className="sr-only">Open</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {people.map((person) => (
+            <tr key={person.id} className="relative transition-colors hover:bg-muted/50 has-focus-visible:bg-muted/50">
+              <td className="px-4 py-3 align-middle">
+                <Link
+                  to={personHref(person, system)}
+                  className="font-medium break-words text-foreground after:absolute after:inset-0 focus-visible:outline-hidden focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
+                >
+                  {person.name}
+                </Link>
+                <p className="text-xs break-all text-muted-foreground">{person.email}</p>
+              </td>
+              <td className="px-4 py-3 align-middle">
+                <div className="flex flex-wrap gap-1.5">
+                  <PersonRoles person={person} system={system} catalog={catalog} />
+                </div>
+              </td>
+              {showOther && (
+                <td className="hidden px-4 py-3 align-middle text-xs text-muted-foreground lg:table-cell">
+                  {person.otherSystems.length > 0 ? person.otherSystems.join(', ') : '—'}
+                </td>
+              )}
+              <td className="px-4 py-3 align-middle">
+                <div className="flex flex-wrap gap-1.5">
+                  <PersonStatus person={person} />
+                </div>
+              </td>
+              <td className="hidden px-4 py-3 align-middle text-xs whitespace-nowrap text-muted-foreground tabular-nums lg:table-cell">
+                {formatDate(person.createdAt)}
+              </td>
+              <td className="px-2 py-3 align-middle">
+                <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function PersonRow({
   person,
   system,
@@ -183,32 +313,17 @@ function PersonRow({
   system: Scope;
   catalog: CatalogSystem[] | null;
 }) {
-  // In "All people" the page opens in the person's first system (a suite admin can switch there)
-  const opensIn = system ?? person.roles[0]?.system;
   return (
     <Link
-      to={opensIn ? `/admin/people/${person.id}?system=${opensIn}` : `/admin/people/${person.id}`}
+      to={personHref(person, system)}
       className="flex min-h-11 items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset"
     >
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium break-words text-foreground">{person.name}</p>
         <p className="text-xs break-all text-muted-foreground">{person.email}</p>
         <div className="mt-2 flex flex-wrap gap-1.5">
-          {person.suiteAdmin && <SuiteAdminBadge />}
-          {person.roles.map((r) => (
-            <RoleBadge
-              key={`${r.system}:${r.role}`}
-              code={r.role}
-              name={
-                system
-                  ? roleName(r.role, roleNames(catalog, r.system))
-                  : `${r.system} ${roleName(r.role, roleNames(catalog, r.system))}`
-              }
-            />
-          ))}
-          {person.temporaryUntil && <TemporaryBadge until={person.temporaryUntil} />}
-          <StatusBadge status={accountStatus(person)} />
-          {person.pendingDeletion && <StatusBadge status="PENDING_DELETION" />}
+          <PersonRoles person={person} system={system} catalog={catalog} />
+          <PersonStatus person={person} />
           {person.otherSystems.length > 0 && (
             <span className="text-xs text-muted-foreground">Also in {person.otherSystems.join(', ')}</span>
           )}
