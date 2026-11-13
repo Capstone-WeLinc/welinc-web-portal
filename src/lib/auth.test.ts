@@ -77,6 +77,16 @@ describe('portal routing rules', () => {
     expect(screenForAnswer(params(''), three)).toEqual({ kind: 'launcher', answer: three });
   });
 
+  it('keeps a one system admin on the launcher, so the Admin card is reachable', () => {
+    const admin = {
+      ...answer,
+      systems: [{ ...sys('VRMS'), roles: [{ code: 'ADMIN', name: 'Admin' }] }],
+    };
+    expect(screenForAnswer(params(''), admin)).toEqual({ kind: 'launcher', answer: admin });
+    const mechanic = { ...answer, systems: [{ ...sys('VRMS'), roles: [{ code: 'MECHANIC', name: 'Mechanic' }] }] };
+    expect(screenForAnswer(params(''), mechanic)).toEqual({ kind: 'go', url: 'http://vrms.test' });
+  });
+
   it('maps each /auth/sso outcome to its screen', () => {
     expect(screenForSso(params(''), { kind: 'ended' })).toEqual({ kind: 'form' });
     expect(screenForSso(params(''), { kind: 'no-access', email: 'a@welinc.com' })).toEqual({

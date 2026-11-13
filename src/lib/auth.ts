@@ -142,10 +142,20 @@ export function screenForAnswer(params: URLSearchParams, answer: LauncherAnswer)
   if (answer.systems.length === 0 && mobileSystemsOf(answer).length > 0) {
     return { kind: 'phone-only', answer };
   }
-  if (answer.systems.length === 1 && !params.has('error')) {
+  // One system and no error: straight in, unless they administer it. An admin lands on the launcher
+  // so they can reach Admin from its card; a one system admin would otherwise never see it.
+  if (answer.systems.length === 1 && !params.has('error') && !administers(answer.systems[0])) {
     return { kind: 'go', url: answer.systems[0].url };
   }
   return { kind: 'launcher', answer };
+}
+
+/**
+ * Whether the person holds their admin role in this system. Every system's catalog names its admin
+ * role `ADMIN` (welinc-auth `prisma/catalog/`), and the launcher answer carries role codes only.
+ */
+export function administers(system: LauncherSystem): boolean {
+  return system.roles.some((role) => role.code === 'ADMIN');
 }
 
 /** The screen for a direct visit once `/auth/sso` answered (AC-13). */
