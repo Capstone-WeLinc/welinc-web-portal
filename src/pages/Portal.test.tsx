@@ -248,8 +248,8 @@ describe("Portal", () => {
     for (const [data, text] of [
       [{ isLocked: true }, "Too many wrong passwords"],
       [{ code: "ACCOUNT_INACTIVE" }, "deactivated"],
-      [{ remainingAttempts: 2 }, "2 tries left"],
-      [{ remainingAttempts: 1 }, "1 try left"],
+      [{ remainingAttempts: 2 }, "Incorrect email or password."],
+      [{ remainingAttempts: 1 }, "One more wrong try locks your account for 15 minutes"],
       [{ code: "NO_SYSTEM_ACCESS" }, "no access to any WeLinc system"],
     ] as const) {
       post.mockRejectedValueOnce(httpError(403, data));

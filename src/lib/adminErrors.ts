@@ -7,7 +7,7 @@ export function reauthFailure(error: unknown): string {
     case 'WRONG_PASSWORD': {
       const left = (error as { response?: { data?: { attemptsLeft?: number } } }).response?.data?.attemptsLeft;
       return typeof left === 'number'
-        ? `That password is not right. ${left} ${left === 1 ? 'try' : 'tries'} left before a 15 minute lock.`
+        ? `Incorrect password. ${left} ${left === 1 ? 'try' : 'tries'} left before your account locks for 15 minutes.`
         : 'That password is not right.';
     }
     case 'ACCOUNT_LOCKED':

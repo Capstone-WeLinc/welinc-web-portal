@@ -175,8 +175,11 @@ describe('the email code step', () => {
     expect(codeFailure(fail({ code: 'ACCOUNT_INACTIVE' }, 403))).toMatchObject({
       message: 'This account is deactivated. Ask your admin to turn it back on.',
     });
-    expect(loginFailure(fail({ remainingAttempts: 2 }, 401))).toContain('2 tries left');
-    expect(loginFailure(fail({}, 401))).toBe('Wrong email or password.');
+    expect(loginFailure(fail({ remainingAttempts: 2 }, 401))).toBe('Incorrect email or password.');
+    expect(loginFailure(fail({ remainingAttempts: 1 }, 401))).toBe(
+      'Incorrect email or password. One more wrong try locks your account for 15 minutes.',
+    );
+    expect(loginFailure(fail({}, 401))).toBe('Incorrect email or password.');
     expect(loginFailure(fail({}, 500))).toBe('Something went wrong on our side. Try again in a minute.');
     expect(loginFailure(new Error('Network Error'))).toContain('Unable to reach');
   });

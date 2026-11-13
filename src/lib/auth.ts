@@ -235,7 +235,7 @@ export function loginFailure(error: unknown): string {
   if (data.isLocked || data.code === 'ACCOUNT_LOCKED') return lockedMessage(data.lockedUntil);
   if (response.status === 429) return RATE_LIMITED_MESSAGE;
   if (data.remainingAttempts !== undefined) return wrongPasswordMessage(Number(data.remainingAttempts));
-  if (response.status === 401) return 'Wrong email or password.';
+  if (response.status === 401) return 'Incorrect email or password.';
   if (response.status === 400) {
     const msg = data.message;
     if (Array.isArray(msg)) return msg.join(', ');
@@ -244,9 +244,13 @@ export function loginFailure(error: unknown): string {
   return 'Something went wrong on our side. Try again in a minute.';
 }
 
-/** A wrong password, with the tries left before the 15 minute lock (suite spec 0015). */
+/**
+ * A wrong password on the sign in form (suite spec 0015). The usual wording, with a warning only
+ * on the last try before the 15 minute lock, as most sign in pages do.
+ */
 export function wrongPasswordMessage(left: number): string {
-  return `Wrong email or password. ${left} ${left === 1 ? 'try' : 'tries'} left before a 15 minute lock.`;
+  if (left === 1) return 'Incorrect email or password. One more wrong try locks your account for 15 minutes.';
+  return 'Incorrect email or password.';
 }
 
 /** What the code step does with a failed verify or resend (AC-25). */
