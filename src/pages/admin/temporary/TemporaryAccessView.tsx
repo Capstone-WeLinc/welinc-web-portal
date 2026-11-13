@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { ViewEmpty, ViewError, ViewHeader } from '../AdminStates';
 import { useAsync } from '../useAsync';
 import { TemporaryAccessDialog } from './TemporaryAccessDialog';
+import { goToSignedOut } from '@/lib/session';
 
 type State = 'live' | 'all';
 
@@ -48,7 +49,7 @@ export function TemporaryAccessView({ me, onChanged }: { me: AdminMe; onChanged:
       await endGrant(grant.id);
       if (grant.holder.id === me.user.id) {
         // Your own grant ended your web session (AC-10)
-        window.location.assign('/login?reason=logout');
+        goToSignedOut();
         return;
       }
       toast.success(`${grant.holder.name}'s ${grant.system} access has ended.`);

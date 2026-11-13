@@ -14,6 +14,7 @@ vi.mock("../lib/api", () => ({
 
 // These tests count /auth/sso calls; the Admin entry's own /auth/admin/me is tested on its own
 vi.mock("./admin/AdminEntry", () => ({ AdminEntry: () => null }));
+vi.mock("./admin/useAdminMe", () => ({ useAdminMe: () => null }));
 
 const post = vi.mocked(api.post);
 const get = vi.mocked(api.get);
@@ -217,6 +218,17 @@ describe("Portal", () => {
       view.unmount();
     }
     expect(get).not.toHaveBeenCalled();
+  });
+
+  it("drops the reason from the address after a sign in, so Back never draws the form over a live session", async () => {
+    post.mockResolvedValue({ data: TWO });
+    const replaceState = vi.spyOn(window.history, "replaceState");
+    renderPortal("/login?reason=logout");
+    await submit("pedro");
+
+    await screen.findAllByRole("link");
+    expect(replaceState.mock.calls.map((call) => call[2])).toContain("/");
+    replaceState.mockRestore();
   });
 
   it("shows the no access state with the email, and the error state with Retry", async () => {

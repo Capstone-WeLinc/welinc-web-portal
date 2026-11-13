@@ -55,6 +55,19 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
     else setScreen(next);
   }, []);
 
+  // A `reason` (`/login?reason=logout`) forces the form without asking /auth/sso (AC-11). Once
+  // someone signs in from it, rewrite this history entry to `/` without the reason, so Back from a
+  // later page asks /auth/sso again instead of drawing the form over a live session. Done on the
+  // browser history directly so the screen isn't remounted (and /auth/sso isn't asked twice); the
+  // router's own entry state is kept, and the next navigation reads the new address.
+  const forgetReason = useCallback(() => {
+    if (!params.has('reason')) return;
+    const rest = new URLSearchParams(params);
+    rest.delete('reason');
+    const search = rest.toString();
+    window.history.replaceState(window.history.state, '', search ? `/?${search}` : '/');
+  }, [params]);
+
   useEffect(() => {
     if (start.kind === 'form') return;
     let cancelled = false;
@@ -75,7 +88,10 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
 
   const onSignedIn = (answer: LauncherAnswer) => {
     if (start.kind === 'request') window.location.assign(resumeAddress(start.request));
-    else show(screenForAnswer(params, answer));
+    else {
+      forgetReason();
+      show(screenForAnswer(params, answer));
+    }
   };
 
   // AC-18: a tab coming back asks again, at most once every 10 seconds

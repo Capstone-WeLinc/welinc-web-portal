@@ -15,7 +15,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import type { AdminMe } from '@/lib/admin';
 import { endGrant, errorMessage } from '@/lib/adminApi';
 import { formatDateTime } from '@/lib/format';
-import { checkSso } from '@/lib/session';
+import { checkSso, goToSignedOut } from '@/lib/session';
 import { cn } from '@/lib/utils';
 
 type Grant = NonNullable<AdminMe['temporaryGrants']>[number];
@@ -60,7 +60,7 @@ function GrantBand({ grant, url }: { grant: Grant; url?: string }) {
     try {
       await endGrant(grant.id);
       // AC-10 ended this web session too: back to the login screen
-      window.location.assign('/login?reason=logout');
+      goToSignedOut();
     } catch (error) {
       toast.error(errorMessage(error, "We couldn't end temporary access."));
       setBusy(false);

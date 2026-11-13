@@ -3,18 +3,28 @@ import { OTPInput, OTPInputContext } from "input-otp"
 import { cn } from "@/lib/utils"
 
 /**
+ * Every portal code is digits only, but a code copied from an email often comes with spaces, a
+ * line break or a label ("Code: 321 393"). input-otp drops a paste that fails `pattern` whole, so
+ * keep only the digits first.
+ */
+export const digitsOnly = (pasted: string) => pasted.replace(/\D/g, "")
+
+/**
  * shadcn `InputOTP` (new-york v4, radix), added by hand: the portal has no components.json.
- * One real input underneath (`input-otp`), drawn as slots.
+ * One real input underneath (`input-otp`), drawn as slots. Pasting cleans the text with
+ * `digitsOnly` unless a caller passes its own `pasteTransformer`.
  */
 function InputOTP({
   className,
   containerClassName,
+  pasteTransformer = digitsOnly,
   ...props
 }: React.ComponentProps<typeof OTPInput> & {
   containerClassName?: string
 }) {
   return (
     <OTPInput
+      pasteTransformer={pasteTransformer}
       data-slot="input-otp"
       containerClassName={cn(
         "flex items-center gap-2 has-disabled:opacity-50",

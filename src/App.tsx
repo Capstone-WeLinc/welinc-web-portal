@@ -1,10 +1,11 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Portal from './pages/Portal';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import { Toaster } from '@/components/ui/sonner';
 import { StepUpDialog } from './pages/admin/StepUpDialog';
 import { ReauthDialog } from './pages/admin/ReauthDialog';
+import { onSignedOutElsewhere } from './lib/session';
 
 // Only admins open the admin section, so its code loads when they do, not with the launcher
 const AdminPage = lazy(() => import('./pages/admin/AdminPage'));
@@ -19,6 +20,17 @@ const admin = (
  * into your one system, chosen from the address and the SSO session.
  */
 export default function App() {
+  // A sign out in another portal tab ends this tab's session too: show the form here as well,
+  // unless this tab is already on a sign in page (it would lose what was typed)
+  useEffect(
+    () =>
+      onSignedOutElsewhere(() => {
+        const path = window.location.pathname;
+        if (path !== '/login' && path !== '/forgot-password') window.location.assign('/login?reason=logout');
+      }),
+    [],
+  );
+
   return (
     <>
       <BrowserRouter>
