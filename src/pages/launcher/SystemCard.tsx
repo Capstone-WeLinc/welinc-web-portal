@@ -1,9 +1,8 @@
-import { AppWindow, CalendarCheck, ChevronRight, Truck, Wrench, type LucideIcon } from 'lucide-react';
+import { AppWindow, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { LauncherSystem } from '@/lib/auth';
+import { SYSTEM_ICONS } from './systemIcons';
 
-/** A fixed icon per system code; anything else gets AppWindow (AC-15). */
-const ICONS: Record<string, LucideIcon> = { BMS: CalendarCheck, VMMS: Truck, VRMS: Wrench };
 
 /** design.md's role pill colors, by role code across systems; a code it doesn't list is slate. */
 const ROLE_PILLS: Record<string, string> = {
@@ -16,9 +15,30 @@ const ROLE_PILLS: Record<string, string> = {
 };
 const SLATE_PILL = 'bg-role-driver-bg text-role-driver-fg';
 
+/** The person's roles in a system as design.md's pills; nothing when there are none. */
+export function RolePills({ roles }: { roles: { code: string; name: string }[] }) {
+  if (roles.length === 0) return null;
+  return (
+    <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Your roles">
+      {roles.map((role) => (
+        <li
+          key={role.code}
+          className={cn(
+            'rounded-full px-2 py-0.5 text-xs font-medium tracking-wide uppercase',
+            ROLE_PILLS[role.code] ?? SLATE_PILL,
+          )}
+        >
+          {role.name}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** One system, the whole card one link, same tab (AC-15, AC-16). */
 export function SystemCard({ system, here }: { system: LauncherSystem; here: boolean }) {
-  const Icon = ICONS[system.system] ?? AppWindow;
+  // Anything without a fixed icon gets AppWindow (AC-15)
+  const Icon = SYSTEM_ICONS[system.system] ?? AppWindow;
   return (
     <a
       href={system.url}
@@ -38,21 +58,7 @@ export function SystemCard({ system, here }: { system: LauncherSystem; here: boo
         </div>
         <p className="text-sm font-medium text-foreground">{system.name}</p>
         <p className="text-sm text-muted-foreground">{system.description}</p>
-        {system.roles.length > 0 && (
-          <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Your roles">
-            {system.roles.map((role) => (
-              <li
-                key={role.code}
-                className={cn(
-                  'rounded-full px-2 py-0.5 text-xs font-medium tracking-wide uppercase',
-                  ROLE_PILLS[role.code] ?? SLATE_PILL,
-                )}
-              >
-                {role.name}
-              </li>
-            ))}
-          </ul>
-        )}
+        <RolePills roles={system.roles} />
       </div>
       <ChevronRight
         className="mt-3 size-5 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0 motion-reduce:group-focus-visible:translate-x-0"
