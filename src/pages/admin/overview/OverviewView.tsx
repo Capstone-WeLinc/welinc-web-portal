@@ -6,6 +6,7 @@ import { errorMessage, fetchReport, type AdminReport } from '@/lib/adminApi';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { ViewError, ViewHeader } from '../AdminStates';
 import { OrphanBadge } from '../people/Badges';
+import { Cell, DataTable, Muted, Row } from '../AdminTable';
 import { useEventCatalog } from '../useCatalogs';
 import { useAsync } from '../useAsync';
 import { useState } from 'react';
@@ -225,33 +226,36 @@ function RecentChanges({ report }: { report: Report }) {
       {report.recentAdminChanges.length === 0 ? (
         <p className="text-sm text-muted-foreground">No admin changes yet.</p>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border">
+        <DataTable columns={[{ label: 'When' }, { label: 'Person' }, { label: 'Change' }, { label: 'By' }]}>
           {report.recentAdminChanges.slice(0, RECENT_SHOWN).map((change) => (
-            <li key={change.id} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:gap-4">
-              <time dateTime={change.at} className="shrink-0 text-xs text-muted-foreground tabular-nums sm:w-32">
-                {formatDateTime(change.at)}
-              </time>
-              <div className="min-w-0 text-sm text-foreground">
-                <p className="break-words">
-                  <Link
-                    to={`/admin/people/${change.user.id}${change.system ? `?system=${change.system}` : ''}`}
-                    className="font-medium text-primary underline-offset-4 hover:underline"
-                  >
-                    {change.user.name}
-                  </Link>
-                  {': '}
+            <Row key={change.id}>
+              <Cell className="whitespace-nowrap">
+                <time dateTime={change.at}>
+                  <Muted>{formatDateTime(change.at)}</Muted>
+                </time>
+              </Cell>
+              <Cell>
+                <Link
+                  to={`/admin/people/${change.user.id}${change.system ? `?system=${change.system}` : ''}`}
+                  className="font-medium break-words text-primary underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+                >
+                  {change.user.name}
+                </Link>
+              </Cell>
+              <Cell>
+                <p className="break-words text-foreground">
                   {label(change.type)}
                   {change.system ? ` (${change.system})` : ''}
                   {change.newValue && change.type === 'ROLE_CHANGED' ? `, now ${change.newValue}` : ''}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {change.actor ? `By ${change.actor.name}` : 'By WeLinc (automatic)'}
-                  {change.reason ? ` · "${change.reason}"` : ''}
-                </p>
-              </div>
-            </li>
+                {change.reason && <p className="text-xs break-words text-muted-foreground">"{change.reason}"</p>}
+              </Cell>
+              <Cell>
+                <Muted>{change.actor ? change.actor.name : 'WeLinc (automatic)'}</Muted>
+              </Cell>
+            </Row>
           ))}
-        </ul>
+        </DataTable>
       )}
       {report.recentAdminChanges.length > RECENT_SHOWN && (
         <Link

@@ -31,6 +31,7 @@ import { ViewError, ViewHeader } from '../AdminStates';
 import { PasswordField, ReasonField } from '../ConfirmFields';
 import { reasonProblem } from '../reason';
 import { useAsync } from '../useAsync';
+import { Cell, DataTable, Muted, PersonCell, Row } from '../AdminTable';
 
 /** AC-1: at most three suite admins, never fewer than one. */
 const MAX_SUITE_ADMINS = 3;
@@ -96,34 +97,51 @@ export function SuiteAdminsView({ me }: { me: AdminMe }) {
         <ViewError message={errorMessage(state.error, "We couldn't load the suite admins.")} onRetry={reload} />
       )}
       {state.kind === 'ready' && (
-        <ul className="divide-y divide-border rounded-lg border border-border">
+        <DataTable
+          columns={[
+            { label: 'Suite admin' },
+            { label: 'Since' },
+            { label: 'Added by' },
+            { label: 'Reason' },
+            { label: <span className="sr-only">Actions</span>, align: 'end' },
+          ]}
+        >
           {state.value.map((admin) => (
-            <li key={admin.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <p className="text-sm font-medium break-words text-foreground">
-                  {admin.name}
-                  {admin.id === me.user.id && <span className="text-muted-foreground"> (you)</span>}
-                </p>
-                <p className="text-xs break-all text-muted-foreground">{admin.email}</p>
-                <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-                  Since {formatDate(admin.grantedAt)} · {admin.grantedBy ? `added by ${admin.grantedBy.name}` : 'from setup or the recovery script'}
-                </p>
-                {admin.reason && <p className="mt-1 text-sm break-words text-foreground">"{admin.reason}"</p>}
-              </div>
-              {admin.id !== me.user.id && (
-                <Button
-                  variant="outline"
-                  className="shrink-0"
-                  disabled={state.value.length <= 1}
-                  onClick={() => setRemoving(admin)}
-                >
-                  <UserMinus aria-hidden="true" />
-                  Remove
-                </Button>
-              )}
-            </li>
+            <Row key={admin.id}>
+              <Cell>
+                <PersonCell
+                  name={admin.name}
+                  email={admin.email}
+                  extra={admin.id === me.user.id && <span className="font-normal text-muted-foreground">(you)</span>}
+                />
+              </Cell>
+              <Cell className="whitespace-nowrap">
+                <Muted>
+                  <span className="md:hidden">Since </span>
+                  {formatDate(admin.grantedAt)}
+                </Muted>
+              </Cell>
+              <Cell>
+                <Muted>{admin.grantedBy ? admin.grantedBy.name : 'Setup or the recovery script'}</Muted>
+              </Cell>
+              <Cell className="max-w-sm">
+                {admin.reason ? (
+                  <p className="break-words text-foreground">"{admin.reason}"</p>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </Cell>
+              <Cell align="end">
+                {admin.id !== me.user.id && (
+                  <Button variant="outline" disabled={state.value.length <= 1} onClick={() => setRemoving(admin)}>
+                    <UserMinus aria-hidden="true" />
+                    Remove
+                  </Button>
+                )}
+              </Cell>
+            </Row>
           ))}
-        </ul>
+        </DataTable>
       )}
       <AddSuiteAdminDialog open={adding} onOpenChange={setAdding} onDone={reload} />
       <RemoveSuiteAdminDialog admin={removing} onClose={() => setRemoving(null)} onDone={reload} />

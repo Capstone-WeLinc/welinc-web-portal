@@ -21,6 +21,7 @@ import { ViewEmpty, ViewError, ViewHeader } from '../AdminStates';
 import { useAsync } from '../useAsync';
 import { TemporaryAccessDialog } from './TemporaryAccessDialog';
 import { goToSignedOut } from '@/lib/session';
+import { Cell, DataTable, Muted, PersonCell, Row } from '../AdminTable';
 
 type State = 'live' | 'all';
 
@@ -141,28 +142,43 @@ export function TemporaryAccessView({ me, onChanged }: { me: AdminMe; onChanged:
       )}
       {load.kind === 'ready' && load.value.items.length > 0 && (
         <div className="flex flex-col gap-4">
-          <ul className="divide-y divide-border rounded-lg border border-border">
+          <DataTable
+            columns={[
+              { label: 'Who' },
+              { label: 'Access' },
+              { label: 'Reason' },
+              { label: 'When' },
+              { label: <span className="sr-only">Actions</span>, align: 'end' },
+            ]}
+          >
             {load.value.items.map((grant) => (
-              <li key={grant.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium break-words text-foreground">
-                    {grant.holder.name} · {grant.system} {grant.roleName}
-                  </p>
-                  <p className="mt-1 text-sm break-words text-foreground">"{grant.reason}"</p>
-                  <p className="text-xs text-muted-foreground tabular-nums">
+              <Row key={grant.id}>
+                <Cell>
+                  <PersonCell name={grant.holder.name} />
+                </Cell>
+                <Cell className="whitespace-nowrap">
+                  {grant.system} {grant.roleName}
+                </Cell>
+                <Cell className="max-w-sm">
+                  <p className="break-words text-foreground">"{grant.reason}"</p>
+                </Cell>
+                <Cell>
+                  <Muted>
                     {formatDateTime(grant.startedAt)} to {formatDateTime(grant.endedAt ?? grant.expiresAt)}
                     {grant.endReason &&
                       ` · ${END_REASONS[grant.endReason]}${grant.endedBy ? ` by ${grant.endedBy.name}` : ''}`}
-                  </p>
-                </div>
-                {!grant.endedAt && (
-                  <Button variant="outline" className="shrink-0" disabled={busy} onClick={() => setEnding(grant)}>
-                    End now
-                  </Button>
-                )}
-              </li>
+                  </Muted>
+                </Cell>
+                <Cell align="end">
+                  {!grant.endedAt && (
+                    <Button variant="outline" disabled={busy} onClick={() => setEnding(grant)}>
+                      End now
+                    </Button>
+                  )}
+                </Cell>
+              </Row>
             ))}
-          </ul>
+          </DataTable>
           {load.value.next && (
             <Button variant="outline" className="self-start" loading={loadingMore} onClick={() => void loadMore()}>
               Load more
