@@ -15,11 +15,26 @@ export type LauncherSystem = {
   roles: { code: string; name: string }[];
 };
 
+/** A system the person holds only through its phone app (suite spec 0014, AC-4). */
+export type MobileSystem = {
+  system: string;
+  name: string;
+  description: string;
+  roles: { code: string; name: string }[];
+  app: { clientId: string; released: boolean };
+};
+
 /** What `/auth/login` and `/auth/sso` answer: who signed in, and the systems they hold. */
 export type LauncherAnswer = {
   user: { id: string; name: string; email: string; picture: string | null };
+  /** The systems the person can open on the web. */
   systems: LauncherSystem[];
+  /** Held only through a phone app (suite spec 0014); missing from an older welinc-auth. */
+  mobileSystems?: MobileSystem[];
 };
+
+/** The phone only systems, empty when the answer has none. */
+export const mobileSystemsOf = (answer: LauncherAnswer): MobileSystem[] => answer.mobileSystems ?? [];
 
 /** A message shown above the form, from the address the portal was opened with. */
 export type Notice = { tone: 'info' | 'error'; message: string };
@@ -46,6 +61,9 @@ export function noticeFor(params: URLSearchParams): Notice | null {
       };
     case 'LOGIN_FAILED':
       return { tone: 'error', message: "We couldn't sign you in just now. Sign in again." };
+    case 'APP_NOT_ALLOWED':
+      // Suite spec 0014, AC-7: shown on the form only when the session has gone meanwhile
+      return { tone: 'error', message: 'Your role in this system uses the WeLinc mobile app, not the web.' };
     case 'NO_SYSTEM_ACCESS': {
       const system = SYSTEM_NAMES[params.get('system') ?? ''];
       return {
@@ -105,6 +123,8 @@ export type Screen =
   | { kind: 'form' }
   | { kind: 'go'; url: string }
   | { kind: 'launcher'; answer: LauncherAnswer }
+  | { kind: 'phone-only'; answer: LauncherAnswer }
+  | { kind: 'app-not-allowed'; answer: LauncherAnswer; system: string | null }
   | { kind: 'no-access'; email: string | null }
   | { kind: 'error' };
 
@@ -114,6 +134,14 @@ export type Screen =
  * (AC-13, AC-14).
  */
 export function screenForAnswer(params: URLSearchParams, answer: LauncherAnswer): Screen {
+  // Suite spec 0014, AC-7: a system's callback sent a phone app role here
+  if (params.get('error') === 'APP_NOT_ALLOWED') {
+    return { kind: 'app-not-allowed', answer, system: params.get('system') };
+  }
+  // AC-5: no web system but a phone app; never forwarded anywhere
+  if (answer.systems.length === 0 && mobileSystemsOf(answer).length > 0) {
+    return { kind: 'phone-only', answer };
+  }
   if (answer.systems.length === 1 && !params.has('error')) {
     return { kind: 'go', url: answer.systems[0].url };
   }

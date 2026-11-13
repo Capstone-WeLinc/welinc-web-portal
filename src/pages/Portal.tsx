@@ -4,8 +4,11 @@ import Login from './auth/Login';
 import { LoginLoading } from './auth/AuthHero';
 import Launcher from './launcher/Launcher';
 import NoAccess from './launcher/NoAccess';
+import PhoneOnly from './launcher/PhoneOnly';
+import AppNotAllowed from './launcher/AppNotAllowed';
 import { LauncherError, LauncherLoading } from './launcher/LauncherStates';
 import {
+  mobileSystemsOf,
   noticeFor,
   resumeAddress,
   screenForAnswer,
@@ -88,7 +91,12 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
       lastCheck.current = Date.now();
       void checkSso().then((result) => {
         if (cancelled) return;
-        if (result.kind === 'live') setScreen({ kind: 'launcher', answer: result.answer });
+        if (result.kind === 'live') {
+          const { answer } = result;
+          // A role change may leave only phone apps (suite spec 0014, AC-5)
+          const phoneOnly = answer.systems.length === 0 && mobileSystemsOf(answer).length > 0;
+          setScreen({ kind: phoneOnly ? 'phone-only' : 'launcher', answer });
+        }
         else if (result.kind === 'ended') {
           setEnded(true);
           setScreen({ kind: 'form' });
@@ -116,6 +124,10 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
           banner={params.has('error') ? noticeFor(params) : null}
         />
       );
+    case 'phone-only':
+      return <PhoneOnly answer={screen.answer} />;
+    case 'app-not-allowed':
+      return <AppNotAllowed answer={screen.answer} system={screen.system} />;
     case 'no-access':
       return <NoAccess email={screen.email} />;
     case 'error':

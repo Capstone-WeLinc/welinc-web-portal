@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { AlertCircle, ShieldCheck } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
-import { currentSystem, type LauncherAnswer, type Notice } from '@/lib/auth';
+import { currentSystem, mobileSystemsOf, type LauncherAnswer, type Notice } from '@/lib/auth';
 import { firstName, greetingFor } from '@/lib/launcher';
 import { LauncherShell } from './LauncherShell';
 import { SystemCard } from './SystemCard';
@@ -24,6 +24,7 @@ export const CARD_GRID = 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3';
 export default function Launcher({ answer, params, banner }: LauncherProps) {
   const here = currentSystem(params, answer);
   const name = firstName(answer.user.name);
+  const phoneOnly = mobileSystemsOf(answer);
   return (
     <LauncherShell user={answer.user}>
       <div className="mb-6">
@@ -66,6 +67,12 @@ export default function Launcher({ answer, params, banner }: LauncherProps) {
             </li>
           ))}
         </ul>
+      )}
+      {answer.systems.length > 0 && phoneOnly.length > 0 && (
+        // Suite spec 0014, AC-7: the systems held only on a phone, named quietly
+        <p className="mt-6 text-sm text-muted-foreground">
+          On the mobile app: {phoneOnly.map((s) => s.system).join(', ')}
+        </p>
       )}
     </LauncherShell>
   );

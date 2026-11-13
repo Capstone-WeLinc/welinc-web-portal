@@ -34,3 +34,10 @@ export function initialsOf(name: string): string {
 export function pictureUrl(picture: string | null): string | null {
   return picture && picture.startsWith('/uploads/') ? `${API_BASE_URL}${picture}` : null;
 }
+
+/** "VMMS is on the WeLinc mobile app", or "coming to" while the app hasn't shipped (suite spec 0014, AC-7). */
+export function appLine(system: { system: string; app: { released: boolean } }): string {
+  return system.app.released
+    ? `${system.system} is on the WeLinc mobile app`
+    : `${system.system} is coming to the WeLinc mobile app`;
+}
