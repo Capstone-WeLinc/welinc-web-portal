@@ -237,12 +237,17 @@ type ErrorBody = {
 
 /** The message for a failed `/auth/login` (an Axios error or anything). */
 export function loginFailure(error: unknown): string {
-  const response = (error as { response?: { status?: number; data?: unknown } } | null)?.response;
+  const response = (
+    error as { response?: { status?: number; data?: unknown; headers?: Record<string, unknown> } } | null
+  )?.response;
   if (!response) return UNREACHABLE_MESSAGE;
   const data = (response.data ?? {}) as ErrorBody;
   if (data.code === 'NO_SYSTEM_ACCESS') return NO_ACCESS_MESSAGE;
   if (data.code === 'ACCOUNT_INACTIVE') return INACTIVE_MESSAGE;
   if (data.isLocked || data.code === 'ACCOUNT_LOCKED') return lockedMessage(data.lockedUntil);
+  // Spec 0009 AC-5: an account that needs a sign in code (admins) gets 5 a rolling hour. This is
+  // about the account, not the network, so say so and say how long (the Retry-After seconds).
+  if (data.code === 'CODE_SEND_LIMIT') return codeSendLimitMessage(response.headers?.['retry-after']);
   if (response.status === 429) return RATE_LIMITED_MESSAGE;
   if (data.remainingAttempts !== undefined) return wrongPasswordMessage(Number(data.remainingAttempts));
   if (response.status === 401) return 'Incorrect email or password.';
@@ -261,6 +266,12 @@ export function loginFailure(error: unknown): string {
 export function wrongPasswordMessage(left: number): string {
   if (left === 1) return 'Incorrect email or password. One more wrong try locks your account for 15 minutes.';
   return 'Incorrect email or password.';
+}
+
+/** The sign in form's message when the account's hourly sign in codes are used up. */
+export function codeSendLimitMessage(retryAfter: unknown): string {
+  const seconds = Number(retryAfter);
+  return `This account was sent too many sign in codes. Try again in ${minutes(Number.isFinite(seconds) && seconds > 0 ? seconds : 60)}.`;
 }
 
 /** What the code step does with a failed verify or resend (AC-25). */

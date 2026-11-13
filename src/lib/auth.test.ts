@@ -179,6 +179,10 @@ describe('the email code step', () => {
     expect(loginFailure(fail({ code: 'RATE_LIMITED' }, 429))).toBe(
       'Too many tries from this network. Wait a minute and try again.',
     );
+    // An admin account out of sign in codes for the hour: about the account, with the wait
+    expect(loginFailure(fail({ code: 'CODE_SEND_LIMIT' }, 429, { 'retry-after': '1500' }))).toBe(
+      'This account was sent too many sign in codes. Try again in 25 minutes.',
+    );
     expect(loginFailure(fail({ code: 'ACCOUNT_INACTIVE' }, 403))).toBe(
       'This account is deactivated. Ask your admin to turn it back on.',
     );
