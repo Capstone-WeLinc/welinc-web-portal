@@ -39,8 +39,9 @@
   --black: #000000;
 
   /*
-    The login hero only (spec 0007, AC-22): the split layout keeps today's dark navy, gradient
-    and gold glows, a deliberate exception to design.md's ban. Nothing else uses these.
+    The login hero (spec 0007, AC-22): the split layout keeps today's dark navy, gradient
+    and gold glows, a deliberate exception to design.md's ban. `hero` is also the portal's navy
+    brand band (design.md, Brand surfaces); nothing else uses these.
   */
   --hero: #0d1240;
   --hero-deep: #0a0e35;
@@ -137,6 +138,26 @@
   --color-role-customer-support-fg: var(--role-customer-support-fg);
   --color-role-driver-bg: var(--role-driver-bg);
   --color-role-driver-fg: var(--role-driver-fg);
+}
+
+/*
+  The portal brand band's texture (design.md, Brand surfaces): a faint 32px grid of white lines
+  that fades out toward the bottom. Drawn with gradients, but it reads as a texture, not a fill.
+*/
+@utility brand-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--white) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--white) 6%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(to bottom, var(--black) 20%, transparent);
+}
+
+/* A scrolling strip whose cut off last item already says it scrolls (the Admin tabs on phones) */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @layer base {

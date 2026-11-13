@@ -1,14 +1,14 @@
 import type { ReactNode } from 'react';
 import { AlertCircle, CheckCircle, Info } from 'lucide-react';
+import { LogoMark } from '@/components/LogoMark';
 import { cn } from '@/lib/utils';
 import HERO_PHOTO_URL from '@/assets/login-hero.avif';
-import LOGO_URL from '@/assets/welinc-logo.jpg';
 
 // The login hero (spec 0007, AC-22): today's split layout, dark navy, gradient and gold glows,
 // a deliberate exception to design.md that only the sign in pages use. Drawn with tokens.
 
-// Both images are bundled with the app, so the sign in page never depends on an outside host
-export { LOGO_URL };
+// The photo is bundled with the app and the logo is the inline `LogoMark`, so the sign in page
+// never depends on an outside host
 
 /** Dark inputs on the hero: 44px tall, text-base so iOS doesn't zoom, a visible gold focus ring. */
 export const heroInput =
@@ -33,7 +33,7 @@ export function HeroLogo({ size = 'md' }: { size?: 'sm' | 'md' }) {
         size === 'md' ? 'size-12 rounded-2xl' : 'size-10 rounded-xl',
       )}
     >
-      <img src={LOGO_URL} alt="WeLinc" className={size === 'md' ? 'h-8 w-auto' : 'h-7 w-auto'} />
+      <LogoMark title="WeLinc" className={cn('text-primary', size === 'md' ? 'h-5' : 'h-4')} />
     </div>
   );
 }

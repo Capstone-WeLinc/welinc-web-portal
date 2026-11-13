@@ -78,36 +78,58 @@ function AdminShell({ me, onChanged }: { me: AdminMe; onChanged: () => void }) {
   if (!current) return <Navigate to={viewHref(landingView(me), search)} replace />;
 
   return (
-    <LauncherShell user={me.user}>
+    <LauncherShell
+      user={me.user}
+      adminEntry={false}
+      homeLink
+      overlap={false}
+      hero={
+        <>
+          <Link
+            to="/"
+            className="-ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden sm:min-h-9"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            Home
+          </Link>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">Admin</h1>
+          <p className="mt-1 text-sm text-white/70">
+            {me.suiteAdmin
+              ? 'Suite admin: every account and every system.'
+              : `Admin of ${me.adminOf.join(' and ')}: your system's people only.`}
+          </p>
+        </>
+      }
+    >
       <TemporaryAccessBanner grants={me.temporaryGrants} />
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-foreground">Admin</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {me.suiteAdmin
-            ? 'Suite admin: every account and every system.'
-            : `Admin of ${me.adminOf.join(' and ')}: your system's people only.`}
-        </p>
-      </div>
-      <div className="flex flex-col gap-6 md:flex-row">
+      <div className="flex flex-col gap-4 md:flex-row md:gap-6">
         <nav aria-label="Admin sections" className="md:w-56 md:shrink-0">
-          <ul className="flex flex-wrap gap-1 md:flex-col">
-            {views.map((v) => (
-              <li key={v.path}>
-                <NavLink
-                  to={viewHref(v.path, search)}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex min-h-11 items-center rounded-lg border-l-2 px-3 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
-                      isActive || v.path === view
-                        ? 'border-highlight bg-card font-medium text-foreground'
-                        : 'border-transparent text-muted-foreground hover:bg-accent hover:text-foreground',
-                    )
-                  }
-                >
-                  {v.label}
-                </NavLink>
-              </li>
-            ))}
+          {/* Phones: one scrolling strip of tabs; from md: the sidebar column */}
+          <ul className="no-scrollbar -mx-4 flex gap-1 overflow-x-auto px-4 md:mx-0 md:flex-col md:overflow-visible md:px-0">
+            {views.map((v) => {
+              const active = v.path === view;
+              const Icon = v.icon;
+              return (
+                <li key={v.path} className="shrink-0">
+                  <NavLink
+                    to={viewHref(v.path, search)}
+                    aria-current={active ? 'page' : undefined}
+                    className={cn(
+                      'flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-sm whitespace-nowrap focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden md:border-l-2',
+                      active
+                        ? 'bg-card font-medium text-foreground shadow-xs md:border-highlight'
+                        : 'text-muted-foreground hover:bg-accent hover:text-foreground md:border-transparent',
+                    )}
+                  >
+                    <Icon
+                      className={cn('size-4 shrink-0', active ? 'text-primary' : 'text-muted-foreground')}
+                      aria-hidden="true"
+                    />
+                    {v.label}
+                  </NavLink>
+                </li>
+              );
+            })}
           </ul>
         </nav>
         <section aria-labelledby="admin-view-title" className="min-w-0 flex-1 rounded-lg border border-border bg-card p-4 sm:p-5">
@@ -166,7 +188,7 @@ function CodeOwed({ me, onPassed }: { me: AdminMe; onPassed: () => void }) {
   }, [ask]);
 
   return (
-    <LauncherShell user={me.user}>
+    <LauncherShell user={me.user} adminEntry={false} homeLink>
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
         <div className="flex size-12 items-center justify-center rounded-lg bg-muted text-muted-strong">
           <ShieldCheck className="size-6" aria-hidden="true" />
@@ -186,7 +208,7 @@ function CodeOwed({ me, onPassed }: { me: AdminMe; onPassed: () => void }) {
 
 function NotAnAdmin({ me }: { me: AdminMe }) {
   return (
-    <LauncherShell user={me.user}>
+    <LauncherShell user={me.user} adminEntry={false} homeLink>
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
         <div className="flex size-12 items-center justify-center rounded-lg bg-muted text-muted-strong">
           <ShieldOff className="size-6" aria-hidden="true" />
@@ -204,7 +226,7 @@ function BackToLauncher() {
   return (
     <Link to="/" className={cn(buttonVariants({ variant: 'ghost', size: 'touch' }))}>
       <ArrowLeft aria-hidden="true" />
-      Back to your systems
+      Back to home
     </Link>
   );
 }
