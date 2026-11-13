@@ -1,8 +1,18 @@
 import type { AdminMe } from '@/lib/admin';
 
+/** Every `/admin` view. `AdminPage` switches on it, so a new one fails the build until it renders. */
+export type AdminViewPath =
+  | 'overview'
+  | 'people'
+  | 'deletion-requests'
+  | 'activity'
+  | 'temporary-access'
+  | 'suite-admins'
+  | 'permissions';
+
 /** The `/admin` views (suite spec 0013, AC-23), in sidebar order. */
 export type AdminView = {
-  path: string;
+  path: AdminViewPath;
   label: string;
   /** Only suite admins see it. */
   suiteOnly: boolean;
@@ -23,7 +33,7 @@ export function viewsFor(me: AdminMe): AdminView[] {
 }
 
 /** Where `/admin` lands: Overview for a suite admin, People for a system admin (AC-23). */
-export function landingView(me: AdminMe): string {
+export function landingView(me: AdminMe): AdminViewPath {
   return me.suiteAdmin ? 'overview' : 'people';
 }
 

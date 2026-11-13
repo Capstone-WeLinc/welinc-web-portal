@@ -86,7 +86,7 @@ export function LauncherShell({
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex items-center gap-3">
             <div className="flex size-9 items-center justify-center rounded-lg bg-highlight">
-              <img src={LOGO_URL} alt="" crossOrigin="anonymous" className="h-6 w-auto" />
+              <img src={LOGO_URL} alt="" className="h-6 w-auto" />
             </div>
             <span className="text-lg font-semibold text-foreground">WeLinc</span>
           </div>

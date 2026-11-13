@@ -44,7 +44,8 @@ export default function Launcher({ answer, params, banner }: LauncherProps) {
         </div>
       )}
       {answer.systems.length === 0 ? (
-        // Suite spec 0013, AC-5: a suite admin holds no system role by design
+        // Suite spec 0013, AC-5: a suite admin holds no system role by design. welinc-auth answers an
+        // empty list only to a suite admin; anyone else with no role gets 403 NO_SYSTEM_ACCESS.
         <div className="flex flex-col items-start gap-4 rounded-lg border border-border bg-card p-5">
           <div className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-strong">
             <ShieldCheck className="size-5" aria-hidden="true" />

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ShieldOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { NO_ACCESS_MESSAGE } from '@/lib/auth';
 import { LauncherShell } from './LauncherShell';
 import { SignOutDialog } from './SignOutDialog';
 
@@ -15,7 +16,7 @@ export default function NoAccess({ email }: { email: string | null }) {
         </div>
         <div>
           <h1 role="alert" className="text-lg font-semibold text-foreground">
-            Your account has no access to any WeLinc system. Ask your admin for a role.
+            {NO_ACCESS_MESSAGE}
           </h1>
           {email && (
             <p className="mt-2 text-sm text-muted-foreground">

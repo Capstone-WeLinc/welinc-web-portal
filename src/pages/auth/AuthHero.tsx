@@ -1,22 +1,29 @@
 import type { ReactNode } from 'react';
 import { AlertCircle, CheckCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import HERO_PHOTO_URL from '@/assets/login-hero.avif';
+import LOGO_URL from '@/assets/welinc-logo.jpg';
 
 // The login hero (spec 0007, AC-22): today's split layout, dark navy, gradient and gold glows,
 // a deliberate exception to design.md that only the sign in pages use. Drawn with tokens.
 
-export const LOGO_URL =
-  'https://grazia-prod.oss-ap-southeast-1.aliyuncs.com/resources/uid_100058644/296c4c4a-9502-46.jpg';
-const HERO_PHOTO_URL =
-  'https://grazia-prod.oss-ap-southeast-1.aliyuncs.com/resources/uid_100058644/42c68fef-2874-4f.avif';
+// Both images are bundled with the app, so the sign in page never depends on an outside host
+export { LOGO_URL };
 
 /** Dark inputs on the hero: 44px tall, text-base so iOS doesn't zoom, a visible gold focus ring. */
 export const heroInput =
   'h-11 rounded-xl border-white/10 bg-white/6 px-4 text-base text-white placeholder:text-white/30 md:h-11 md:text-base focus-visible:border-highlight/50 focus-visible:ring-highlight/60 focus-visible:ring-offset-hero-deep';
 
+/** The row of code boxes: separate boxes with a gap, not one joined strip. */
+export const heroCodeGroup = 'gap-1.5 sm:gap-2.5';
+
+/** One dark code box on the hero; the active box glows gold. The tap target is the whole row (one real input), so 40px boxes fit a 375px phone. */
+export const heroCodeSlot =
+  'size-10 rounded-xl border border-white/15 bg-white/6 text-xl font-bold text-white tabular-nums shadow-none first:rounded-xl first:border last:rounded-xl sm:size-12 data-[active=true]:border-highlight data-[active=true]:bg-white/10 data-[active=true]:ring-3 data-[active=true]:ring-highlight/25';
+
 /** The gold submit on the hero, 44px and up. */
 export const heroButton =
-  'h-12 w-full rounded-xl bg-highlight text-base font-black text-primary shadow-lg shadow-highlight/20 hover:bg-highlight-hover focus-visible:ring-highlight focus-visible:ring-offset-hero-deep';
+  'h-12 w-full rounded-xl bg-highlight text-base font-black text-primary shadow-lg shadow-highlight/20 hover:bg-highlight-hover focus-visible:ring-highlight focus-visible:ring-offset-hero-deep disabled:opacity-100 disabled:not-aria-busy:bg-white/10 disabled:not-aria-busy:text-white/40 disabled:not-aria-busy:shadow-none';
 
 export function HeroLogo({ size = 'md' }: { size?: 'sm' | 'md' }) {
   return (
@@ -26,7 +33,7 @@ export function HeroLogo({ size = 'md' }: { size?: 'sm' | 'md' }) {
         size === 'md' ? 'size-12 rounded-2xl' : 'size-10 rounded-xl',
       )}
     >
-      <img src={LOGO_URL} alt="WeLinc" crossOrigin="anonymous" className={size === 'md' ? 'h-8 w-auto' : 'h-7 w-auto'} />
+      <img src={LOGO_URL} alt="WeLinc" className={size === 'md' ? 'h-8 w-auto' : 'h-7 w-auto'} />
     </div>
   );
 }

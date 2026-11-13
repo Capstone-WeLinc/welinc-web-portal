@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, NavLink, useLocation, useParams } from 'react-router-dom';
-import { ArrowLeft, Inbox, RotateCw, ShieldCheck, ShieldOff, TriangleAlert } from 'lucide-react';
+import { ArrowLeft, RotateCw, ShieldCheck, ShieldOff, TriangleAlert } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { askForCode, errorStatus, fetchAdminMe, isAdmin, needsCode, type AdminMe } from '@/lib/admin';
 import { cn } from '@/lib/utils';
 import { LauncherShell } from '../launcher/LauncherShell';
-import { landingView, viewHref, viewsFor } from './adminViews';
+import { landingView, viewHref, viewsFor, type AdminViewPath } from './adminViews';
 import { ActivityView } from './activity/ActivityView';
 import { PermissionsView } from './permissions/PermissionsView';
 import { DeletionRequestsView } from './deletion/DeletionRequestsView';
@@ -111,7 +111,7 @@ function AdminShell({ me, onChanged }: { me: AdminMe; onChanged: () => void }) {
           </ul>
         </nav>
         <section aria-labelledby="admin-view-title" className="min-w-0 flex-1 rounded-lg border border-border bg-card p-4 sm:p-5">
-          <AdminViewBody me={me} view={current.path} label={current.label} id={params.id} onChanged={onChanged} />
+          <AdminViewBody me={me} view={current.path} id={params.id} onChanged={onChanged} />
         </section>
       </div>
     </LauncherShell>
@@ -122,13 +122,11 @@ function AdminShell({ me, onChanged }: { me: AdminMe; onChanged: () => void }) {
 function AdminViewBody({
   me,
   view,
-  label,
   id,
   onChanged,
 }: {
   me: AdminMe;
-  view: string;
-  label: string;
+  view: AdminViewPath;
   id?: string;
   onChanged: () => void;
 }) {
@@ -149,20 +147,11 @@ function AdminViewBody({
       return <ActivityView me={me} />;
     case 'permissions':
       return <PermissionsView me={me} />;
-    default:
-      return (
-        <>
-          <h2 id="admin-view-title" className="text-lg font-semibold text-foreground">
-            {label}
-          </h2>
-          <div className="flex flex-col items-start gap-3 py-8">
-            <div className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-strong">
-              <Inbox className="size-5" aria-hidden="true" />
-            </div>
-            <p className="text-sm text-muted-foreground">Nothing to show here yet.</p>
-          </div>
-        </>
-      );
+    default: {
+      // Unknown paths already redirected above; a view added without a case fails the build here
+      const missing: never = view;
+      return missing;
+    }
   }
 }
 

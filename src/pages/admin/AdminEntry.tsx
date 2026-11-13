@@ -7,19 +7,35 @@ import { cn } from '@/lib/utils';
 
 /**
  * Suite spec 0013, AC-22: the launcher top bar's Admin entry, shown only when
- * `GET /auth/admin/me` says the signed in person is a suite admin or a system admin. Any failure
- * hides it: the launcher must work without it.
+ * `GET /auth/admin/me` says the signed in person is a suite admin or a system admin. A failure
+ * hides it, so the launcher works without it, and the check runs again when the tab comes back
+ * into focus, so a passing network error doesn't leave an admin without the link.
  */
 export function AdminEntry() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    fetchAdminMe()
-      .then((me) => !cancelled && setShow(isAdmin(me)))
-      .catch(() => !cancelled && setShow(false));
+    let settled = false;
+    let checking = false;
+    const check = () => {
+      if (settled || checking) return;
+      checking = true;
+      fetchAdminMe()
+        .then((me) => {
+          settled = true;
+          if (!cancelled) setShow(isAdmin(me));
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          checking = false;
+        });
+    };
+    check();
+    window.addEventListener('focus', check);
     return () => {
       cancelled = true;
+      window.removeEventListener('focus', check);
     };
   }, []);
 

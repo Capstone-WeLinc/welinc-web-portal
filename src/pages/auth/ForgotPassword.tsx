@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, CheckCircle, Truck, Eye, EyeOff } from 'lucide-react';
 import { isAxiosError } from 'axios';
+import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { cn } from '@/lib/utils';
 import { api } from '../../lib/api';
-import { HeroCard, HeroLabel, HeroNotice, heroButton, heroInput } from './AuthHero';
+import { RATE_LIMITED_MESSAGE } from '../../lib/auth';
+import { HeroCard, HeroLabel, HeroNotice, heroButton, heroCodeGroup, heroCodeSlot, heroInput } from './AuthHero';
 
 /** A show or hide password button inside a hero input, 44px square. */
 function RevealButton({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
@@ -23,115 +26,171 @@ function RevealButton({ shown, onToggle }: { shown: boolean; onToggle: () => voi
   );
 }
 
-type Step = 'email' | 'otp' | 'newPassword' | 'done';
+type Step = 'email' | 'code' | 'newPassword' | 'done';
 
+const CODE_LENGTH = 6;
+/** welinc-auth sends at most one code a minute (spec 0009); a resend inside it sends nothing. */
+const RESEND_SECONDS = 60;
+
+const tooMany = (err: unknown) => isAxiosError(err) && err.response?.status === 429;
+
+/**
+ * Forgot password: email, code, new password. welinc-auth answers the same whether or not the
+ * email has an account (spec 0009, AC-13), so the screen never says which.
+ */
 export default function ForgotPassword() {
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
+  const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
+  const [sent, setSent] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [wait, setWait] = useState(0);
+  const codeRef = useRef<HTMLInputElement>(null);
+  const cleanEmail = email.trim().toLowerCase();
 
-  const handleRequestOtp = async (e: React.FormEvent) => {
+  // The Resend countdown
+  useEffect(() => {
+    if (wait <= 0) return;
+    const timer = window.setTimeout(() => setWait((s) => s - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [wait]);
+
+  // The code field is disabled while a code is checked; put focus back once it is usable again
+  useEffect(() => {
+    if (step === 'code' && !loading && error) codeRef.current?.focus();
+  }, [step, loading, error]);
+
+  const sendCode = async () => {
+    await api.post('/auth/forgot-password', { email: cleanEmail });
+    setWait(RESEND_SECONDS);
+  };
+
+  const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
     setError('');
+    setSent('');
     setLoading(true);
     try {
-      await api.post('/auth/forgot-password', { email: email.trim().toLowerCase() });
-      setStep('otp');
+      await sendCode();
+      setCode('');
+      setStep('code');
     } catch (err) {
-      if (isAxiosError(err) && err.response?.status === 404) {
-        setError('No account found with that email address.');
-      } else {
-        setError('Unable to send OTP. Please try again.');
-      }
+      setError(tooMany(err) ? RATE_LIMITED_MESSAGE : "We couldn't send the code. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (loading) return;
+  const resend = async () => {
+    if (resending || wait > 0) return;
     setError('');
+    setSent('');
+    setResending(true);
+    try {
+      await sendCode();
+      setCode('');
+      setSent('We sent a new code. The old one no longer works.');
+    } catch (err) {
+      setError(tooMany(err) ? RATE_LIMITED_MESSAGE : "We couldn't send the code. Check your connection and try again.");
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const verifyCode = async (value: string) => {
+    if (loading || value.length !== CODE_LENGTH) return;
+    setError('');
+    setSent('');
     setLoading(true);
     try {
-      await api.post('/auth/verify-otp', {
-        email: email.trim().toLowerCase(),
-        otp: otp.trim(),
-      });
+      await api.post('/auth/verify-otp', { email: cleanEmail, otp: value });
       setStep('newPassword');
     } catch (err) {
-      if (isAxiosError(err) && err.response?.status === 400) {
-        setError('Invalid or expired OTP. Please check the code and try again.');
+      if (tooMany(err)) {
+        setError(RATE_LIMITED_MESSAGE);
+      } else if (isAxiosError(err) && err.response?.status === 400) {
+        setError("That code isn't right or has expired. Check it, or send a new one.");
+        setCode('');
       } else {
-        setError('Verification failed. Please try again.');
+        setError("We couldn't check the code. Check your connection and try again.");
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerifyAndReset = async (e: React.FormEvent) => {
+  const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
     setError('');
 
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError('The two passwords are different.');
       return;
     }
     const trimmed = newPassword.trim();
     if (trimmed.length < 8) {
-      setError('Password must be at least 8 characters.');
+      setError('Use at least 8 characters.');
       return;
     }
     if (!/[A-Z]/.test(trimmed)) {
-      setError('Password must include at least one uppercase letter.');
+      setError('Add at least one uppercase letter.');
       return;
     }
     if (!/[a-z]/.test(trimmed)) {
-      setError('Password must include at least one lowercase letter.');
+      setError('Add at least one lowercase letter.');
       return;
     }
     if (!/\d/.test(trimmed)) {
-      setError('Password must include at least one number.');
+      setError('Add at least one number.');
       return;
     }
     if (!/[^A-Za-z0-9]/.test(trimmed)) {
-      setError('Password must include at least one special character.');
+      setError('Add at least one special character.');
       return;
     }
 
     setLoading(true);
     try {
-      await api.post('/auth/reset-password', {
-        email: email.trim().toLowerCase(),
-        otp: otp.trim(),
-        newPassword,
-      });
+      await api.post('/auth/reset-password', { email: cleanEmail, otp: code, newPassword });
       setStep('done');
     } catch (err) {
-      if (isAxiosError(err) && err.response?.status === 400) {
-        setError('Invalid or expired OTP. Please request a new one.');
+      if (tooMany(err)) {
+        setError(RATE_LIMITED_MESSAGE);
+      } else if (isAxiosError(err) && err.response?.status === 400) {
+        // The code ran out while the new password was typed: ask for a new one
+        setCode('');
+        setStep('code');
+        setError('That code expired. Send a new one, then set your password.');
       } else {
-        setError('Password reset failed. Please try again.');
+        setError("We couldn't change your password. Check your connection and try again.");
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const errorNotice = error ? (
-    <HeroNotice tone="error">
-      <p>{error}</p>
-    </HeroNotice>
-  ) : null;
+  const notices = (
+    <>
+      {error && (
+        <HeroNotice tone="error">
+          <p>{error}</p>
+        </HeroNotice>
+      )}
+      {sent && !error && (
+        <HeroNotice tone="success">
+          <p>{sent}</p>
+        </HeroNotice>
+      )}
+    </>
+  );
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-hero-deep p-6">
@@ -145,7 +204,7 @@ export default function ForgotPassword() {
             className="inline-flex min-h-11 items-center gap-2 rounded-md text-sm text-white/50 transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
-            Back to Sign In
+            Back to sign in
           </Link>
         </div>
 
@@ -157,20 +216,20 @@ export default function ForgotPassword() {
           {step === 'done' ? (
             <div className="text-center" role="status">
               <CheckCircle className="mx-auto mb-4 size-12 text-hero-success" aria-hidden="true" />
-              <h2 className="mb-2 text-2xl font-black text-white">Password Reset!</h2>
-              <p className="mb-6 text-white/60">Your password has been successfully updated.</p>
+              <h2 className="mb-2 text-2xl font-black text-white">Password changed</h2>
+              <p className="mb-6 text-white/60">Sign in with your new password.</p>
               <Button asChild className={heroButton}>
-                <Link to="/login">Sign In</Link>
+                <Link to="/login">Sign in</Link>
               </Button>
             </div>
           ) : step === 'email' ? (
             <>
-              <h2 className="mb-1 text-2xl font-black text-white">Forgot Password</h2>
-              <p className="mb-8 text-sm text-white/50">Enter your email and we'll send you a reset code.</p>
-              {errorNotice}
-              <form onSubmit={handleRequestOtp} className="flex flex-col gap-5">
+              <h2 className="mb-1 text-2xl font-black text-white">Reset your password</h2>
+              <p className="mb-8 text-sm text-white/50">Enter your email and we'll send you a 6 digit code.</p>
+              {notices}
+              <form onSubmit={handleRequestCode} className="flex flex-col gap-5">
                 <div>
-                  <HeroLabel htmlFor="forgot-email">Email Address</HeroLabel>
+                  <HeroLabel htmlFor="forgot-email">Email</HeroLabel>
                   <div className="relative">
                     <Mail className="absolute top-1/2 left-4 size-4 -translate-y-1/2 text-white/30" aria-hidden="true" />
                     <Input
@@ -186,60 +245,92 @@ export default function ForgotPassword() {
                   </div>
                 </div>
                 <Button id="forgot-submit" type="submit" loading={loading} className={heroButton}>
-                  {loading ? 'Sending code' : 'Send Reset Code'}
+                  {loading ? 'Sending code' : 'Send code'}
                 </Button>
               </form>
             </>
-          ) : step === 'otp' ? (
+          ) : step === 'code' ? (
             <>
-              <h2 className="mb-1 text-2xl font-black text-white">Enter Reset Code</h2>
-              <p className="mb-2 text-sm text-white/50">
-                A 6-digit code was sent to <span className="text-highlight">{email}</span>.
+              <h2 className="mb-1 text-2xl font-black text-white">Check your email</h2>
+              <p className="mb-6 text-sm break-words text-white/50">
+                If <span className="font-semibold text-white/80">{cleanEmail}</span> has a WeLinc account, we sent
+                it a 6 digit code.
               </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setStep('email');
-                  setError('');
-                  setOtp('');
+              {notices}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void verifyCode(code);
                 }}
-                className="mb-6 min-h-11 rounded-md text-xs text-white/50 transition-colors hover:text-white/70 focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
+                className="flex flex-col gap-5"
               >
-                Wrong email? Go back
-              </button>
-              {errorNotice}
-              <form onSubmit={handleVerifyOtp} className="flex flex-col gap-5">
                 <div>
-                  <HeroLabel htmlFor="forgot-otp">OTP Code</HeroLabel>
-                  <Input
-                    id="forgot-otp"
-                    type="text"
+                  <HeroLabel htmlFor="forgot-code">Code</HeroLabel>
+                  <InputOTP
+                    ref={codeRef}
+                    id="forgot-code"
+                    maxLength={CODE_LENGTH}
+                    pattern={REGEXP_ONLY_DIGITS}
                     inputMode="numeric"
                     autoComplete="one-time-code"
-                    pattern="[0-9]{6}"
-                    maxLength={6}
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                    placeholder="000000"
-                    required
-                    className={cn(heroInput, 'text-center tracking-widest')}
-                  />
+                    autoFocus
+                    value={code}
+                    onChange={setCode}
+                    onComplete={(value: string) => void verifyCode(value)}
+                    disabled={loading}
+                    aria-invalid={error ? true : undefined}
+                    containerClassName="justify-center"
+                  >
+                    <InputOTPGroup className={heroCodeGroup}>
+                      {Array.from({ length: CODE_LENGTH }, (_, i) => (
+                        <InputOTPSlot key={i} index={i} className={heroCodeSlot} />
+                      ))}
+                    </InputOTPGroup>
+                  </InputOTP>
                 </div>
-                <Button id="forgot-verify-submit" type="submit" loading={loading} className={heroButton}>
-                  {loading ? 'Verifying' : 'Verify Code'}
+                <Button
+                  id="forgot-verify-submit"
+                  type="submit"
+                  loading={loading}
+                  disabled={code.length !== CODE_LENGTH}
+                  className={heroButton}
+                >
+                  {loading ? 'Verifying' : 'Verify'}
                 </Button>
               </form>
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm">
+                <button
+                  type="button"
+                  onClick={() => void resend()}
+                  disabled={wait > 0 || resending}
+                  className="min-h-11 cursor-pointer rounded-md font-semibold text-highlight tabular-nums hover:text-highlight-hover focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-white/40"
+                >
+                  {wait > 0 ? `Resend code in ${wait} s` : resending ? 'Sending' : 'Resend code'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep('email');
+                    setError('');
+                    setSent('');
+                    setCode('');
+                  }}
+                  className="min-h-11 cursor-pointer rounded-md text-white/60 hover:text-white focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
+                >
+                  Use a different email
+                </button>
+              </div>
             </>
           ) : (
             <>
-              <h2 className="mb-1 text-2xl font-black text-white">Set New Password</h2>
-              <p className="mb-6 text-sm text-white/50">
-                Choose a new secure password for <span className="text-highlight">{email}</span>.
+              <h2 className="mb-1 text-2xl font-black text-white">Set a new password</h2>
+              <p className="mb-6 text-sm break-words text-white/50">
+                For <span className="text-highlight">{cleanEmail}</span>.
               </p>
-              {errorNotice}
-              <form onSubmit={handleVerifyAndReset} className="flex flex-col gap-5">
+              {notices}
+              <form onSubmit={handleReset} className="flex flex-col gap-5">
                 <div>
-                  <HeroLabel htmlFor="forgot-new-password">New Password</HeroLabel>
+                  <HeroLabel htmlFor="forgot-new-password">New password</HeroLabel>
                   <div className="relative">
                     <Input
                       id="forgot-new-password"
@@ -256,18 +347,19 @@ export default function ForgotPassword() {
                     <RevealButton shown={showNewPassword} onToggle={() => setShowNewPassword((v) => !v)} />
                   </div>
                   <p id="forgot-password-rules" className="mt-1.5 text-xs leading-normal text-white/50">
-                    Password must be at least 8 characters and contain at least one uppercase letter, one lowercase letter, one number, and one special character.
+                    At least 8 characters, with an uppercase letter, a lowercase letter, a number and a special
+                    character.
                   </p>
                 </div>
                 <div>
-                  <HeroLabel htmlFor="forgot-confirm-password">Confirm Password</HeroLabel>
+                  <HeroLabel htmlFor="forgot-confirm-password">Confirm password</HeroLabel>
                   <div className="relative">
                     <Input
                       id="forgot-confirm-password"
                       type={showConfirmPassword ? 'text' : 'password'}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Repeat new password"
+                      placeholder="Type it again"
                       required
                       autoComplete="new-password"
                       className={cn(heroInput, 'pr-12')}
@@ -276,7 +368,7 @@ export default function ForgotPassword() {
                   </div>
                 </div>
                 <Button id="forgot-reset-submit" type="submit" loading={loading} className={heroButton}>
-                  {loading ? 'Resetting' : 'Reset Password'}
+                  {loading ? 'Saving' : 'Set password'}
                 </Button>
               </form>
             </>

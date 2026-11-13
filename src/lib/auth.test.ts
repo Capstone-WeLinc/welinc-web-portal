@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   CODE_EXPIRED_MESSAGE,
   codeFailure,
+  lockedMessage,
+  loginFailure,
   currentSystem,
   isEmailStep,
   loginRequest,
@@ -150,6 +152,33 @@ describe('the email code step', () => {
     expect(codeFailure(fail({ code: 'CODE_SEND_LIMIT' }, 429, { 'retry-after': '42' }))).toMatchObject({
       message: 'Too many codes sent. Try again in 1 minute.',
     });
+  });
+
+  // covers: suite spec 0015 AC-3, AC-5, AC-6
+  it('names when a lock ends, and stays general without a time', () => {
+    const until = new Date(2026, 10, 13, 15, 42).toISOString();
+    expect(lockedMessage(until)).toMatch(/^Too many wrong passwords\. Try again at .*42.*, or reset your password\.$/);
+    expect(lockedMessage(undefined)).toBe('Too many wrong passwords. Try again in a few minutes, or reset your password.');
+    expect(lockedMessage('not a date')).toContain('in a few minutes');
+    expect(codeFailure(fail({ code: 'ACCOUNT_LOCKED', isLocked: true }, 403))).toMatchObject({
+      message: expect.stringContaining('Too many wrong passwords'),
+    });
+  });
+
+  it('words each sign in failure, and never blames the connection for a 429 or a deactivated account', () => {
+    expect(loginFailure(fail({ code: 'RATE_LIMITED' }, 429))).toBe(
+      'Too many tries from this network. Wait a minute and try again.',
+    );
+    expect(loginFailure(fail({ code: 'ACCOUNT_INACTIVE' }, 403))).toBe(
+      'This account is deactivated. Ask your admin to turn it back on.',
+    );
+    expect(codeFailure(fail({ code: 'ACCOUNT_INACTIVE' }, 403))).toMatchObject({
+      message: 'This account is deactivated. Ask your admin to turn it back on.',
+    });
+    expect(loginFailure(fail({ remainingAttempts: 2 }, 401))).toContain('2 tries left');
+    expect(loginFailure(fail({}, 401))).toBe('Wrong email or password.');
+    expect(loginFailure(fail({}, 500))).toBe('Something went wrong on our side. Try again in a minute.');
+    expect(loginFailure(new Error('Network Error'))).toContain('Unable to reach');
   });
 
   it('has a message for a mail failure and for no connection', () => {

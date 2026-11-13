@@ -198,6 +198,57 @@ export function isEmailStep(data: unknown): data is EmailStep {
 /** Shown back on the password step when the ticket or code has died (AC-25). */
 export const CODE_EXPIRED_MESSAGE = 'That code expired. Sign in again to get a new one.';
 
+/** The sign in form, the code step and the no access screen word these the same way. */
+export const NO_ACCESS_MESSAGE = 'Your account has no access to any WeLinc system. Ask your admin for a role.';
+export const INACTIVE_MESSAGE = 'This account is deactivated. Ask your admin to turn it back on.';
+export const RATE_LIMITED_MESSAGE = 'Too many tries from this network. Wait a minute and try again.';
+const UNREACHABLE_MESSAGE = 'Unable to reach the sign in service. Check your connection and try again.';
+
+/**
+ * Suite spec 0015: a lock runs out on its own, so say when. `lockedUntil` is the ISO time from
+ * the 403 `ACCOUNT_LOCKED` body; without it (an older auth) the wording stays general.
+ */
+export function lockedMessage(lockedUntil?: unknown): string {
+  const until = typeof lockedUntil === 'string' ? new Date(lockedUntil) : null;
+  const when =
+    until && !Number.isNaN(until.getTime())
+      ? `at ${until.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+      : 'in a few minutes';
+  return `Too many wrong passwords. Try again ${when}, or reset your password.`;
+}
+
+type ErrorBody = {
+  code?: string;
+  message?: unknown;
+  remainingAttempts?: number;
+  isLocked?: boolean;
+  lockedUntil?: unknown;
+};
+
+/** The message for a failed `/auth/login` (an Axios error or anything). */
+export function loginFailure(error: unknown): string {
+  const response = (error as { response?: { status?: number; data?: unknown } } | null)?.response;
+  if (!response) return UNREACHABLE_MESSAGE;
+  const data = (response.data ?? {}) as ErrorBody;
+  if (data.code === 'NO_SYSTEM_ACCESS') return NO_ACCESS_MESSAGE;
+  if (data.code === 'ACCOUNT_INACTIVE') return INACTIVE_MESSAGE;
+  if (data.isLocked || data.code === 'ACCOUNT_LOCKED') return lockedMessage(data.lockedUntil);
+  if (response.status === 429) return RATE_LIMITED_MESSAGE;
+  if (data.remainingAttempts !== undefined) return wrongPasswordMessage(Number(data.remainingAttempts));
+  if (response.status === 401) return 'Wrong email or password.';
+  if (response.status === 400) {
+    const msg = data.message;
+    if (Array.isArray(msg)) return msg.join(', ');
+    return typeof msg === 'string' && msg ? msg : 'Check your email and password, then try again.';
+  }
+  return 'Something went wrong on our side. Try again in a minute.';
+}
+
+/** A wrong password, with the tries left before the 15 minute lock (suite spec 0015). */
+export function wrongPasswordMessage(left: number): string {
+  return `Wrong email or password. ${left} ${left === 1 ? 'try' : 'tries'} left before a 15 minute lock.`;
+}
+
 /** What the code step does with a failed verify or resend (AC-25). */
 export type CodeFailure = { kind: 'expired' } | { kind: 'message'; message: string; clearCode: boolean };
 
@@ -217,7 +268,9 @@ export function codeFailure(error: unknown): CodeFailure {
       };
     } | null
   )?.response;
-  const data = response?.data as { code?: string; attemptsLeft?: number; isLocked?: boolean } | undefined;
+  const data = response?.data as
+    | { code?: string; attemptsLeft?: number; isLocked?: boolean; lockedUntil?: unknown }
+    | undefined;
   switch (data?.code) {
     case 'INVALID_CODE': {
       const left = data.attemptsLeft ?? 0;
@@ -244,29 +297,27 @@ export function codeFailure(error: unknown): CodeFailure {
       };
     }
     case 'RATE_LIMITED':
-      return {
-        kind: 'message',
-        message: 'Too many tries from this network. Wait a minute and try again.',
-        clearCode: false,
-      };
+      return { kind: 'message', message: RATE_LIMITED_MESSAGE, clearCode: false };
+    case 'ACCOUNT_INACTIVE':
+      return { kind: 'message', message: INACTIVE_MESSAGE, clearCode: false };
     case 'NO_SYSTEM_ACCESS':
       return {
         kind: 'message',
-        message: 'Your account has no assigned subsystem access. Contact your administrator.',
+        message: NO_ACCESS_MESSAGE,
         clearCode: false,
       };
   }
   if (data?.isLocked) {
     return {
       kind: 'message',
-      message: 'Your account is locked. Contact your Admin to unlock.',
+      message: lockedMessage(data.lockedUntil),
       clearCode: false,
     };
   }
   if (response?.status === 401) return { kind: 'expired' };
   return {
     kind: 'message',
-    message: 'Unable to reach the sign in service. Check your connection and try again.',
+    message: UNREACHABLE_MESSAGE,
     clearCode: false,
   };
 }

@@ -7,11 +7,11 @@ export function reauthFailure(error: unknown): string {
     case 'WRONG_PASSWORD': {
       const left = (error as { response?: { data?: { attemptsLeft?: number } } }).response?.data?.attemptsLeft;
       return typeof left === 'number'
-        ? `That password is not right. ${left} ${left === 1 ? 'try' : 'tries'} left before your account locks.`
+        ? `That password is not right. ${left} ${left === 1 ? 'try' : 'tries'} left before a 15 minute lock.`
         : 'That password is not right.';
     }
     case 'ACCOUNT_LOCKED':
-      return 'Your account is locked after too many tries. Ask another admin to unlock it.';
+      return 'Too many wrong passwords, so your account is locked for 15 minutes. Try again then, or ask another admin to unlock it.';
     case 'RATE_LIMITED':
       return 'Too many password checks. Wait a minute and try again.';
     default:
