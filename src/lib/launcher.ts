@@ -2,8 +2,12 @@ import { API_BASE_URL } from './api';
 
 // Display rules for the launcher (spec 0007, AC-15, AC-17), kept pure so they are easy to test.
 
-/** "Good morning" before 12, "Good afternoon" before 18, else "Good evening" (browser local hour). */
+/**
+ * By the browser's local hour: "Good morning" from 5 to 11, "Good afternoon" from 12 to 17, else
+ * "Good evening". The small hours (0 to 4) still count as the night before, as people say it.
+ */
 export function greetingFor(hour: number): string {
+  if (hour < 5) return 'Good evening';
   if (hour < 12) return 'Good morning';
   if (hour < 18) return 'Good afternoon';
   return 'Good evening';
