@@ -52,7 +52,7 @@ import {
 } from '@/lib/adminApi';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { ActivityList } from '../activity/ActivityList';
-import { NoSystemScope, SystemSwitcher, ViewError, ViewHeader } from '../AdminStates';
+import { NoSystemScope, SystemSwitcher, Toolbar, ViewError, ViewHeader } from '../AdminStates';
 import { roleNames, useSystemsCatalog } from '../useCatalogs';
 import { useAdminSystem } from '../useAdminSystem';
 import { useAsync } from '../useAsync';
@@ -95,9 +95,9 @@ export function PersonPage({ me }: { me: AdminMe }) {
   return (
     <>
       {me.suiteAdmin && (
-        <div className="mb-4">
+        <Toolbar>
           <SystemSwitcher value={scope.system} choices={scope.choices} onChange={(next) => next && scope.choose(next)} />
-        </div>
+        </Toolbar>
       )}
       <Person key={`${id}:${scope.system}`} id={id} system={scope.system} me={me} />
     </>
@@ -356,7 +356,7 @@ function PersonDetails({
         body={
           person.otherSystems.length > 0
             ? `They are signed out at once and can't sign in to any system (${[system, ...person.otherSystems].join(', ')}) until someone reactivates them.`
-            : 'They are signed out at once and can’t sign in until someone reactivates them. Open work in the system gets flagged for reassignment.'
+            : 'They’re signed out now and can’t sign in until reactivated. Their open work gets flagged for reassignment.'
         }
         action="Deactivate"
         onConfirm={() =>
@@ -372,7 +372,7 @@ function PersonDetails({
         open={confirm === 'sessions'}
         onOpenChange={(open) => !open && setConfirm(null)}
         title={`End every session of ${person.name}?`}
-        body="They are signed out on every device and sign in again with their password."
+        body="They’re signed out on every device and sign in again."
         action="End all sessions"
         onConfirm={() =>
           act(() => endPersonSessions(person.id, system), `${person.name} is signed out everywhere.`, "We couldn't end the sessions.")

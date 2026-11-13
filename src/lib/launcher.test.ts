@@ -7,7 +7,10 @@ import { firstName, greetingFor, initialsOf, pictureUrl } from './launcher';
 // covers: spec 0007 AC-15 (greeting, first name), AC-17 (picture, initials)
 describe('launcher display rules', () => {
   it('greets by the local hour', () => {
-    expect(greetingFor(0)).toBe('Good morning');
+    expect(greetingFor(0)).toBe('Good evening');
+    expect(greetingFor(1)).toBe('Good evening');
+    expect(greetingFor(4)).toBe('Good evening');
+    expect(greetingFor(5)).toBe('Good morning');
     expect(greetingFor(11)).toBe('Good morning');
     expect(greetingFor(12)).toBe('Good afternoon');
     expect(greetingFor(17)).toBe('Good afternoon');

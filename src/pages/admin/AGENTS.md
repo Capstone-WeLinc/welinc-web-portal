@@ -2,7 +2,7 @@
 
 ## Overview
 
-The portal's admin screens from suite spec 0013: people, deletion requests, activity, temporary access, suite admins, the permission matrix and the suite overview. It talks only to welinc-auth's cookie based `/auth/admin/*` routes, through `src/lib/admin.ts` (standing, step up) and `src/lib/adminApi.ts` (every call). `AdminPage` is lazy loaded from `App.tsx`; the launcher links in through `AdminEntry`.
+The portal's admin screens from suite spec 0013: people, deletion requests, activity, temporary access, suite admins, the permission matrix and the suite overview. It talks only to welinc-auth's cookie based `/auth/admin/*` routes, through `src/lib/admin.ts` (standing, step up) and `src/lib/adminApi.ts` (every call). `AdminPage` is lazy loaded from `App.tsx`; the launcher links in through its Admin card (`launcher/AdminCard.tsx`, a Manage section below the systems, with shortcuts), and the other shell screens through the top bar `AdminEntry`. Both read `useAdminMe`.
 
 ## Key files
 

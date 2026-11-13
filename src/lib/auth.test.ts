@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   CODE_EXPIRED_MESSAGE,
   codeFailure,
+  lockedMessage,
+  loginFailure,
   currentSystem,
   isEmailStep,
   loginRequest,
@@ -73,6 +75,16 @@ describe('portal routing rules', () => {
     expect(screenForAnswer(params(''), one)).toEqual({ kind: 'go', url: 'http://vrms.test' });
     expect(screenForAnswer(params('error=LOGIN_FAILED'), one)).toEqual({ kind: 'launcher', answer: one });
     expect(screenForAnswer(params(''), three)).toEqual({ kind: 'launcher', answer: three });
+  });
+
+  it('keeps a one system admin on the launcher, so the Admin card is reachable', () => {
+    const admin = {
+      ...answer,
+      systems: [{ ...sys('VRMS'), roles: [{ code: 'ADMIN', name: 'Admin' }] }],
+    };
+    expect(screenForAnswer(params(''), admin)).toEqual({ kind: 'launcher', answer: admin });
+    const mechanic = { ...answer, systems: [{ ...sys('VRMS'), roles: [{ code: 'MECHANIC', name: 'Mechanic' }] }] };
+    expect(screenForAnswer(params(''), mechanic)).toEqual({ kind: 'go', url: 'http://vrms.test' });
   });
 
   it('maps each /auth/sso outcome to its screen', () => {
@@ -150,6 +162,40 @@ describe('the email code step', () => {
     expect(codeFailure(fail({ code: 'CODE_SEND_LIMIT' }, 429, { 'retry-after': '42' }))).toMatchObject({
       message: 'Too many codes sent. Try again in 1 minute.',
     });
+  });
+
+  // covers: suite spec 0015 AC-3, AC-5, AC-6
+  it('names when a lock ends, and stays general without a time', () => {
+    const until = new Date(2026, 10, 13, 15, 42).toISOString();
+    expect(lockedMessage(until)).toMatch(/^Too many wrong passwords\. Try again at .*42.*, or reset your password\.$/);
+    expect(lockedMessage(undefined)).toBe('Too many wrong passwords. Try again in a few minutes, or reset your password.');
+    expect(lockedMessage('not a date')).toContain('in a few minutes');
+    expect(codeFailure(fail({ code: 'ACCOUNT_LOCKED', isLocked: true }, 403))).toMatchObject({
+      message: expect.stringContaining('Too many wrong passwords'),
+    });
+  });
+
+  it('words each sign in failure, and never blames the connection for a 429 or a deactivated account', () => {
+    expect(loginFailure(fail({ code: 'RATE_LIMITED' }, 429))).toBe(
+      'Too many tries from this network. Wait a minute and try again.',
+    );
+    // An admin account out of sign in codes for the hour: about the account, with the wait
+    expect(loginFailure(fail({ code: 'CODE_SEND_LIMIT' }, 429, { 'retry-after': '1500' }))).toBe(
+      'This account was sent too many sign in codes. Try again in 25 minutes.',
+    );
+    expect(loginFailure(fail({ code: 'ACCOUNT_INACTIVE' }, 403))).toBe(
+      'This account is deactivated. Ask your admin to turn it back on.',
+    );
+    expect(codeFailure(fail({ code: 'ACCOUNT_INACTIVE' }, 403))).toMatchObject({
+      message: 'This account is deactivated. Ask your admin to turn it back on.',
+    });
+    expect(loginFailure(fail({ remainingAttempts: 2 }, 401))).toBe('Incorrect email or password.');
+    expect(loginFailure(fail({ remainingAttempts: 1 }, 401))).toBe(
+      'Incorrect email or password. One more wrong try locks your account for 15 minutes.',
+    );
+    expect(loginFailure(fail({}, 401))).toBe('Incorrect email or password.');
+    expect(loginFailure(fail({}, 500))).toBe('Something went wrong on our side. Try again in a minute.');
+    expect(loginFailure(new Error('Network Error'))).toContain('Unable to reach');
   });
 
   it('has a message for a mail failure and for no connection', () => {

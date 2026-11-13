@@ -142,10 +142,20 @@ export function screenForAnswer(params: URLSearchParams, answer: LauncherAnswer)
   if (answer.systems.length === 0 && mobileSystemsOf(answer).length > 0) {
     return { kind: 'phone-only', answer };
   }
-  if (answer.systems.length === 1 && !params.has('error')) {
+  // One system and no error: straight in, unless they administer it. An admin lands on the launcher
+  // so they can reach Admin from its card; a one system admin would otherwise never see it.
+  if (answer.systems.length === 1 && !params.has('error') && !administers(answer.systems[0])) {
     return { kind: 'go', url: answer.systems[0].url };
   }
   return { kind: 'launcher', answer };
+}
+
+/**
+ * Whether the person holds their admin role in this system. Every system's catalog names its admin
+ * role `ADMIN` (welinc-auth `prisma/catalog/`), and the launcher answer carries role codes only.
+ */
+export function administers(system: LauncherSystem): boolean {
+  return system.roles.some((role) => role.code === 'ADMIN');
 }
 
 /** The screen for a direct visit once `/auth/sso` answered (AC-13). */
@@ -198,6 +208,72 @@ export function isEmailStep(data: unknown): data is EmailStep {
 /** Shown back on the password step when the ticket or code has died (AC-25). */
 export const CODE_EXPIRED_MESSAGE = 'That code expired. Sign in again to get a new one.';
 
+/** The sign in form, the code step and the no access screen word these the same way. */
+export const NO_ACCESS_MESSAGE = 'Your account has no access to any WeLinc system. Ask your admin for a role.';
+export const INACTIVE_MESSAGE = 'This account is deactivated. Ask your admin to turn it back on.';
+export const RATE_LIMITED_MESSAGE = 'Too many tries from this network. Wait a minute and try again.';
+const UNREACHABLE_MESSAGE = 'Unable to reach the sign in service. Check your connection and try again.';
+
+/**
+ * Suite spec 0015: a lock runs out on its own, so say when. `lockedUntil` is the ISO time from
+ * the 403 `ACCOUNT_LOCKED` body; without it (an older auth) the wording stays general.
+ */
+export function lockedMessage(lockedUntil?: unknown): string {
+  const until = typeof lockedUntil === 'string' ? new Date(lockedUntil) : null;
+  const when =
+    until && !Number.isNaN(until.getTime())
+      ? `at ${until.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+      : 'in a few minutes';
+  return `Too many wrong passwords. Try again ${when}, or reset your password.`;
+}
+
+type ErrorBody = {
+  code?: string;
+  message?: unknown;
+  remainingAttempts?: number;
+  isLocked?: boolean;
+  lockedUntil?: unknown;
+};
+
+/** The message for a failed `/auth/login` (an Axios error or anything). */
+export function loginFailure(error: unknown): string {
+  const response = (
+    error as { response?: { status?: number; data?: unknown; headers?: Record<string, unknown> } } | null
+  )?.response;
+  if (!response) return UNREACHABLE_MESSAGE;
+  const data = (response.data ?? {}) as ErrorBody;
+  if (data.code === 'NO_SYSTEM_ACCESS') return NO_ACCESS_MESSAGE;
+  if (data.code === 'ACCOUNT_INACTIVE') return INACTIVE_MESSAGE;
+  if (data.isLocked || data.code === 'ACCOUNT_LOCKED') return lockedMessage(data.lockedUntil);
+  // Spec 0009 AC-5: an account that needs a sign in code (admins) gets 5 a rolling hour. This is
+  // about the account, not the network, so say so and say how long (the Retry-After seconds).
+  if (data.code === 'CODE_SEND_LIMIT') return codeSendLimitMessage(response.headers?.['retry-after']);
+  if (response.status === 429) return RATE_LIMITED_MESSAGE;
+  if (data.remainingAttempts !== undefined) return wrongPasswordMessage(Number(data.remainingAttempts));
+  if (response.status === 401) return 'Incorrect email or password.';
+  if (response.status === 400) {
+    const msg = data.message;
+    if (Array.isArray(msg)) return msg.join(', ');
+    return typeof msg === 'string' && msg ? msg : 'Check your email and password, then try again.';
+  }
+  return 'Something went wrong on our side. Try again in a minute.';
+}
+
+/**
+ * A wrong password on the sign in form (suite spec 0015). The usual wording, with a warning only
+ * on the last try before the 15 minute lock, as most sign in pages do.
+ */
+export function wrongPasswordMessage(left: number): string {
+  if (left === 1) return 'Incorrect email or password. One more wrong try locks your account for 15 minutes.';
+  return 'Incorrect email or password.';
+}
+
+/** The sign in form's message when the account's hourly sign in codes are used up. */
+export function codeSendLimitMessage(retryAfter: unknown): string {
+  const seconds = Number(retryAfter);
+  return `This account was sent too many sign in codes. Try again in ${minutes(Number.isFinite(seconds) && seconds > 0 ? seconds : 60)}.`;
+}
+
 /** What the code step does with a failed verify or resend (AC-25). */
 export type CodeFailure = { kind: 'expired' } | { kind: 'message'; message: string; clearCode: boolean };
 
@@ -217,7 +293,9 @@ export function codeFailure(error: unknown): CodeFailure {
       };
     } | null
   )?.response;
-  const data = response?.data as { code?: string; attemptsLeft?: number; isLocked?: boolean } | undefined;
+  const data = response?.data as
+    | { code?: string; attemptsLeft?: number; isLocked?: boolean; lockedUntil?: unknown }
+    | undefined;
   switch (data?.code) {
     case 'INVALID_CODE': {
       const left = data.attemptsLeft ?? 0;
@@ -244,29 +322,27 @@ export function codeFailure(error: unknown): CodeFailure {
       };
     }
     case 'RATE_LIMITED':
-      return {
-        kind: 'message',
-        message: 'Too many tries from this network. Wait a minute and try again.',
-        clearCode: false,
-      };
+      return { kind: 'message', message: RATE_LIMITED_MESSAGE, clearCode: false };
+    case 'ACCOUNT_INACTIVE':
+      return { kind: 'message', message: INACTIVE_MESSAGE, clearCode: false };
     case 'NO_SYSTEM_ACCESS':
       return {
         kind: 'message',
-        message: 'Your account has no assigned subsystem access. Contact your administrator.',
+        message: NO_ACCESS_MESSAGE,
         clearCode: false,
       };
   }
   if (data?.isLocked) {
     return {
       kind: 'message',
-      message: 'Your account is locked. Contact your Admin to unlock.',
+      message: lockedMessage(data.lockedUntil),
       clearCode: false,
     };
   }
   if (response?.status === 401) return { kind: 'expired' };
   return {
     kind: 'message',
-    message: 'Unable to reach the sign in service. Check your connection and try again.',
+    message: UNREACHABLE_MESSAGE,
     clearCode: false,
   };
 }

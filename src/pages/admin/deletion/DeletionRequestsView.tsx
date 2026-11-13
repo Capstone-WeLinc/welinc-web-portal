@@ -31,8 +31,9 @@ import {
 import { OrphanBadge } from '../people/Badges';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { NoSystemScope, SystemSwitcher, ViewEmpty, ViewError, ViewHeader } from '../AdminStates';
+import { NoSystemScope, Segmented, SystemSwitcher, Toolbar, ViewEmpty, ViewError, ViewHeader } from '../AdminStates';
 import { useAdminScope } from '../useAdminSystem';
+import { Cell, DataTable, Muted, PersonCell, Row } from '../AdminTable';
 import { useAsync } from '../useAsync';
 
 type Tab = 'pending' | 'grace';
@@ -55,46 +56,33 @@ export function DeletionRequestsView({ me }: { me: AdminMe }) {
     <>
       <ViewHeader
         title="Deletion requests"
-        context="People who asked to delete their account, and deleted accounts you can still restore."
+        context="Requests to delete an account, and deleted accounts you can still restore."
       />
       {scope.kind !== 'none' && (
-        <div className="mb-4">
+        <Toolbar>
           <SystemSwitcher
             value={system}
             choices={scope.choices}
             onChange={scope.choose}
-            allLabel={scope.kind === 'ok' && scope.allowAll ? 'All systems' : undefined}
+            allowAll={scope.kind === 'ok' && scope.allowAll}
           />
-        </div>
+          {scope.kind === 'ok' && (
+            <Segmented
+              label="Deletion views"
+              value={tab}
+              onChange={setTab}
+              options={[
+                { value: 'pending', label: 'Waiting for a decision' },
+                { value: 'grace', label: 'Deleted, can restore' },
+              ]}
+            />
+          )}
+        </Toolbar>
       )}
       {scope.kind === 'none' && <NoSystemScope />}
       {scope.kind === 'not-admin' && <NoSystemScope asked={scope.asked} />}
       {scope.kind === 'ok' && (
         <>
-          <div role="tablist" aria-label="Deletion views" className="mb-4 flex gap-2">
-            {(
-              [
-                ['pending', 'Waiting for a decision'],
-                ['grace', 'Deleted, can restore'],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                role="tab"
-                aria-selected={tab === value}
-                onClick={() => setTab(value)}
-                className={cn(
-                  'min-h-11 rounded-lg border px-3 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden md:min-h-9',
-                  tab === value
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border bg-card text-foreground hover:bg-accent',
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
           {tab === 'pending' ? <PendingList key={key} system={system} /> : <GraceList key={key} system={system} />}
         </>
       )}
@@ -138,38 +126,55 @@ function PendingList({ system }: { system: Scope }) {
   }
   return (
     <>
-      <ul className="divide-y divide-border rounded-lg border border-border">
+      <DataTable
+        columns={[
+          { label: 'Person' },
+          { label: 'Reason' },
+          { label: 'Asked' },
+          { label: <span className="sr-only">Actions</span>, align: 'end' },
+        ]}
+      >
         {rows.map((request) => (
-          <li key={request.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              {request.user && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link
-                    to={personLink(request.user.id, system ?? request.user.systems[0])}
-                    className="text-sm font-medium break-words text-primary underline-offset-4 hover:underline"
-                  >
-                    {request.user.name}
-                  </Link>
-                  {request.orphan && <OrphanBadge />}
-                </div>
-              )}
-              <p className="text-xs break-all text-muted-foreground">{request.user?.email}</p>
-              <p className="mt-1 text-sm break-words text-foreground">
-                {request.reason ? `"${request.reason}"` : 'No reason given.'}
+          <Row key={request.id}>
+            <Cell>
+              <PersonCell
+                name={
+                  request.user ? (
+                    <Link
+                      to={personLink(request.user.id, system ?? request.user.systems[0])}
+                      className="text-primary underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+                    >
+                      {request.user.name}
+                    </Link>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )
+                }
+                email={request.user?.email}
+                extra={request.orphan && <OrphanBadge />}
+              />
+            </Cell>
+            <Cell className="max-w-md">
+              <p className="break-words text-foreground">
+                {request.reason ? `"${request.reason}"` : <span className="text-muted-foreground">No reason given.</span>}
               </p>
-              <p className="text-xs text-muted-foreground tabular-nums">Asked {formatDateTime(request.requestedAt)}</p>
-            </div>
-            <div className="flex shrink-0 gap-2">
-              <Button variant="outline" disabled={busy !== null} onClick={() => setRejecting(request)}>
-                Reject
-              </Button>
-              <Button loading={busy === request.id} disabled={busy !== null} onClick={() => void approve(request)}>
-                Approve
-              </Button>
-            </div>
-          </li>
+            </Cell>
+            <Cell className="whitespace-nowrap">
+              <Muted>{formatDateTime(request.requestedAt)}</Muted>
+            </Cell>
+            <Cell align="end">
+              <div className="inline-flex gap-2">
+                <Button variant="outline" disabled={busy !== null} onClick={() => setRejecting(request)}>
+                  Reject
+                </Button>
+                <Button loading={busy === request.id} disabled={busy !== null} onClick={() => void approve(request)}>
+                  Approve
+                </Button>
+              </div>
+            </Cell>
+          </Row>
         ))}
-      </ul>
+      </DataTable>
       <RejectDialog
         request={rejecting}
         system={system}
@@ -299,31 +304,44 @@ function GraceList({ system }: { system: Scope }) {
     return <ViewEmpty icon={<Inbox className="size-5" aria-hidden="true" />} message="No deleted accounts to restore." />;
   }
   return (
-    <ul className="divide-y divide-border rounded-lg border border-border">
+    <DataTable
+      columns={[
+        { label: 'Person' },
+        { label: 'Deleted' },
+        { label: 'Erased for good' },
+        { label: <span className="sr-only">Actions</span>, align: 'end' },
+      ]}
+    >
       {rows.map((item) => (
-        <li key={item.user.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-medium break-words text-foreground">{item.user.name}</p>
-              {item.orphan && <OrphanBadge />}
-            </div>
-            <p className="text-xs break-all text-muted-foreground">{item.user.email}</p>
-            <p className="text-xs text-muted-foreground tabular-nums">
-              Deleted {formatDate(item.deletedAt)} · erased for good on {formatDate(item.eraseAfter)}
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            className="shrink-0"
-            loading={busy === item.user.id}
-            disabled={busy !== null}
-            onClick={() => void restore(item)}
-          >
-            Restore
-          </Button>
-        </li>
+        <Row key={item.user.id}>
+          <Cell>
+            <PersonCell name={item.user.name} email={item.user.email} extra={item.orphan && <OrphanBadge />} />
+          </Cell>
+          <Cell className="whitespace-nowrap">
+            <Muted>
+              <span className="md:hidden">Deleted </span>
+              {formatDate(item.deletedAt)}
+            </Muted>
+          </Cell>
+          <Cell className="whitespace-nowrap">
+            <Muted>
+              <span className="md:hidden">Erased for good on </span>
+              {formatDate(item.eraseAfter)}
+            </Muted>
+          </Cell>
+          <Cell align="end">
+            <Button
+              variant="outline"
+              loading={busy === item.user.id}
+              disabled={busy !== null}
+              onClick={() => void restore(item)}
+            >
+              Restore
+            </Button>
+          </Cell>
+        </Row>
       ))}
-    </ul>
+    </DataTable>
   );
 }
 

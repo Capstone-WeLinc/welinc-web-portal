@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { api } from '../../lib/api';
 import { CODE_EXPIRED_MESSAGE, codeFailure, type EmailStep, type LauncherAnswer } from '../../lib/auth';
-import { HeroLabel, HeroNotice, heroButton } from './AuthHero';
+import { HeroLabel, HeroNotice, heroButton, heroCodeGroup, heroCodeSlot } from './AuthHero';
 
 type EmailCodeStepProps = {
   step: EmailStep;
@@ -17,9 +17,6 @@ type EmailCodeStepProps = {
 
 const CODE_LENGTH = 6;
 
-/** Six dark boxes on the hero, each 44px or more so a thumb can hit them. */
-const slotClass =
-  'size-11 border-white/15 bg-white/6 text-lg font-bold text-white sm:size-12 data-[active=true]:border-highlight/60 data-[active=true]:ring-highlight/40';
 
 /**
  * Suite spec 0009, AC-25 and AC-26: the sign in step for an unverified email. One real input
@@ -146,9 +143,9 @@ export default function EmailCodeStep({ step, onSignedIn, onBack }: EmailCodeSte
             aria-invalid={error ? true : undefined}
             containerClassName="justify-center"
           >
-            <InputOTPGroup>
+            <InputOTPGroup className={heroCodeGroup}>
               {Array.from({ length: CODE_LENGTH }, (_, i) => (
-                <InputOTPSlot key={i} index={i} className={slotClass} />
+                <InputOTPSlot key={i} index={i} className={heroCodeSlot} />
               ))}
             </InputOTPGroup>
           </InputOTP>

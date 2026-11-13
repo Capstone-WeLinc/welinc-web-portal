@@ -17,17 +17,26 @@ import type { AdminMe } from '@/lib/admin';
 import { endGrant, errorMessage, listGrants, type TemporaryGrant } from '@/lib/adminApi';
 import { formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { ViewEmpty, ViewError, ViewHeader } from '../AdminStates';
+import { Segmented, Toolbar, ViewEmpty, ViewError, ViewHeader } from '../AdminStates';
 import { useAsync } from '../useAsync';
 import { TemporaryAccessDialog } from './TemporaryAccessDialog';
+import { goToSignedOut } from '@/lib/session';
+import { Cell, DataTable, Muted, PersonCell, Row } from '../AdminTable';
 
 type State = 'live' | 'all';
 
 const END_REASONS: Record<NonNullable<TemporaryGrant['endReason']>, string> = {
-  EXPIRED: 'ran out',
-  ENDED_EARLY: 'ended early',
-  SUITE_ADMIN_REMOVED: 'ended when they stopped being a suite admin',
+  EXPIRED: 'Ran out',
+  ENDED_EARLY: 'Ended early',
+  SUITE_ADMIN_REMOVED: 'No longer a suite admin',
 };
+
+/** The End cell's second line: why it ended and by whom, or that it's still live. */
+function endNote(grant: TemporaryGrant): string {
+  if (!grant.endedAt) return 'Live';
+  const why = grant.endReason ? END_REASONS[grant.endReason] : 'Ended';
+  return grant.endedBy ? `${why} by ${grant.endedBy.name}` : why;
+}
 
 /**
  * Suite spec 0013, AC-10, AC-11, AC-23, AC-24: temporary access, newest first. A suite admin sees
@@ -48,7 +57,7 @@ export function TemporaryAccessView({ me, onChanged }: { me: AdminMe; onChanged:
       await endGrant(grant.id);
       if (grant.holder.id === me.user.id) {
         // Your own grant ended your web session (AC-10)
-        window.location.assign('/login?reason=logout');
+        goToSignedOut();
         return;
       }
       toast.success(`${grant.holder.name}'s ${grant.system} access has ended.`);
@@ -81,42 +90,29 @@ export function TemporaryAccessView({ me, onChanged }: { me: AdminMe; onChanged:
         title="Temporary access"
         context={
           me.suiteAdmin
-            ? 'Short, reasoned access a suite admin gives themselves to look inside a system.'
-            : `Suite admins who stepped into ${me.adminOf.join(' or ')}. You can end their access.`
+            ? 'Step into a system for a few hours, with a reason.'
+            : `Suite admins inside ${me.adminOf.join(' or ')}. You can end their access.`
         }
         action={
           me.suiteAdmin && (
             <Button size="touch" className="w-full sm:w-auto md:h-10" onClick={() => setStarting(true)}>
               <KeyRound aria-hidden="true" />
-              Temporary access
+              Start access
             </Button>
           )
         }
       />
-      <div role="radiogroup" aria-label="Which grants" className="mb-4 flex flex-wrap gap-2">
-        {(
-          [
-            ['live', 'Live now'],
-            ['all', 'History'],
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            role="radio"
-            aria-checked={state === value}
-            onClick={() => setState(value)}
-            className={cn(
-              'min-h-11 rounded-lg border px-4 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden md:min-h-9',
-              state === value
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border bg-card text-foreground hover:bg-accent',
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <Toolbar>
+        <Segmented
+          label="Which grants"
+          value={state}
+          onChange={setState}
+          options={[
+            { value: 'live', label: 'Live now' },
+            { value: 'all', label: 'History' },
+          ]}
+        />
+      </Toolbar>
 
       {load.kind === 'loading' && (
         <div aria-busy="true" className="flex flex-col gap-2">
@@ -140,28 +136,59 @@ export function TemporaryAccessView({ me, onChanged }: { me: AdminMe; onChanged:
       )}
       {load.kind === 'ready' && load.value.items.length > 0 && (
         <div className="flex flex-col gap-4">
-          <ul className="divide-y divide-border rounded-lg border border-border">
+          <DataTable
+            columns={[
+              { label: 'Who' },
+              { label: 'Access' },
+              { label: 'Reason' },
+              { label: 'Started' },
+              { label: 'End' },
+              { label: <span className="sr-only">Actions</span>, align: 'end' },
+            ]}
+          >
             {load.value.items.map((grant) => (
-              <li key={grant.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium break-words text-foreground">
-                    {grant.holder.name} · {grant.system} {grant.roleName}
+              <Row key={grant.id}>
+                <Cell>
+                  <PersonCell name={grant.holder.name} />
+                </Cell>
+                <Cell className="md:whitespace-nowrap">
+                  {grant.system} {grant.roleName}
+                </Cell>
+                <Cell className="max-w-sm">
+                  <p className="break-words text-foreground">"{grant.reason}"</p>
+                </Cell>
+                <Cell className="md:whitespace-nowrap">
+                  <Muted>
+                    <span className="md:hidden">Started </span>
+                    <time dateTime={grant.startedAt}>{formatDateTime(grant.startedAt)}</time>
+                  </Muted>
+                </Cell>
+                <Cell>
+                  <p className="text-xs text-foreground tabular-nums md:whitespace-nowrap">
+                    <span className="md:hidden">Ends </span>
+                    <time dateTime={grant.endedAt ?? grant.expiresAt}>
+                      {formatDateTime(grant.endedAt ?? grant.expiresAt)}
+                    </time>
                   </p>
-                  <p className="mt-1 text-sm break-words text-foreground">"{grant.reason}"</p>
-                  <p className="text-xs text-muted-foreground tabular-nums">
-                    {formatDateTime(grant.startedAt)} to {formatDateTime(grant.endedAt ?? grant.expiresAt)}
-                    {grant.endReason &&
-                      ` · ${END_REASONS[grant.endReason]}${grant.endedBy ? ` by ${grant.endedBy.name}` : ''}`}
+                  <p className={cn('text-xs', grant.endedAt ? 'text-muted-foreground' : 'font-medium text-success')}>
+                    {endNote(grant)}
                   </p>
-                </div>
-                {!grant.endedAt && (
-                  <Button variant="outline" className="shrink-0" disabled={busy} onClick={() => setEnding(grant)}>
-                    End now
-                  </Button>
-                )}
-              </li>
+                </Cell>
+                <Cell align="end">
+                  {!grant.endedAt && (
+                    <Button
+                      variant="outline"
+                      className="text-destructive hover:text-destructive"
+                      disabled={busy}
+                      onClick={() => setEnding(grant)}
+                    >
+                      End now
+                    </Button>
+                  )}
+                </Cell>
+              </Row>
             ))}
-          </ul>
+          </DataTable>
           {load.value.next && (
             <Button variant="outline" className="self-start" loading={loadingMore} onClick={() => void loadMore()}>
               Load more
@@ -176,13 +203,14 @@ export function TemporaryAccessView({ me, onChanged }: { me: AdminMe; onChanged:
             <AlertDialogTitle>End this {ending?.system} access now?</AlertDialogTitle>
             <AlertDialogDescription>
               {ending?.holder.id === me.user.id
-                ? 'This signs you out everywhere, the portal included, so you will sign in again.'
-                : `${ending?.holder.name ?? 'They'} loses the role at once and is signed out of every session that opened ${ending?.system}.`}
+                ? 'This signs you out everywhere, the portal too.'
+                : `${ending?.holder.name ?? 'They'} loses the role now and is signed out of ${ending?.system}.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Keep it</AlertDialogCancel>
             <AlertDialogAction
+              variant="destructive"
               disabled={busy}
               onClick={(e) => {
                 e.preventDefault();

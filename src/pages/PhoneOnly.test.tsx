@@ -12,6 +12,7 @@ vi.mock("../lib/api", () => ({
   api: { post: vi.fn(), get: vi.fn() },
 }));
 vi.mock("./admin/AdminEntry", () => ({ AdminEntry: () => null }));
+vi.mock("./admin/useAdminMe", () => ({ useAdminMe: () => null }));
 
 // covers: suite spec 0014 AC-5, AC-7 (the phone only state, the launcher line, APP_NOT_ALLOWED)
 

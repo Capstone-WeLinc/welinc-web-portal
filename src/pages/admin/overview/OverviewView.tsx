@@ -6,6 +6,7 @@ import { errorMessage, fetchReport, type AdminReport } from '@/lib/adminApi';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { ViewError, ViewHeader } from '../AdminStates';
 import { OrphanBadge } from '../people/Badges';
+import { Cell, DataTable, Muted, Row } from '../AdminTable';
 import { useEventCatalog } from '../useCatalogs';
 import { useAsync } from '../useAsync';
 import { useState } from 'react';
@@ -21,7 +22,7 @@ export function OverviewView() {
   const { state } = useAsync(String(attempt), fetchReport);
   return (
     <>
-      <ViewHeader title="Overview" context="Who can do what across the suite, and what needs a look." />
+      <ViewHeader title="Overview" context="Admins per system, what needs a look, and recent changes." />
       {state.kind === 'loading' && <OverviewSkeleton />}
       {state.kind === 'error' && (
         <ViewError
@@ -39,6 +40,12 @@ export function OverviewView() {
     </>
   );
 }
+
+/** The overview shows the latest few admin changes; the full history lives in Activity. */
+const RECENT_SHOWN = 8;
+
+/** Columns inside one bordered container; the 1px gaps over the border color draw the dividers. */
+const DIVIDED_GRID = 'grid gap-px overflow-hidden rounded-lg border border-border bg-border';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   const id = `overview-${title.toLowerCase().replaceAll(' ', '-')}`;
@@ -61,9 +68,10 @@ function AdminsPerSystem({ report }: { report: Report }) {
           No active admin in {report.systemsWithoutAdmin.join(', ')}. Make someone admin there.
         </p>
       )}
-      <div className="grid gap-3 lg:grid-cols-3">
+      {/* One container split by 1px dividers, not a bordered box per system (design.md: no card in a card) */}
+      <div className={DIVIDED_GRID + ' lg:grid-cols-3'}>
         {report.systems.map((system) => (
-          <div key={system.system} className="flex min-w-0 flex-col gap-3 rounded-lg border border-border p-4">
+          <div key={system.system} className="flex min-w-0 flex-col gap-3 bg-card p-4">
             <div>
               <p className="text-sm font-semibold text-foreground">{system.system}</p>
               <p className="text-xs text-muted-foreground">
@@ -71,19 +79,23 @@ function AdminsPerSystem({ report }: { report: Report }) {
                 {system.admins.length === 1 ? '' : 's'}
               </p>
             </div>
-            <ul className="flex flex-col gap-2">
+            {/* One line per admin: name, then the date it started; who granted it is on their page */}
+            <ul className="flex flex-col gap-1.5">
               {system.admins.map((admin) => (
-                <li key={admin.id} className="min-w-0">
+                <li key={admin.id} className="flex min-w-0 items-baseline justify-between gap-3">
                   <Link
                     to={`/admin/people/${admin.id}?system=${system.system}`}
-                    className="text-sm break-words text-primary underline-offset-4 hover:underline"
+                    className="min-w-0 truncate text-sm text-primary underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
                   >
                     {admin.name}
                   </Link>
-                  <p className="text-xs text-muted-foreground tabular-nums">
-                    Since {formatDate(admin.since)}
-                    {admin.grantedBy ? ` · by ${admin.grantedBy.name}` : ''}
-                  </p>
+                  <time
+                    dateTime={admin.since}
+                    className="shrink-0 text-xs text-muted-foreground tabular-nums"
+                    aria-label={`admin since ${formatDate(admin.since)}`}
+                  >
+                    {formatDate(admin.since)}
+                  </time>
                 </li>
               ))}
             </ul>
@@ -91,11 +103,14 @@ function AdminsPerSystem({ report }: { report: Report }) {
               <ul className="flex flex-col gap-2 border-t border-border pt-3">
                 {system.temporaryGrants.map((grant) => (
                   <li key={grant.id} className="flex items-start gap-2 text-xs text-foreground">
-                    <Clock className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                    <span className="min-w-0 break-words">
+                    <Clock className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <Link
+                      to="/admin/temporary-access"
+                      className="min-w-0 break-words underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+                    >
                       {grant.holder.name}, temporary {grant.roleName} until{' '}
-                      <span className="tabular-nums">{formatDateTime(grant.expiresAt)}</span>: "{grant.reason}"
-                    </span>
+                      <span className="tabular-nums">{formatDateTime(grant.expiresAt)}</span>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -184,9 +199,9 @@ function Attention({ report }: { report: Report }) {
       {open.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nothing needs a look right now.</p>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className={DIVIDED_GRID + ' md:grid-cols-2'}>
           {open.map((group) => (
-            <div key={group.title} className="flex min-w-0 flex-col gap-2 rounded-lg border border-border p-4">
+            <div key={group.title} className="flex min-w-0 flex-col gap-2 bg-card p-4 md:last:odd:col-span-2">
               <p className="text-sm font-semibold text-foreground">
                 {group.title} <span className="font-normal text-muted-foreground tabular-nums">({group.count})</span>
               </p>
@@ -218,33 +233,44 @@ function RecentChanges({ report }: { report: Report }) {
       {report.recentAdminChanges.length === 0 ? (
         <p className="text-sm text-muted-foreground">No admin changes yet.</p>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border">
-          {report.recentAdminChanges.map((change) => (
-            <li key={change.id} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:gap-4">
-              <time dateTime={change.at} className="shrink-0 text-xs text-muted-foreground tabular-nums sm:w-32">
-                {formatDateTime(change.at)}
-              </time>
-              <div className="min-w-0 text-sm text-foreground">
-                <p className="break-words">
-                  <Link
-                    to={`/admin/people/${change.user.id}${change.system ? `?system=${change.system}` : ''}`}
-                    className="font-medium text-primary underline-offset-4 hover:underline"
-                  >
-                    {change.user.name}
-                  </Link>
-                  {': '}
+        <DataTable columns={[{ label: 'When' }, { label: 'Person' }, { label: 'Change' }, { label: 'By' }]}>
+          {report.recentAdminChanges.slice(0, RECENT_SHOWN).map((change) => (
+            <Row key={change.id}>
+              <Cell className="whitespace-nowrap">
+                <time dateTime={change.at}>
+                  <Muted>{formatDateTime(change.at)}</Muted>
+                </time>
+              </Cell>
+              <Cell>
+                <Link
+                  to={`/admin/people/${change.user.id}${change.system ? `?system=${change.system}` : ''}`}
+                  className="font-medium break-words text-primary underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+                >
+                  {change.user.name}
+                </Link>
+              </Cell>
+              <Cell>
+                <p className="break-words text-foreground">
                   {label(change.type)}
                   {change.system ? ` (${change.system})` : ''}
                   {change.newValue && change.type === 'ROLE_CHANGED' ? `, now ${change.newValue}` : ''}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {change.actor ? `By ${change.actor.name}` : 'By WeLinc (automatic)'}
-                  {change.reason ? ` · "${change.reason}"` : ''}
-                </p>
-              </div>
-            </li>
+                {change.reason && <p className="text-xs break-words text-muted-foreground">"{change.reason}"</p>}
+              </Cell>
+              <Cell>
+                <Muted>{change.actor ? change.actor.name : 'WeLinc (automatic)'}</Muted>
+              </Cell>
+            </Row>
           ))}
-        </ul>
+        </DataTable>
+      )}
+      {report.recentAdminChanges.length > RECENT_SHOWN && (
+        <Link
+          to="/admin/activity?system=all"
+          className="self-start text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+        >
+          See all activity
+        </Link>
       )}
     </Section>
   );

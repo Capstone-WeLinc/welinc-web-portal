@@ -14,6 +14,7 @@ vi.mock("../lib/api", () => ({
 
 // These tests count /auth/sso calls; the Admin entry's own /auth/admin/me is tested on its own
 vi.mock("./admin/AdminEntry", () => ({ AdminEntry: () => null }));
+vi.mock("./admin/useAdminMe", () => ({ useAdminMe: () => null }));
 
 const post = vi.mocked(api.post);
 const get = vi.mocked(api.get);
@@ -78,7 +79,7 @@ async function submit(email: string, password = "pw") {
   const user = userEvent.setup();
   await user.type(await screen.findByPlaceholderText(/you@welinc.com/), email);
   await user.type(screen.getByPlaceholderText("Enter password"), password);
-  await user.click(screen.getByRole("button", { name: "Sign In" }));
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
 }
 
 // covers: spec 0003 AC-11, AC-36; spec 0007 AC-11 to AC-14, AC-16 to AC-19
@@ -150,7 +151,7 @@ describe("Portal", () => {
     await waitFor(() =>
       expect(replace).toHaveBeenCalledWith("http://localhost:8001"),
     );
-    expect(screen.queryByRole("button", { name: "Sign In" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Sign in" })).toBeNull();
     view.unmount();
 
     get.mockResolvedValue({ data: TWO });
@@ -211,12 +212,23 @@ describe("Portal", () => {
     for (const reason of ["logout", "idle", "maxage"]) {
       const view = renderPortal(`/login?reason=${reason}`);
       expect(
-        await screen.findByRole("button", { name: "Sign In" }),
+        await screen.findByRole("button", { name: "Sign in" }),
       ).toBeTruthy();
       expect(screen.getByRole("status")).toBeTruthy();
       view.unmount();
     }
     expect(get).not.toHaveBeenCalled();
+  });
+
+  it("drops the reason from the address after a sign in, so Back never draws the form over a live session", async () => {
+    post.mockResolvedValue({ data: TWO });
+    const replaceState = vi.spyOn(window.history, "replaceState");
+    renderPortal("/login?reason=logout");
+    await submit("pedro");
+
+    await screen.findAllByRole("link");
+    expect(replaceState.mock.calls.map((call) => call[2])).toContain("/");
+    replaceState.mockRestore();
   });
 
   it("shows the no access state with the email, and the error state with Retry", async () => {
@@ -246,9 +258,11 @@ describe("Portal", () => {
   it("keeps the lockout, attempts and no access messages on the form", async () => {
     get.mockRejectedValue(httpError(401));
     for (const [data, text] of [
-      [{ isLocked: true }, "locked"],
-      [{ remainingAttempts: 2 }, "2 attempts remaining"],
-      [{ code: "NO_SYSTEM_ACCESS" }, "no assigned subsystem"],
+      [{ isLocked: true }, "Too many wrong passwords"],
+      [{ code: "ACCOUNT_INACTIVE" }, "deactivated"],
+      [{ remainingAttempts: 2 }, "Incorrect email or password."],
+      [{ remainingAttempts: 1 }, "One more wrong try locks your account for 15 minutes"],
+      [{ code: "NO_SYSTEM_ACCESS" }, "no access to any WeLinc system"],
     ] as const) {
       post.mockRejectedValueOnce(httpError(403, data));
       const view = renderPortal("/login");

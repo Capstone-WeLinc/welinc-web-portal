@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, Navigate, NavLink, useLocation, useParams } from 'react-router-dom';
-import { ArrowLeft, Inbox, RotateCw, ShieldCheck, ShieldOff, TriangleAlert } from 'lucide-react';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
+import { ArrowLeft, RotateCw, ShieldCheck, ShieldOff, TriangleAlert } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { askForCode, errorStatus, fetchAdminMe, isAdmin, needsCode, type AdminMe } from '@/lib/admin';
 import { cn } from '@/lib/utils';
 import { LauncherShell } from '../launcher/LauncherShell';
-import { landingView, viewHref, viewsFor } from './adminViews';
+import { AdminShell } from './AdminShell';
+import { landingView, viewHref, viewsFor, type AdminViewPath } from './adminViews';
 import { ActivityView } from './activity/ActivityView';
 import { PermissionsView } from './permissions/PermissionsView';
 import { DeletionRequestsView } from './deletion/DeletionRequestsView';
@@ -15,7 +16,7 @@ import { PeopleView } from './people/PeopleView';
 import { PersonPage } from './people/PersonPage';
 import { OverviewView } from './overview/OverviewView';
 import { SuiteAdminsView } from './suite/SuiteAdminsView';
-import { TemporaryAccessBanner } from './temporary/TemporaryAccessBanner';
+import { TemporaryAccessBanner, TemporaryAccessChip } from './temporary/TemporaryAccessBanner';
 import { TemporaryAccessView } from './temporary/TemporaryAccessView';
 
 type Load = { kind: 'loading' } | { kind: 'signed-out' } | { kind: 'error' } | { kind: 'ready'; me: AdminMe };
@@ -64,11 +65,11 @@ export default function AdminPage() {
     case 'ready':
       if (!isAdmin(load.me)) return <NotAnAdmin me={load.me} />;
       if (needsCode(load.me)) return <CodeOwed me={load.me} onPassed={reload} />;
-      return <AdminShell me={load.me} onChanged={refresh} />;
+      return <AdminConsole me={load.me} onChanged={refresh} />;
   }
 }
 
-function AdminShell({ me, onChanged }: { me: AdminMe; onChanged: () => void }) {
+function AdminConsole({ me, onChanged }: { me: AdminMe; onChanged: () => void }) {
   const params = useParams();
   const { search } = useLocation();
   // /admin/people/:id and /admin/people/new sit under People
@@ -77,44 +78,28 @@ function AdminShell({ me, onChanged }: { me: AdminMe; onChanged: () => void }) {
   const current = views.find((v) => v.path === view);
   if (!current) return <Navigate to={viewHref(landingView(me), search)} replace />;
 
+  const grants = me.temporaryGrants?.length ? me.temporaryGrants : undefined;
+  // The full band, with Open and End now, where temporary access is the subject; a pill elsewhere
+  const fullBand = current.path === 'overview' || current.path === 'temporary-access';
+  // Lists and the matrix sit on the canvas in their own bordered tables; one person's page and
+  // the Add person form get a card, since their sections have no surface of their own
+  const onCard = Boolean(params.id);
+
   return (
-    <LauncherShell user={me.user}>
-      <TemporaryAccessBanner grants={me.temporaryGrants} />
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-foreground">Admin</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {me.suiteAdmin
-            ? 'Suite admin: every account and every system.'
-            : `Admin of ${me.adminOf.join(' and ')}: your system's people only.`}
-        </p>
-      </div>
-      <div className="flex flex-col gap-6 md:flex-row">
-        <nav aria-label="Admin sections" className="md:w-56 md:shrink-0">
-          <ul className="flex flex-wrap gap-1 md:flex-col">
-            {views.map((v) => (
-              <li key={v.path}>
-                <NavLink
-                  to={viewHref(v.path, search)}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex min-h-11 items-center rounded-lg border-l-2 px-3 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden',
-                      isActive || v.path === view
-                        ? 'border-highlight bg-card font-medium text-foreground'
-                        : 'border-transparent text-muted-foreground hover:bg-accent hover:text-foreground',
-                    )
-                  }
-                >
-                  {v.label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <section aria-labelledby="admin-view-title" className="min-w-0 flex-1 rounded-lg border border-border bg-card p-4 sm:p-5">
-          <AdminViewBody me={me} view={current.path} label={current.label} id={params.id} onChanged={onChanged} />
-        </section>
-      </div>
-    </LauncherShell>
+    <AdminShell
+      me={me}
+      views={views}
+      current={current.path}
+      banner={grants && fullBand ? <TemporaryAccessBanner grants={grants} /> : undefined}
+      status={grants && !fullBand ? <TemporaryAccessChip grants={grants} /> : undefined}
+    >
+      <section
+        aria-labelledby="admin-view-title"
+        className={cn('min-w-0', onCard && 'rounded-lg border border-border bg-card p-4 shadow-xs sm:p-6')}
+      >
+        <AdminViewBody me={me} view={current.path} id={params.id} onChanged={onChanged} />
+      </section>
+    </AdminShell>
   );
 }
 
@@ -122,13 +107,11 @@ function AdminShell({ me, onChanged }: { me: AdminMe; onChanged: () => void }) {
 function AdminViewBody({
   me,
   view,
-  label,
   id,
   onChanged,
 }: {
   me: AdminMe;
-  view: string;
-  label: string;
+  view: AdminViewPath;
   id?: string;
   onChanged: () => void;
 }) {
@@ -149,20 +132,11 @@ function AdminViewBody({
       return <ActivityView me={me} />;
     case 'permissions':
       return <PermissionsView me={me} />;
-    default:
-      return (
-        <>
-          <h2 id="admin-view-title" className="text-lg font-semibold text-foreground">
-            {label}
-          </h2>
-          <div className="flex flex-col items-start gap-3 py-8">
-            <div className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-strong">
-              <Inbox className="size-5" aria-hidden="true" />
-            </div>
-            <p className="text-sm text-muted-foreground">Nothing to show here yet.</p>
-          </div>
-        </>
-      );
+    default: {
+      // Unknown paths already redirected above; a view added without a case fails the build here
+      const missing: never = view;
+      return missing;
+    }
   }
 }
 
@@ -177,7 +151,7 @@ function CodeOwed({ me, onPassed }: { me: AdminMe; onPassed: () => void }) {
   }, [ask]);
 
   return (
-    <LauncherShell user={me.user}>
+    <LauncherShell user={me.user} adminEntry={false} homeLink>
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
         <div className="flex size-12 items-center justify-center rounded-lg bg-muted text-muted-strong">
           <ShieldCheck className="size-6" aria-hidden="true" />
@@ -197,7 +171,7 @@ function CodeOwed({ me, onPassed }: { me: AdminMe; onPassed: () => void }) {
 
 function NotAnAdmin({ me }: { me: AdminMe }) {
   return (
-    <LauncherShell user={me.user}>
+    <LauncherShell user={me.user} adminEntry={false} homeLink>
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
         <div className="flex size-12 items-center justify-center rounded-lg bg-muted text-muted-strong">
           <ShieldOff className="size-6" aria-hidden="true" />
@@ -215,7 +189,7 @@ function BackToLauncher() {
   return (
     <Link to="/" className={cn(buttonVariants({ variant: 'ghost', size: 'touch' }))}>
       <ArrowLeft aria-hidden="true" />
-      Back to your systems
+      Back to home
     </Link>
   );
 }

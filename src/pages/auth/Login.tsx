@@ -1,12 +1,19 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Eye, EyeOff, Truck } from 'lucide-react';
-import { isAxiosError } from 'axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { api } from '../../lib/api';
-import { isEmailStep, loginRequest, noticeFor, type EmailStep, type LauncherAnswer, type Notice } from '../../lib/auth';
+import {
+  isEmailStep,
+  loginFailure,
+  loginRequest,
+  noticeFor,
+  type EmailStep,
+  type LauncherAnswer,
+  type Notice,
+} from '../../lib/auth';
 import EmailCodeStep from './EmailCodeStep';
 import {
   HeroBackdrop,
@@ -81,22 +88,7 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
       }
       onSignedIn(data);
     } catch (err) {
-      const axiosError = isAxiosError(err) ? err : undefined;
-      const data = axiosError?.response?.data;
-      if (data?.code === 'NO_SYSTEM_ACCESS') {
-        setError('Your account has no assigned subsystem access. Contact your administrator.');
-      } else if (data?.isLocked) {
-        setError('Your account is locked. Contact your Admin to unlock.');
-      } else if (data?.remainingAttempts !== undefined) {
-        setError(`Invalid credentials. ${data.remainingAttempts} attempts remaining.`);
-      } else if (axiosError?.response?.status === 401) {
-        setError('Invalid email or password.');
-      } else if (axiosError?.response?.status === 400) {
-        const msg = data?.message;
-        setError(Array.isArray(msg) ? msg.join(', ') : msg || 'Validation error. Please check your inputs.');
-      } else {
-        setError('Unable to reach the sign in service. Check your connection and try again.');
-      }
+      setError(loginFailure(err));
       setLoading(false);
     }
   };
@@ -123,7 +115,7 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
                   <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-highlight shadow-lg shadow-highlight/20">
                     <Truck size={22} className="text-primary" strokeWidth={2.5} aria-hidden="true" />
                   </div>
-                  <h2 className="mb-1 text-2xl font-black text-white">Sign In</h2>
+                  <h2 className="mb-1 text-2xl font-black text-white">Sign in</h2>
                   <p className="text-sm text-white/50">Enter your credentials to access your workspace</p>
                 </div>
 
@@ -150,7 +142,7 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate={false}>
                   <div>
-                    <HeroLabel htmlFor="login-email">Email or Username</HeroLabel>
+                    <HeroLabel htmlFor="login-email">Email or username</HeroLabel>
                     <Input
                       ref={emailRef}
                       id="login-email"
@@ -198,7 +190,7 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
                   </div>
 
                   <Button id="login-submit" type="submit" loading={loading} className={heroButton}>
-                    {loading ? 'Signing in' : 'Sign In'}
+                    {loading ? 'Signing in' : 'Sign in'}
                   </Button>
                 </form>
               </>
