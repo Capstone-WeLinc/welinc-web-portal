@@ -241,7 +241,8 @@ function PeopleTable({
       <table className="w-full text-sm">
         <thead className="bg-muted">
           <tr>
-            <th scope="col" className={TH}>
+            {/* break-all lets the browser shrink this column until emails split mid word; a floor keeps a typical address whole */}
+            <th scope="col" className={cn(TH, 'min-w-64')}>
               Person
             </th>
             <th scope="col" className={TH}>

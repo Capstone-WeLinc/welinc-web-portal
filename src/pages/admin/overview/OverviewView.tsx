@@ -109,7 +109,7 @@ function AdminsPerSystem({ report }: { report: Report }) {
                       className="min-w-0 break-words underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
                     >
                       {grant.holder.name}, temporary {grant.roleName} until{' '}
-                      <span className="tabular-nums">{formatDateTime(grant.expiresAt)}</span>
+                      <span className="whitespace-nowrap tabular-nums">{formatDateTime(grant.expiresAt)}</span>
                     </Link>
                   </li>
                 ))}
