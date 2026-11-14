@@ -2,20 +2,20 @@
 
 ## Overview
 
-The SSO portal: a React 19 + Vite SPA on port 8000. It is the front door for the suite. A user logs in against `welinc-auth` (through the gateway), which sets its HttpOnly `welinc_sso` cookie and answers the systems the user holds. The portal then shows the launcher, sends them straight into their one system, or returns them to a system's code flow with `/auth/authorize/resume` (specs 0003 and 0007). It holds no token and stores nothing about the session. It also holds forgot password. This repo is shared, so keep changes small.
+The SSO portal: a React 19 + Vite SPA. Login goes to `welinc-auth` through the gateway, which sets the HttpOnly `welinc_sso` cookie; the portal holds no token and stores nothing about the session. It shows the launcher, sends the user straight into their one system, or returns them to a system's code flow with `/auth/authorize/resume` (specs 0003 and 0007). It also holds forgot password.
 
 ## Key files
 
 | File | Owns |
 |---|---|
-| `src/App.tsx` | Routes: `/` and `/login` both render `Portal`; also `/forgot-password`, and the lazy loaded `/admin`, `/admin/:view` and `/admin/people/:id` (spec 0013, see `src/pages/admin/AGENTS.md`) |
-| `src/pages/Portal.tsx` | Chooses the screen from the address and the SSO session: the form, the launcher, no access, or straight in. Re-checks when a tab comes back, at most every 10 seconds |
-| `src/pages/launcher/` | The launcher: cards (`SystemCard`), the Admin card in a Manage section for admins (`AdminCard`; the launcher hides the top bar Admin entry), account menu and shell, Sign out dialog, the loading, error and no access states |
-| `src/pages/auth/Login.tsx` | Login form, with each error code's message and Sign in again. `Portal` decides when it shows |
-| `src/pages/auth/EmailCodeStep.tsx` | Spec 0009: the sign in step for an unverified email (`/auth/login` answers `EMAIL_VERIFICATION_REQUIRED`; `isEmailStep` and `codeFailure` in `lib/auth.ts`). A six box `InputOTP` over one real `one-time-code` input, Resend countdown, and the ticket held in component state only. A new login client must check for the step body |
+| `src/App.tsx` | Routes; `/admin*` is lazy loaded (see `src/pages/admin/AGENTS.md`) |
+| `src/pages/Portal.tsx` | Picks the screen (form, launcher, no access, straight in) from the address and the SSO session |
+| `src/pages/launcher/` | The launcher: `SystemCard`, `AdminCard`, account menu and shell, Sign out dialog, the loading, error and no access states |
+| `src/pages/auth/Login.tsx` | Login form; its messages come from `lib/auth.ts` (`loginFailure`, `noticeFor`). `Portal` decides when it shows |
+| `src/pages/auth/EmailCodeStep.tsx` | Spec 0009 email verification step: `/auth/login` answers `EMAIL_VERIFICATION_REQUIRED`; a new login caller must check for it (`isEmailStep` in `lib/auth.ts`). The ticket lives in component state only |
 | `src/pages/auth/ForgotPassword.tsx` | OTP and password reset flow |
 | `src/lib/api.ts` | Axios client, base URL from `VITE_API_BASE_URL`, `withCredentials` so the SSO cookie goes along; no token |
-| `src/lib/auth.ts` | The pure login helpers: `noticeFor` (the message per error code and reason), `loginRequest`, `startFor`, `screenForAnswer`, `screenForSso`, `resumeAddress`, `currentSystem` |
+| `src/lib/auth.ts` | Pure login helpers: notices and error messages, the screen choice, the resume address |
 | `src/lib/session.ts`, `src/lib/launcher.ts` | `checkSso` and `signOutEverywhere`; the launcher's display rules (greeting, initials, picture) |
 | `src/components/LogoMark.tsx`, `src/assets/` | The SVG logo mark (design.md: never the square `welinc-logo.jpg` at icon size) and the bundled login images |
 | `src/components/ui/` | shadcn components, including the sonner `Toaster`; `src/lib/notify.ts` has `notifyError` |
@@ -31,13 +31,13 @@ npm run build:local  # same, with the committed .env.development (use this on yo
 npm test          # Vitest, run once
 ```
 
-There is no `typecheck` script. `npm test` runs Vitest (jsdom, Testing Library; `vitest.config.ts`, setup in `src/test/setup.ts`), with tests beside the source as `*.test.ts(x)`.
+Tests sit beside the source as `*.test.ts(x)`.
 
 ## Conventions
 
-- Tailwind v4 and shadcn, like web-vrms. Use the token utilities from `src/index.css` (`bg-primary`, `text-muted-foreground`), never raw hex or arbitrary values: lint fails on them. `design.md` at the workspace root governs the look.
+- Tailwind v4 and shadcn. Use the token utilities from `src/index.css` (`bg-primary`, `text-muted-foreground`), never raw hex or arbitrary values: lint fails on them. `design.md` at the workspace root governs the look.
 - Routing rules are spec 0007, AC-10 to AC-14: an app initiated login never shows the launcher, and an `error` in the address never forwards (`from` only marks the current system's card, `currentSystem` in `lib/auth.ts`).
-- Each system's address comes from welinc-auth's login answer (`url`), and the API from `VITE_API_BASE_URL`. `VITE_*` values ship to the browser, so never put secrets in them. Document new ones in `.env.example` only.
+- Each system's address comes from welinc-auth's login answer (`url`), never from env; the API from `VITE_API_BASE_URL`.
 - `VITE_API_BASE_URL` is checked by `env.schema.ts`, run from `vite.config.ts` before dev and every build (spec 0010): missing or malformed stops it, and a production build also refuses `http` and `localhost`. `src/` reads it with no `||` fallback (`no-localhost-fallback.test.ts` fails on a local address outside comments). A new `VITE_*` name goes in `env.schema.ts`, `.env.example`, `.env.development` and `src/vite-env.d.ts` (the drift test in `env.schema.test.ts` checks the first three), plus `env:` in `ci.yml` and an `ARG` in `Dockerfile.prod`.
 - Never keep a token, a user or a session flag in `localStorage` or a URL (spec 0003, AC-36). The session is welinc-auth's `welinc_sso` cookie, which no script can read.
 - Touch targets are 44px on phones: the default `Button` size adds `max-sm:h-11` and the dialog Close is `size-11` below `sm`. Keep new controls at that height.
@@ -45,8 +45,7 @@ There is no `typecheck` script. `npm test` runs Vitest (jsdom, Testing Library; 
 ## Gotchas
 
 - Only roles for systems `VRMS`, `VMMS` or `BMS` count. A user with none gets 403 `NO_SYSTEM_ACCESS` from `/auth/login` and no session.
-- `.env.development` is committed with dev defaults. Personal overrides go in `.env.local`.
-- Changing the redirect or the token handoff touches auth and every subsystem, so it needs a spec first.
+- Personal env overrides go in `.env.local`.
 - On Windows, run Vitest from a path with an uppercase drive letter (`C:/Users/...`). From Git Bash's `/c/Users/...` every test file fails with "Vitest failed to find the current suite".
 
 ## Agent skills
