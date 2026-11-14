@@ -78,7 +78,7 @@ function GrantBand({ grant, url }: { grant: Grant; url?: string }) {
         <Clock className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
         <span>
           Temporary <strong>{grant.system} {grant.roleName}</strong> until{' '}
-          <time dateTime={grant.expiresAt} className="tabular-nums">
+          <time dateTime={grant.expiresAt} className="whitespace-nowrap tabular-nums">
             {formatDateTime(grant.expiresAt)}
           </time>
           .

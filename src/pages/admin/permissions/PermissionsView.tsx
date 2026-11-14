@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Lock } from 'lucide-react';
+import { Check, Lock, Minus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -99,7 +99,7 @@ function MatrixEditor({
 
   return (
     <div className="flex flex-col gap-3">
-      {anyLocked && (
+      {editable && anyLocked && (
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Lock className="size-3.5 shrink-0" aria-hidden="true" />
           Locked: that role always keeps this setting.
@@ -141,6 +141,26 @@ function MatrixEditor({
                       const locked = isLocked(p, role.code);
                       const value = shownValue(matrix, draft, role.code, p.key);
                       const changed = draft[`${role.code}|${p.key}`] !== undefined;
+                      // Read only: a disabled checkbox loses its accent color, so ticked and
+                      // empty look alike. Show a plain mark instead; nothing here can be toggled.
+                      if (!editable) {
+                        return (
+                          <div
+                            key={role.code}
+                            className="flex min-h-11 items-center gap-2 rounded-md px-2 md:min-h-9 md:w-28 md:justify-center"
+                          >
+                            {value ? (
+                              <Check aria-hidden="true" className="size-5 shrink-0 text-primary" />
+                            ) : (
+                              <Minus aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
+                            )}
+                            <span className={cn('text-sm md:sr-only', value ? 'text-foreground' : 'text-muted-foreground')}>
+                              {role.name}
+                            </span>
+                            <span className="sr-only">{value ? ': allowed' : ': not allowed'}</span>
+                          </div>
+                        );
+                      }
                       return (
                         <label
                           key={role.code}
