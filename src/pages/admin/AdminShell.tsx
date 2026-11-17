@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { ChevronRight, House, Menu } from 'lucide-react';
 import { LogoMark } from '@/components/LogoMark';
+import { CrashBoundary } from '@/components/monitoring/CrashBoundary';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import type { AdminMe } from '@/lib/admin';
 import { cn } from '@/lib/utils';
@@ -48,7 +49,7 @@ function standing(me: AdminMe): string {
  * menu past that (a suite admin has seven).
  */
 export function AdminShell({ me, views, current, banner, status, children }: Props) {
-  const { search } = useLocation();
+  const { pathname, search } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const bottomBar = views.length <= BOTTOM_BAR_MAX;
   const currentView = views.find((v) => v.path === current);
@@ -98,7 +99,12 @@ export function AdminShell({ me, views, current, banner, status, children }: Pro
         </header>
 
         {banner && <div className="px-4 pt-4 sm:px-6 lg:px-8">{banner}</div>}
-        <main className={cn('flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8', bottomBar && 'max-md:pb-24')}>{children}</main>
+        <main className={cn('flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8', bottomBar && 'max-md:pb-24')}>
+          {/* VRMS spec 0025, AC-7: a view crash keeps the sidebar; another view clears it */}
+          <CrashBoundary key={pathname} variant="page">
+            {children}
+          </CrashBoundary>
+        </main>
       </div>
 
       {bottomBar ? (

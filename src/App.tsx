@@ -9,6 +9,11 @@ import { onSignedOutElsewhere } from './lib/session';
 
 // Only admins open the admin section, so its code loads when they do, not with the launcher
 const AdminPage = lazy(() => import('./pages/admin/AdminPage'));
+// VRMS spec 0025, AC-16: only in builds made with VITE_SENTRY_TEST_ROUTES=true (staging); a build
+// time constant, so every other build leaves the page out entirely
+const SentryTestPage =
+  import.meta.env.VITE_SENTRY_TEST_ROUTES === 'true' ? lazy(() => import('./pages/debug/SentryTestPage')) : null;
+
 const admin = (
   <Suspense fallback={null}>
     <AdminPage />
@@ -43,6 +48,16 @@ export default function App() {
           <Route path="/admin/:view" element={admin} />
           {/* AC-23 deep links: /admin/people/new and /admin/people/:id, both with ?system= */}
           <Route path="/admin/people/:id" element={admin} />
+          {SentryTestPage && (
+            <Route
+              path="/debug/sentry"
+              element={
+                <Suspense fallback={null}>
+                  <SentryTestPage />
+                </Suspense>
+              }
+            />
+          )}
           <Route path="/portal" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

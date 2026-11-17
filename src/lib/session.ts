@@ -1,11 +1,16 @@
 import { api } from './api';
 import { ssoFailure, type LauncherAnswer, type SsoResult } from './auth';
+import { setMonitoringUser } from './monitoring/sentry';
 
 /** Asks welinc-auth for the SSO session and the launcher answer. Never counts as activity. */
 export function checkSso(): Promise<SsoResult> {
   return api
     .get<LauncherAnswer>('/auth/sso')
-    .then(({ data }): SsoResult => ({ kind: 'live', answer: data }))
+    .then(({ data }): SsoResult => {
+      // VRMS spec 0025: the person's id (only) on this tab's error reports
+      setMonitoringUser({ id: data.user.id });
+      return { kind: 'live', answer: data };
+    })
     .catch(ssoFailure);
 }
 
@@ -18,6 +23,7 @@ const SIGNED_OUT = 'signed-out';
  * live on other origins and find out on their next call to their own backend.
  */
 export function goToSignedOut(): void {
+  setMonitoringUser(null);
   try {
     const channel = new BroadcastChannel(SESSION_CHANNEL);
     channel.postMessage(SIGNED_OUT);

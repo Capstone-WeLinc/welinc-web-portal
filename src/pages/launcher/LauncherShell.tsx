@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ChevronDown, LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -14,6 +14,7 @@ import {
 import type { LauncherAnswer } from '@/lib/auth';
 import { initialsOf, pictureUrl } from '@/lib/launcher';
 import { LogoMark } from '@/components/LogoMark';
+import { CrashBoundary } from '@/components/monitoring/CrashBoundary';
 import { cn } from '@/lib/utils';
 import { AdminEntry } from '../admin/AdminEntry';
 import { SignOutDialog } from './SignOutDialog';
@@ -124,6 +125,7 @@ export function LauncherShell({
   overlap?: boolean;
   children: ReactNode;
 }) {
+  const { pathname } = useLocation();
   return (
     <div className="min-h-screen bg-background">
       <div className="relative overflow-hidden bg-hero text-white">
@@ -162,7 +164,10 @@ export function LauncherShell({
           hero && overlap ? '-mt-12 pb-10 sm:-mt-14' : 'py-6 sm:py-8',
         )}
       >
-        {children}
+        {/* VRMS spec 0025, AC-7: a page crash keeps the brand band; another page clears it */}
+        <CrashBoundary key={pathname} variant="page">
+          {children}
+        </CrashBoundary>
       </main>
     </div>
   );
