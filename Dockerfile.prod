@@ -5,6 +5,12 @@ RUN npm ci
 COPY . .
 # Spec 0010: the deploy passes the hosted address; the build refuses a missing, http or localhost one
 ARG VITE_API_BASE_URL
+# VRMS spec 0025: optional, blank means off
+ARG VITE_SENTRY_DSN
+ARG VITE_SENTRY_ENVIRONMENT
+ARG VITE_SENTRY_RELEASE
+ARG VITE_SENTRY_TUNNEL
+ARG VITE_SENTRY_TEST_ROUTES
 RUN npx vite build
 
 FROM nginx:alpine

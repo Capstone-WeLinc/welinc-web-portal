@@ -1,4 +1,5 @@
 import { api } from './api';
+import { setMonitoringStanding } from './monitoring/sentry';
 
 /**
  * Suite spec 0013: the portal admin section's client side. Every `/auth/admin/*` call is
@@ -35,6 +36,8 @@ export function needsCode(me: AdminMe): boolean {
 
 export async function fetchAdminMe(): Promise<AdminMe> {
   const { data } = await api.get<AdminMe>('/auth/admin/me');
+  // VRMS spec 0025: the role tag (suite_admin, system_admin or user) on this tab's error reports
+  setMonitoringStanding(data);
   return data;
 }
 

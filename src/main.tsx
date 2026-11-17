@@ -3,9 +3,20 @@ import { createRoot } from 'react-dom/client';
 import '@fontsource-variable/inter';
 import './index.css';
 import App from './App.tsx';
+import { CrashBoundary } from './components/monitoring/CrashBoundary';
+import { installChunkReload } from './lib/monitoring/chunkReload';
+import { initMonitoring, rootErrorHandlers } from './lib/monitoring/sentry';
 
-createRoot(document.getElementById('root')!).render(
+// VRMS spec 0025: error monitoring starts before React (off with no VITE_SENTRY_DSN), and a lazy
+// file that vanished after a deploy reloads the page once (AC-8)
+initMonitoring();
+installChunkReload();
+
+// AC-7: a crash outside a shell (the sign in pages, or a shell itself) shows the full page screen
+createRoot(document.getElementById('root')!, rootErrorHandlers).render(
   <StrictMode>
-    <App />
+    <CrashBoundary variant="full">
+      <App />
+    </CrashBoundary>
   </StrictMode>,
 );
