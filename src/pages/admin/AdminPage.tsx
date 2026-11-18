@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, RotateCw, ShieldCheck, ShieldOff, TriangleAlert } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { askForCode, errorStatus, fetchAdminMe, isAdmin, needsCode, type AdminMe } from '@/lib/admin';
+import { onSessionEnded } from '@/lib/api';
+import { signInAgainHref } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { LauncherShell } from '../launcher/LauncherShell';
 import { AdminShell } from './AdminShell';
@@ -29,6 +31,17 @@ type Load = { kind: 'loading' } | { kind: 'signed-out' } | { kind: 'error' } | {
 export default function AdminPage() {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const { pathname, search } = useLocation();
+  const navigate = useNavigate();
+
+  // AC-14: a session that ends while a view is open sends you to sign in, then back to this page
+  useEffect(() => {
+    onSessionEnded(() => {
+      const here = window.location.pathname + window.location.search;
+      navigate(signInAgainHref(here, true), { replace: true });
+    });
+    return () => onSessionEnded(null);
+  }, [navigate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,7 +72,7 @@ export default function AdminPage() {
     case 'loading':
       return <AdminLoading />;
     case 'signed-out':
-      return <Navigate to="/" replace />;
+      return <Navigate to={signInAgainHref(pathname + search, false)} replace />;
     case 'error':
       return <AdminError onRetry={reload} />;
     case 'ready':

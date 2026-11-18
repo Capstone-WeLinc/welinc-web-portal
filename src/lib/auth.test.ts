@@ -9,7 +9,9 @@ import {
   loginRequest,
   noticeFor,
   resumeAddress,
+  returnPath,
   screenForAnswer,
+  signInAgainHref,
   screenForSso,
   ssoFailure,
   startFor,
@@ -85,6 +87,27 @@ describe('portal routing rules', () => {
     expect(screenForAnswer(params(''), admin)).toEqual({ kind: 'launcher', answer: admin });
     const mechanic = { ...answer, systems: [{ ...sys('VRMS'), roles: [{ code: 'MECHANIC', name: 'Mechanic' }] }] };
     expect(screenForAnswer(params(''), mechanic)).toEqual({ kind: 'go', url: 'http://vrms.test' });
+  });
+
+  // covers: suite spec 0013 AC-14 (an admin whose session ended signs in and lands back on the page)
+  it('says the session ended and returns an admin to the page they were on', () => {
+    expect(noticeFor(params('reason=ended'))?.message).toBe('Your session ended. Sign in again.');
+    expect(startFor(params('reason=ended&next=%2Fadmin%2Fpeople'))).toEqual({ kind: 'form' });
+    expect(signInAgainHref('/admin/people/u1?system=VRMS', true)).toBe(
+      '/login?reason=ended&next=%2Fadmin%2Fpeople%2Fu1%3Fsystem%3DVRMS',
+    );
+    expect(signInAgainHref('/admin/overview', false)).toBe('/login?next=%2Fadmin%2Foverview');
+    const next = params('reason=ended&next=%2Fadmin%2Fpeople%2Fu1%3Fsystem%3DVRMS');
+    expect(screenForAnswer(next, three)).toEqual({ kind: 'go', url: '/admin/people/u1?system=VRMS' });
+  });
+
+  it('never returns anywhere outside the admin section', () => {
+    for (const next of ['https://evil.test/admin', '//evil.test/admin', '/\\evil.test', '/login', '/administrator', 'admin']) {
+      expect(returnPath(params(`next=${encodeURIComponent(next)}`))).toBeNull();
+    }
+    expect(returnPath(params(''))).toBeNull();
+    expect(returnPath(params('next=%2Fadmin'))).toBe('/admin');
+    expect(screenForAnswer(params('next=https%3A%2F%2Fevil.test'), one)).toEqual({ kind: 'go', url: 'http://vrms.test' });
   });
 
   it('maps each /auth/sso outcome to its screen', () => {
