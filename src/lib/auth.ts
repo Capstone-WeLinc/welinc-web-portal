@@ -45,6 +45,7 @@ const SYSTEM_NAMES: Record<string, string> = { VRMS: 'VRMS', VMMS: 'VMMS', BMS: 
 export function noticeFor(params: URLSearchParams): Notice | null {
   const reason = params.get('reason');
   if (reason === 'logout') return { tone: 'info', message: 'You signed out.' };
+  if (reason === 'ended') return { tone: 'info', message: 'Your session ended. Sign in again.' };
   if (reason === 'idle') {
     return { tone: 'info', message: 'You were signed out after 30 minutes without activity.' };
   }
@@ -142,6 +143,9 @@ export function screenForAnswer(params: URLSearchParams, answer: LauncherAnswer)
   if (answer.systems.length === 0 && mobileSystemsOf(answer).length > 0) {
     return { kind: 'phone-only', answer };
   }
+  // Suite spec 0013, AC-14: back to the admin page whose session ended
+  const back = returnPath(params);
+  if (back) return { kind: 'go', url: back };
   // One system and no error: straight in, unless they administer it. An admin lands on the launcher
   // so they can reach Admin from its card; a one system admin would otherwise never see it.
   if (answer.systems.length === 1 && !params.has('error') && !administers(answer.systems[0])) {
@@ -156,6 +160,25 @@ export function screenForAnswer(params: URLSearchParams, answer: LauncherAnswer)
  */
 export function administers(system: LauncherSystem): boolean {
   return system.roles.some((role) => role.code === 'ADMIN');
+}
+
+/**
+ * Suite spec 0013, AC-14: the sign in address for an admin page whose session is gone. `ended`
+ * says so on the form; a first visit with no session just shows the form.
+ */
+export function signInAgainHref(path: string, ended: boolean): string {
+  const next = `next=${encodeURIComponent(path)}`;
+  return `/login?${ended ? `reason=ended&${next}` : next}`;
+}
+
+/** The `next` page to return to after sign in: only a page of this portal's admin section. */
+export function returnPath(params: URLSearchParams): string | null {
+  const next = params.get('next');
+  if (!next || !next.startsWith('/') || next.startsWith('//') || next.includes('\\')) return null;
+  const url = new URL(next, 'https://portal.invalid');
+  if (url.origin !== 'https://portal.invalid') return null;
+  if (url.pathname !== '/admin' && !url.pathname.startsWith('/admin/')) return null;
+  return url.pathname + url.search;
 }
 
 /** The screen for a direct visit once `/auth/sso` answered (AC-13). */

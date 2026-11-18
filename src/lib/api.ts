@@ -14,3 +14,25 @@ export const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+/**
+ * Suite spec 0013, AC-14: welinc-auth answers 401 `NOT_SIGNED_IN` when the portal session behind an
+ * admin call has ended. The admin section registers here while it is open, so any call (not just
+ * the first `/auth/admin/me`) sends the person to sign in instead of showing a plain error.
+ */
+let sessionEnded: (() => void) | null = null;
+
+export function onSessionEnded(handler: (() => void) | null) {
+  sessionEnded = handler;
+}
+
+/** The response hook below on its own, so it can be tested without a request. */
+export function noticeSessionEnd(error: unknown) {
+  const response = (error as { response?: { status?: number; data?: { code?: unknown } } } | null)?.response;
+  if (response?.status === 401 && response.data?.code === 'NOT_SIGNED_IN') sessionEnded?.();
+}
+
+api.interceptors.response.use(undefined, (error: unknown) => {
+  noticeSessionEnd(error);
+  return Promise.reject(error);
+});
