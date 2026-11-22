@@ -14,6 +14,13 @@ vi.mock("../admin/useAdminMe", () => ({ useAdminMe: () => adminMe.current }));
 // covers: the launcher's Admin card (Manage section) and the suite admin state (suite spec 0013, AC-5, AC-22)
 
 const USER = { id: "u1", name: "Leonora Castillo", email: "admin@welinc.com", picture: null };
+// Suite spec 0016, AC-12a: every launcher answer carries the session's cutoffs
+const CUTOFFS = {
+  sessionExpiresAt: "2026-11-23T10:30:00.000Z",
+  sessionAbsoluteExpiresAt: "2026-11-23T22:00:00.000Z",
+  serverTime: "2026-11-23T10:00:00.000Z",
+};
+
 const VRMS = {
   system: "VRMS",
   name: "Vehicle Repair Management System",
@@ -33,7 +40,7 @@ const me = (over: Partial<AdminMe>): AdminMe => ({
 function renderLauncher(systems: (typeof VRMS)[]) {
   return render(
     <MemoryRouter>
-      <Launcher answer={{ user: USER, systems }} params={new URLSearchParams()} banner={null} />
+      <Launcher answer={{ user: USER, systems, ...CUTOFFS }} params={new URLSearchParams()} banner={null} />
     </MemoryRouter>,
   );
 }

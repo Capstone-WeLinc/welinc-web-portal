@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { askForCode, errorStatus, fetchAdminMe, isAdmin, needsCode, type AdminMe } from '@/lib/admin';
 import { onSessionEnded } from '@/lib/api';
 import { signInAgainHref } from '@/lib/auth';
+import { useSessionWatch } from '@/lib/sessionWatch/watch';
 import { cn } from '@/lib/utils';
 import { LauncherShell } from '../launcher/LauncherShell';
 import { AdminShell } from './AdminShell';
@@ -67,6 +68,10 @@ export default function AdminPage() {
       .then((me) => setLoad({ kind: 'ready', me }))
       .catch(() => undefined);
   }, []);
+
+  // Suite spec 0016, AC-12b: the signing out soon watch, once the session is known to be live. A
+  // reload or a pasted link starts with no cutoffs, so the watch asks /auth/sso once itself.
+  useSessionWatch(load.kind === 'ready');
 
   switch (load.kind) {
     case 'loading':

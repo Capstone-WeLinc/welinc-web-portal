@@ -2,12 +2,15 @@ import { api } from './api';
 import { ssoFailure, type LauncherAnswer, type SsoResult } from './auth';
 import { clearOwnerDrafts, noteDraftOwner } from './drafts/drafts';
 import { setMonitoringUser } from './monitoring/sentry';
+import { holdCutoffs } from './sessionWatch/watch';
 
 /** Asks welinc-auth for the SSO session and the launcher answer. Never counts as activity. */
 export function checkSso(): Promise<SsoResult> {
   return api
     .get<LauncherAnswer>('/auth/sso')
     .then(({ data }): SsoResult => {
+      // Suite spec 0016, AC-12b: every launcher answer gives the session watch its cutoffs
+      holdCutoffs(data);
       // VRMS spec 0025: the person's id (only) on this tab's error reports
       setMonitoringUser({ id: data.user.id });
       noteDraftOwner(data.user.id);

@@ -31,6 +31,12 @@ export type LauncherAnswer = {
   systems: LauncherSystem[];
   /** Held only through a phone app (suite spec 0014); missing from an older welinc-auth. */
   mobileSystems?: MobileSystem[];
+  /** Suite spec 0016, AC-12a: the earlier of the idle and the 12 hour cutoff (ISO). */
+  sessionExpiresAt: string;
+  /** The 12 hour cutoff (ISO). */
+  sessionAbsoluteExpiresAt: string;
+  /** welinc-auth's clock when it answered (ISO), for the clock gap. */
+  serverTime: string;
 };
 
 /** The phone only systems, empty when the answer has none. */
