@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Clock, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { toast } from 'sonner';
+import { notifyError } from '@/lib/notify';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,7 +63,7 @@ function GrantBand({ grant, url }: { grant: Grant; url?: string }) {
       // AC-10 ended this web session too: back to the login screen
       goToSignedOut();
     } catch (error) {
-      toast.error(errorMessage(error, "We couldn't end temporary access."));
+      notifyError(errorMessage(error, "We couldn't end temporary access."));
       setBusy(false);
       setConfirming(false);
     }

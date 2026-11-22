@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Clock, KeyRound } from 'lucide-react';
-import { toast } from 'sonner';
+import { notifyError, notifySuccess } from '@/lib/notify';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,12 +60,12 @@ export function TemporaryAccessView({ me, onChanged }: { me: AdminMe; onChanged:
         goToSignedOut();
         return;
       }
-      toast.success(`${grant.holder.name}'s ${grant.system} access has ended.`);
+      notifySuccess(`${grant.holder.name}'s ${grant.system} access has ended.`);
       setEnding(null);
       setAttempt((n) => n + 1);
       onChanged();
     } catch (error) {
-      toast.error(errorMessage(error, "We couldn't end this access."));
+      notifyError(errorMessage(error, "We couldn't end this access."));
     } finally {
       setBusy(false);
     }
@@ -78,7 +78,7 @@ export function TemporaryAccessView({ me, onChanged }: { me: AdminMe; onChanged:
       const page = await listGrants({ state, cursor: load.value.next });
       replace((current) => ({ items: [...current.items, ...page.items], next: page.next }));
     } catch (error) {
-      toast.error(errorMessage(error, "We couldn't load more."));
+      notifyError(errorMessage(error, "We couldn't load more."));
     } finally {
       setLoadingMore(false);
     }

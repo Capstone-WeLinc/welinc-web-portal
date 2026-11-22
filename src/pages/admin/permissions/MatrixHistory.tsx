@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { History } from 'lucide-react';
-import { toast } from 'sonner';
+import { notifyError } from '@/lib/notify';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { SystemCode } from '@/lib/admin';
@@ -22,7 +22,7 @@ export function MatrixHistory({ system, reloadKey }: { system: SystemCode; reloa
       const page = await matrixHistory(system, cursor);
       replace((current) => ({ items: [...current.items, ...page.items], nextCursor: page.nextCursor }));
     } catch (error) {
-      toast.error(errorMessage(error, "We couldn't load more changes."));
+      notifyError(errorMessage(error, "We couldn't load more changes."));
     } finally {
       setLoadingMore(false);
     }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, UserRoundCheck } from 'lucide-react';
-import { toast } from 'sonner';
+import { notifySuccess } from '@/lib/notify';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorCode, type AdminMe, type SystemCode } from '@/lib/admin';
@@ -49,7 +49,7 @@ function AddPerson({ system }: { system: SystemCode }) {
     setServerError('');
     try {
       const person = await createPerson(input);
-      toast.success(
+      notifySuccess(
         input.attachExisting
           ? `${person.name} now has a ${system} role.`
           : person.setupEmailSent === false

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Search, ShieldPlus, UserMinus } from 'lucide-react';
-import { toast } from 'sonner';
+import { notifySuccess } from '@/lib/notify';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -213,7 +213,7 @@ function AddSuiteAdminDialog({
     }
     try {
       await addSuiteAdmin({ userId: picked.id, reason: reason.trim(), reauthToken: token });
-      toast.success(`${picked.name} is a suite admin. Every admin got an email.`);
+      notifySuccess(`${picked.name} is a suite admin. Every admin got an email.`);
       setBusy(false);
       reset();
       onOpenChange(false);
@@ -373,7 +373,7 @@ function RemoveSuiteAdminDialog({
     }
     try {
       await removeSuiteAdmin(admin.id, { reason: reason.trim(), reauthToken: token });
-      toast.success(`${admin.name} is no longer a suite admin. Their temporary access ended too.`);
+      notifySuccess(`${admin.name} is no longer a suite admin. Their temporary access ended too.`);
       setBusy(false);
       close();
       onDone();

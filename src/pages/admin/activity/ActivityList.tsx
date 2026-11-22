@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { notifyError } from '@/lib/notify';
 import { Link } from 'react-router-dom';
 import { History, KeyRound, LogIn, MonitorSmartphone, UserCog, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -43,7 +43,7 @@ export function ActivityList({
       const page = await fetchPage(load.value.nextCursor);
       replace((current) => ({ data: [...current.data, ...page.data], nextCursor: page.nextCursor }));
     } catch (error) {
-      toast.error(errorMessage(error, "We couldn't load more activity."));
+      notifyError(errorMessage(error, "We couldn't load more activity."));
     } finally {
       setLoadingMore(false);
     }

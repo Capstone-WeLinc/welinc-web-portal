@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Portal from './pages/Portal';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import { Toaster } from '@/components/ui/sonner';
+import { BannerHost } from '@/components/feedback/BannerHost';
 import { StepUpDialog } from './pages/admin/StepUpDialog';
 import { ReauthDialog } from './pages/admin/ReauthDialog';
 import { onSignedOutElsewhere } from './lib/session';
@@ -67,6 +68,7 @@ export default function App() {
       {/* AC-14a, AC-14b: one password dialog for every write that answers REAUTH_REQUIRED */}
       <ReauthDialog />
       <Toaster />
+      <BannerHost />
     </>
   );
 }

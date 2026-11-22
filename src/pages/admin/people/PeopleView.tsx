@@ -9,7 +9,7 @@ import type { AdminMe } from '@/lib/admin';
 import { errorMessage, listPeople, type ManagedPerson, type PeopleStatus, type Scope } from '@/lib/adminApi';
 import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { notifyError } from '@/lib/notify';
 import { useAsync } from '../useAsync';
 import { NoSystemScope, SystemSwitcher, Toolbar, ViewEmpty, ViewError, ViewHeader } from '../AdminStates';
 import { roleNames, useSystemsCatalog } from '../useCatalogs';
@@ -110,7 +110,7 @@ function PeopleList({ system }: { system: Scope }) {
       const page = await listPeople({ system, q: q || undefined, status, cursor: load.value.next });
       replace((current) => ({ items: [...current.items, ...page.items], next: page.next }));
     } catch (error) {
-      toast.error(errorMessage(error, "We couldn't load more people."));
+      notifyError(errorMessage(error, "We couldn't load more people."));
     } finally {
       setLoadingMore(false);
     }

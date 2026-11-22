@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, Lock, Minus } from 'lucide-react';
-import { toast } from 'sonner';
+import { notifySuccess } from '@/lib/notify';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { AdminMe } from '@/lib/admin';
@@ -217,7 +217,7 @@ function MatrixEditor({
         onClose={() => setReviewing(false)}
         onSaved={(next) => {
           setReviewing(false);
-          toast.success(
+          notifySuccess(
             changes.length === 1
               ? `1 permission saved. ${next.system} admins got an email.`
               : `${changes.length} permissions saved. ${next.system} admins got an email.`,

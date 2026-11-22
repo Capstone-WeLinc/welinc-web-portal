@@ -20,7 +20,7 @@ function SheetOverlay({ className, ...props }: React.ComponentProps<typeof Sheet
     <SheetPrimitive.Overlay
       data-slot="sheet-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-foreground/50 duration-200 ease-snappy data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        "fixed inset-0 z-60 bg-foreground/50 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-(--duration-sheet) data-[state=open]:ease-enter data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-(--duration-sheet-out) data-[state=closed]:ease-exit",
         className
       )}
       {...props}
@@ -28,7 +28,7 @@ function SheetOverlay({ className, ...props }: React.ComponentProps<typeof Sheet
   )
 }
 
-/** design.md: sheets on phones, `shadow-lg`, 150 to 200ms slides. The Close button takes the text color. */
+/** design.md: sheets on phones, `shadow-dialog`, the sheet motion tokens. The Close button takes the text color. */
 function SheetContent({
   className,
   children,
@@ -41,10 +41,11 @@ function SheetContent({
       <SheetPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          "fixed inset-y-0 z-50 flex h-dvh w-72 flex-col bg-card text-card-foreground shadow-lg duration-200 ease-snappy data-[state=closed]:animate-out data-[state=closed]:duration-150 data-[state=open]:animate-in motion-reduce:animate-none",
+          // Suite spec 0016 AC-5 and AC-10: shadow-dialog, slides in over --duration-sheet, out in two thirds of it (a fade only with reduced motion)
+          "fixed inset-y-0 z-60 flex h-dvh w-72 flex-col bg-card text-card-foreground shadow-dialog data-[state=open]:animate-in data-[state=open]:duration-(--duration-sheet) data-[state=open]:ease-enter data-[state=closed]:animate-out data-[state=closed]:duration-(--duration-sheet-out) data-[state=closed]:ease-exit",
           side === "left"
-            ? "left-0 data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left"
-            : "right-0 data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+            ? "left-0 rounded-r-3xl data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left"
+            : "right-0 rounded-l-3xl data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
           className
         )}
         {...props}
@@ -62,14 +63,14 @@ function SheetContent({
 }
 
 function SheetTitle({ className, ...props }: React.ComponentProps<typeof SheetPrimitive.Title>) {
-  return <SheetPrimitive.Title data-slot="sheet-title" className={cn("text-lg font-semibold", className)} {...props} />
+  return <SheetPrimitive.Title data-slot="sheet-title" className={cn("text-subheading", className)} {...props} />
 }
 
 function SheetDescription({ className, ...props }: React.ComponentProps<typeof SheetPrimitive.Description>) {
   return (
     <SheetPrimitive.Description
       data-slot="sheet-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-body text-muted-foreground", className)}
       {...props}
     />
   )

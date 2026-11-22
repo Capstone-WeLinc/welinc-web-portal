@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { notifySuccess } from '@/lib/notify';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -124,7 +124,7 @@ export function TemporaryAccessDialog({
     }
     try {
       const grant = await startGrant({ system, role, hours, reason: reason.trim(), reauthToken: token });
-      toast.success(`You have ${grant.system} ${grant.roleName} access for ${hours} ${hours === 1 ? 'hour' : 'hours'}.`);
+      notifySuccess(`You have ${grant.system} ${grant.roleName} access for ${hours} ${hours === 1 ? 'hour' : 'hours'}.`);
       reset();
       onOpenChange(false);
       onStarted();

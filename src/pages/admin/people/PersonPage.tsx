@@ -11,7 +11,7 @@ import {
   RotateCcw,
   Trash2,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { notifyError, notifySuccess } from '@/lib/notify';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -72,11 +72,11 @@ type Load =
 async function run(action: () => Promise<unknown>, done: string, failed: string): Promise<boolean> {
   try {
     await action();
-    toast.success(done);
+    notifySuccess(done);
     return true;
   } catch (error) {
     if (error instanceof ReauthCancelled) return false;
-    toast.error(errorMessage(error, failed));
+    notifyError(errorMessage(error, failed));
     return false;
   }
 }
@@ -432,7 +432,7 @@ function EditDialog({
     setServerError('');
     try {
       const next = await updatePerson(person.id, system, input);
-      toast.success(`${next.name} is saved.`);
+      notifySuccess(`${next.name} is saved.`);
       onSaved({ ...person, ...next });
     } catch (error) {
       if (!(error instanceof ReauthCancelled)) setServerError(errorMessage(error, "We couldn't save the changes."));
