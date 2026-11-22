@@ -23,7 +23,7 @@ export const heroCodeSlot =
 
 /** The gold submit on the hero, 44px and up. */
 export const heroButton =
-  'h-12 w-full rounded-xl bg-highlight text-base font-black text-primary shadow-lg shadow-highlight/20 hover:bg-highlight-hover focus-visible:ring-highlight focus-visible:ring-offset-hero-deep disabled:opacity-100 disabled:not-aria-busy:bg-white/10 disabled:not-aria-busy:text-white/40 disabled:not-aria-busy:shadow-none';
+  'h-12 w-full rounded-xl bg-highlight text-base font-black text-primary shadow-lg shadow-highlight/20 hover:bg-commit-hover focus-visible:ring-highlight focus-visible:ring-offset-hero-deep disabled:opacity-100 disabled:not-aria-busy:bg-white/10 disabled:not-aria-busy:text-white/40 disabled:not-aria-busy:shadow-none';
 
 export function HeroLogo({ size = 'md' }: { size?: 'sm' | 'md' }) {
   return (

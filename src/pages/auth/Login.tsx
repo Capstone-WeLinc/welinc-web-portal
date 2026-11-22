@@ -126,7 +126,7 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
                       <button
                         type="button"
                         onClick={signInAgain}
-                        className="mt-2 min-h-11 cursor-pointer rounded-md text-sm font-semibold text-highlight hover:text-highlight-hover focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
+                        className="mt-2 min-h-11 cursor-pointer rounded-md text-sm font-semibold text-highlight hover:text-commit-hover focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
                       >
                         Sign in again
                       </button>

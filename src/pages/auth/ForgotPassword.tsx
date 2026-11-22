@@ -303,7 +303,7 @@ export default function ForgotPassword() {
                   type="button"
                   onClick={() => void resend()}
                   disabled={wait > 0 || resending}
-                  className="min-h-11 cursor-pointer rounded-md font-semibold text-highlight tabular-nums hover:text-highlight-hover focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-white/40"
+                  className="min-h-11 cursor-pointer rounded-md font-semibold text-highlight tabular-nums hover:text-commit-hover focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-white/40"
                 >
                   {wait > 0 ? `Resend code in ${wait} s` : resending ? 'Sending' : 'Resend code'}
                 </button>
