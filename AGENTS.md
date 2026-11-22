@@ -18,7 +18,7 @@ The SSO portal: a React 19 + Vite SPA. Login goes to `welinc-auth` through the g
 | `src/lib/auth.ts` | Pure login helpers: notices and error messages, the screen choice, the resume address |
 | `src/lib/session.ts`, `src/lib/launcher.ts` | `checkSso` and `signOutEverywhere`; the launcher's display rules (greeting, initials, picture) |
 | `src/components/LogoMark.tsx`, `src/assets/` | The SVG logo mark (design.md: never the square `welinc-logo.jpg` at icon size) and the bundled login images |
-| `src/components/ui/` | shadcn components, including the sonner `Toaster`; `src/lib/notify.ts` has `notifyError` |
+| `src/components/ui/` | shadcn components, including the sonner `Toaster`; `src/lib/notify.ts` has `notify`, `notifyError` and `notifySuccess`, which draw our `Toast` through sonner's `toast.custom` (suite spec 0016 AC-11); never call sonner directly |
 | `src/index.css` | Tailwind v4 setup and the design tokens, the one place color values live; also the `brand-grid` and `pb-safe` utilities, since lint refuses bracketed values in components |
 
 ## Commands
