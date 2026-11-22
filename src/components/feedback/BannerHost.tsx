@@ -21,7 +21,11 @@ export function BannerHost() {
     banner = <Banner kind="success" icon={Wifi} title="Back online" />;
   }
   return (
-    <div aria-live="polite" className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-2 pt-4 md:px-4">
+    // Top center of the content area: AdminShell sets --content-left to its sidebar's width
+    <div
+      aria-live="polite"
+      className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-2 pt-4 md:left-(--content-left) md:px-4"
+    >
       {banner}
     </div>
   );

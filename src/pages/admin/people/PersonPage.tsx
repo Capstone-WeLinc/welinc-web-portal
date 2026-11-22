@@ -57,7 +57,8 @@ import { roleNames, useSystemsCatalog } from '../useCatalogs';
 import { useAdminSystem } from '../useAdminSystem';
 import { useAsync } from '../useAsync';
 import { BackToPeople } from './AddPersonPage';
-import { DeletedBadge, RoleBadge, StatusBadge, SuiteAdminBadge, TemporaryBadge } from './Badges';
+import { DeletedBadge, StatusBadge, SuiteAdminBadge, TemporaryBadge } from './Badges';
+import { RoleChip } from '@/components/ui/role-chip';
 import { PersonForm } from './PersonForm';
 import type { PersonFormValues } from './personValues';
 import { accountStatus, roleName } from './personStatus';
@@ -292,7 +293,7 @@ function PersonDetails({
 
       <div className="mb-6 flex flex-wrap gap-1.5">
         {person.roles.map((r) => (
-          <RoleBadge key={r.role} code={r.role} name={roleName(r.role, names)} />
+          <RoleChip key={r.role}>{roleName(r.role, names)}</RoleChip>
         ))}
         {person.suiteAdmin && <SuiteAdminBadge />}
         {person.temporaryUntil && <TemporaryBadge until={person.temporaryUntil} />}

@@ -1,12 +1,23 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { ChevronRight, House, Menu } from 'lucide-react';
+import { ChevronRight, ChevronUp, House, LogOut, Menu, PanelLeftClose, PanelLeftOpen, type LucideIcon } from 'lucide-react';
 import { LogoMark } from '@/components/LogoMark';
 import { CrashBoundary } from '@/components/monitoring/CrashBoundary';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { AdminMe } from '@/lib/admin';
+import { initialsOf } from '@/lib/launcher';
 import { cn } from '@/lib/utils';
 import { AccountMenu } from '../launcher/LauncherShell';
+import { SignOutDialog } from '../launcher/SignOutDialog';
 import {
   BOTTOM_BAR_MAX,
   viewHref,
@@ -14,6 +25,7 @@ import {
   type AdminViewGroup,
   type AdminViewPath,
 } from './adminViews';
+import { useSidebarCollapsed } from './useSidebarCollapsed';
 
 type Props = {
   me: AdminMe;
@@ -37,157 +49,229 @@ function grouped(views: AdminView[]): { group: AdminViewGroup | null; views: Adm
   return out;
 }
 
-/** Who this console is for, in the sidebar's badge: "Suite admin" or "VRMS admin". */
+/** Who this console is for, under the sidebar's title: "Suite admin" or "VRMS admin". */
 function standing(me: AdminMe): string {
   return me.suiteAdmin ? 'Suite admin' : `${me.adminOf.join(', ')} admin`;
 }
 
+/*
+  Suite spec 0016 AC-16 (design.md, Layout and navigation: Sidebar; board Sidebars8): idle items in
+  sidebar-idle, hover sidebar-hover, the current one sidebar-current with white semibold text. No
+  gold edge, no dot. Group labels never fold; a sidebar-line separates groups.
+*/
+const ITEM_CLASSES =
+  'flex h-10 w-full items-center gap-3 rounded-md px-2.5 text-body font-medium text-sidebar-idle transition-colors duration-(--duration-menu) outline-none hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring-on-dark motion-reduce:transition-none max-md:h-11';
+const CURRENT_CLASSES = 'bg-sidebar-current font-semibold text-sidebar-foreground';
+const ROW =
+  'flex w-full items-center gap-2.5 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring-on-dark';
+
+/** Width of the content's left edge from 768px up, so the floating banner centers on the content. */
+const CONTENT_LEFT = { expanded: '15rem', collapsed: '4rem' } as const;
+
 /**
- * The Admin console's frame (design.md, Layout and navigation): a full height navy sidebar from md
- * up, with the views grouped by task, the active one marked with a gold bar, and Back to home at
- * the bottom. On phones the sidebar becomes a bottom tab bar for at most five views and a sheet
- * menu past that (a suite admin has seven).
+ * The Admin console's frame (design.md, Layout and navigation): a navy 240px sidebar from md up,
+ * the brand and standing at the top, the views grouped by task, then the collapse toggle, Back to
+ * home and the account menu at the bottom. Collapsed it is a 64px icon strip with tooltips. On
+ * phones it becomes a bottom tab bar for at most five views and a sheet menu past that.
  */
 export function AdminShell({ me, views, current, banner, status, children }: Props) {
   const { pathname, search } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { collapsed, toggle } = useSidebarCollapsed(me.user.id);
   const bottomBar = views.length <= BOTTOM_BAR_MAX;
   const currentView = views.find((v) => v.path === current);
 
+  // design.md, Feedback: the banner sits top center of the content area (BannerHost reads this).
+  useEffect(() => {
+    const root = document.documentElement.style;
+    root.setProperty('--content-left', collapsed ? CONTENT_LEFT.collapsed : CONTENT_LEFT.expanded);
+    return () => {
+      root.removeProperty('--content-left');
+    };
+  }, [collapsed]);
+
   return (
-    <div className="min-h-screen bg-background md:flex">
-      <aside className="hidden bg-hero text-white md:sticky md:top-0 md:flex md:h-screen md:w-64 md:shrink-0 md:flex-col">
-        <SidebarBody me={me} views={views} current={current} search={search} />
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b border-border bg-card px-4 sm:px-6 lg:px-8">
-          {bottomBar ? (
-            <Link
-              to="/"
-              aria-label="WeLinc home"
-              className="flex size-11 items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden md:hidden"
-            >
-              <span className="flex size-9 items-center justify-center rounded-lg bg-hero">
-                <LogoMark className="h-3.5 text-highlight" />
-              </span>
-            </Link>
-          ) : (
-            <button
-              type="button"
-              aria-label="Open the admin menu"
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen(true)}
-              className="-ml-2 flex size-11 items-center justify-center rounded-lg text-foreground hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden md:hidden"
-            >
-              <Menu className="size-5" aria-hidden="true" />
-            </button>
+    <TooltipProvider>
+      <div className={cn('min-h-screen bg-background md:flex', bottomBar && 'has-tab-bar')}>
+        <aside
+          className={cn(
+            'hidden bg-sidebar text-sidebar-foreground transition-all duration-(--duration-fold) ease-enter motion-reduce:transition-none md:sticky md:top-0 md:flex md:h-screen md:shrink-0 md:flex-col',
+            collapsed ? 'md:w-16' : 'md:w-60',
           )}
-          <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
-            <ol className="flex items-center gap-1.5 text-sm">
-              <li className="text-muted-foreground max-sm:hidden">Admin</li>
-              <li aria-hidden="true" className="text-muted-foreground max-sm:hidden">
-                <ChevronRight className="size-4" />
-              </li>
-              <li aria-current="page" className="truncate font-medium text-foreground">
-                {currentView?.label}
-              </li>
-            </ol>
-          </nav>
-          {status}
-          <AccountMenu user={me.user} onDark={false} />
-        </header>
-
-        {banner && <div className="px-4 pt-4 sm:px-6 lg:px-8">{banner}</div>}
-        <main className={cn('flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8', bottomBar && 'max-md:pb-24')}>
-          {/* VRMS spec 0025, AC-7: a view crash keeps the sidebar; another view clears it */}
-          <CrashBoundary key={pathname} variant="page">
-            {children}
-          </CrashBoundary>
-        </main>
-      </div>
-
-      {bottomBar ? (
-        <BottomBar views={views} current={current} search={search} />
-      ) : (
-        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-          <SheetContent side="left" className="bg-hero text-white md:hidden">
-            <SheetTitle className="sr-only">Admin menu</SheetTitle>
-            <SheetDescription className="sr-only">The Admin sections, and the way back home.</SheetDescription>
-            <SidebarBody
-              me={me}
-              views={views}
-              current={current}
-              search={search}
-              onNavigate={() => setMenuOpen(false)}
+        >
+          <SidebarBody me={me} views={views} current={current} search={search} collapsed={collapsed}>
+            <SidebarAction
+              icon={collapsed ? PanelLeftOpen : PanelLeftClose}
+              label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              onClick={toggle}
+              collapsed={collapsed}
+              aria-expanded={!collapsed}
             />
-          </SheetContent>
-        </Sheet>
-      )}
-    </div>
+            <SidebarAccount me={me} collapsed={collapsed} />
+          </SidebarBody>
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-2 border-b border-border bg-card px-4 sm:px-6 lg:px-8">
+            {bottomBar ? (
+              <Link
+                to="/"
+                aria-label="WeLinc home"
+                className="flex size-11 items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden md:hidden"
+              >
+                <span className="flex size-9 items-center justify-center rounded-lg bg-sidebar">
+                  <LogoMark className="h-3.5 text-highlight" />
+                </span>
+              </Link>
+            ) : (
+              <button
+                type="button"
+                aria-label="Open the admin menu"
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen(true)}
+                className="-ml-2 flex size-11 items-center justify-center rounded-lg text-foreground hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden md:hidden"
+              >
+                <Menu className="size-5" aria-hidden="true" />
+              </button>
+            )}
+            <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
+              <ol className="flex items-center gap-1.5 text-small">
+                <li className="text-muted-foreground max-sm:hidden">Admin</li>
+                <li aria-hidden="true" className="text-muted-foreground max-sm:hidden">
+                  <ChevronRight className="size-4" />
+                </li>
+                <li aria-current="page" className="truncate font-medium text-foreground">
+                  {currentView?.label}
+                </li>
+              </ol>
+            </nav>
+            {status}
+            {/* From md up the account menu sits at the bottom of the sidebar */}
+            <div className="md:hidden">
+              <AccountMenu user={me.user} onDark={false} />
+            </div>
+          </header>
+
+          {banner && <div className="px-4 pt-4 sm:px-6 lg:px-8">{banner}</div>}
+          <main className={cn('flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8', bottomBar && 'max-md:pb-24')}>
+            {/* VRMS spec 0025, AC-7: a view crash keeps the sidebar; another view clears it */}
+            <CrashBoundary key={pathname} variant="page">
+              {children}
+            </CrashBoundary>
+          </main>
+        </div>
+
+        {bottomBar ? (
+          <BottomBar views={views} current={current} search={search} />
+        ) : (
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+            <SheetContent side="left" className="bg-sidebar text-sidebar-foreground md:hidden">
+              <SheetTitle className="sr-only">Admin menu</SheetTitle>
+              <SheetDescription className="sr-only">The Admin sections, and the way back home.</SheetDescription>
+              <SidebarBody
+                me={me}
+                views={views}
+                current={current}
+                search={search}
+                onNavigate={() => setMenuOpen(false)}
+              />
+            </SheetContent>
+          </Sheet>
+        )}
+      </div>
+    </TooltipProvider>
   );
 }
 
-/** The sidebar's brand row, grouped links and Back to home; also the phone sheet's content. */
+/** Shows the label as a tooltip on the right while the sidebar is collapsed. */
+function CollapsedTooltip({ label, collapsed, children }: { label: string; collapsed: boolean; children: ReactNode }) {
+  if (!collapsed) return children;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** The sidebar's brand row, grouped links and footer; also the phone sheet's content (never collapsed). */
 function SidebarBody({
   me,
   views,
   current,
   search,
+  collapsed = false,
   onNavigate,
+  children,
 }: {
   me: AdminMe;
   views: AdminView[];
   current: AdminViewPath;
   search: string;
+  collapsed?: boolean;
   onNavigate?: () => void;
+  /** Footer items below Back to home (the collapse toggle, then the account menu last; desktop only). */
+  children?: ReactNode;
 }) {
+  const pad = collapsed ? 'px-2' : 'px-3';
   return (
     <>
-      <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-white/10 px-5">
-        <Link
-          to="/"
-          aria-label="WeLinc home"
-          onClick={onNavigate}
-          className="flex items-center gap-2.5 rounded-lg focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
-        >
-          <LogoMark className="h-5 text-highlight" />
-          <span className="text-lg font-semibold tracking-tight">WeLinc</span>
-        </Link>
-        {/* In the sheet the Close button sits at the right edge, so the badge moves under the logo row */}
-        <span
-          className={cn(
-            'ml-auto truncate rounded-full bg-white/10 px-2 py-0.5 text-xs font-medium text-white/80',
-            onNavigate && 'hidden',
-          )}
-        >
-          {standing(me)}
-        </span>
+      <div className={cn('shrink-0 pt-3', pad)}>
+        <CollapsedTooltip label="WeLinc home" collapsed={collapsed}>
+          <Link
+            to="/"
+            onClick={onNavigate}
+            aria-label={collapsed ? `WeLinc home, ${standing(me)}` : undefined}
+            className={cn(ROW, 'px-2 py-1.5 hover:bg-sidebar-hover', collapsed && 'justify-center px-0')}
+          >
+            <span
+              aria-hidden="true"
+              className="flex size-8 shrink-0 items-center justify-center rounded-md bg-highlight text-highlight-foreground"
+            >
+              <LogoMark className="h-3.5" />
+            </span>
+            <span className={cn('flex min-w-0 flex-1 flex-col', collapsed && 'sr-only')}>
+              <span className="truncate text-group font-bold">WeLinc Admin</span>
+              <span className="truncate text-caption font-normal text-sidebar-idle">{standing(me)}</span>
+            </span>
+          </Link>
+        </CollapsedTooltip>
+        <hr aria-hidden="true" className="mx-0.5 mt-3.5 border-sidebar-line" />
       </div>
-      <nav aria-label="Admin sections" className="flex-1 overflow-y-auto px-3 py-4">
-        {onNavigate && <p className="mb-4 px-3 text-xs font-medium text-white/70">{standing(me)}</p>}
-        {grouped(views).map(({ group, views: items }) => (
-          <div key={group ?? 'top'} className="mb-4 last:mb-0">
-            {group && <p className="mb-1 px-3 text-xs font-medium tracking-wide text-white/50 uppercase">{group}</p>}
+
+      <nav aria-label="Admin sections" className={cn('flex-1 overflow-x-hidden overflow-y-auto py-3', pad)}>
+        {grouped(views).map(({ group, views: items }, index) => (
+          <div key={group ?? 'top'} className="flex flex-col gap-0.5">
+            {index > 0 && <hr aria-hidden="true" className="mx-2.5 mt-2.5 border-sidebar-line" />}
+            {group && !collapsed && (
+              <h2 className={cn('px-2.5 pb-1.5 text-label text-sidebar-label', index > 0 ? 'pt-3' : 'pt-1')}>{group}</h2>
+            )}
+            {collapsed && index > 0 && <span aria-hidden="true" className="h-2" />}
             <ul className="flex flex-col gap-0.5">
               {items.map((view) => (
                 <li key={view.path}>
-                  <SideLink view={view} active={view.path === current} search={search} onNavigate={onNavigate} />
+                  <SideLink
+                    view={view}
+                    active={view.path === current}
+                    search={search}
+                    collapsed={collapsed}
+                    onNavigate={onNavigate}
+                  />
                 </li>
               ))}
             </ul>
           </div>
         ))}
       </nav>
-      <div className="shrink-0 border-t border-white/10 p-3">
-        <Link
-          to="/"
-          onClick={onNavigate}
-          className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm text-white/70 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
-        >
-          <House className="size-4" aria-hidden="true" />
-          Back to home
-        </Link>
+
+      <div className={cn('flex shrink-0 flex-col gap-1 border-t border-sidebar-line py-3', pad)}>
+        <CollapsedTooltip label="Back to home" collapsed={collapsed}>
+          <Link to="/" onClick={onNavigate} className={cn(ITEM_CLASSES, collapsed && 'justify-center px-0')}>
+            <House className="size-4.5 shrink-0" aria-hidden="true" />
+            <span className={cn('truncate', collapsed && 'sr-only')}>Back to home</span>
+          </Link>
+        </CollapsedTooltip>
+        {children}
       </div>
     </>
   );
@@ -197,30 +281,98 @@ function SideLink({
   view,
   active,
   search,
+  collapsed,
   onNavigate,
 }: {
   view: AdminView;
   active: boolean;
   search: string;
+  collapsed: boolean;
   onNavigate?: () => void;
 }) {
   const Icon = view.icon;
   return (
-    <NavLink
-      to={viewHref(view.path, search)}
-      onClick={onNavigate}
-      aria-current={active ? 'page' : undefined}
-      className={cn(
-        // design.md: the active item gets a gold left bar plus white text; 44px rows in the phone sheet
-        'flex min-h-11 items-center gap-3 rounded-lg border-l-2 px-3 text-sm focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden md:min-h-10',
-        active
-          ? 'border-highlight bg-white/10 font-medium text-white'
-          : 'border-transparent text-white/70 hover:bg-white/5 hover:text-white',
-      )}
-    >
-      <Icon className={cn('size-4 shrink-0', active ? 'text-highlight' : 'text-white/60')} aria-hidden="true" />
-      {view.label}
-    </NavLink>
+    <CollapsedTooltip label={view.label} collapsed={collapsed}>
+      <NavLink
+        to={viewHref(view.path, search)}
+        onClick={onNavigate}
+        aria-current={active ? 'page' : undefined}
+        className={cn(ITEM_CLASSES, collapsed && 'justify-center px-0', active && CURRENT_CLASSES)}
+      >
+        <Icon className="size-4.5 shrink-0" aria-hidden="true" />
+        <span className={cn('truncate', collapsed && 'sr-only')}>{view.label}</span>
+      </NavLink>
+    </CollapsedTooltip>
+  );
+}
+
+/** A button styled like a nav item, for the sidebar footer. */
+function SidebarAction({
+  icon: Icon,
+  label,
+  onClick,
+  collapsed,
+  ...aria
+}: {
+  icon: LucideIcon;
+  label: string;
+  onClick: () => void;
+  collapsed: boolean;
+  'aria-expanded'?: boolean;
+}) {
+  return (
+    <CollapsedTooltip label={label} collapsed={collapsed}>
+      <button type="button" onClick={onClick} className={cn(ITEM_CLASSES, collapsed && 'justify-center px-0')} {...aria}>
+        <Icon aria-hidden="true" className="size-4.5 shrink-0" />
+        <span className={cn('truncate', collapsed && 'sr-only')}>{label}</span>
+      </button>
+    </CollapsedTooltip>
+  );
+}
+
+/** The account menu at the bottom of the sidebar: you, your standing, and Sign out everywhere. */
+function SidebarAccount({ me, collapsed }: { me: AdminMe; collapsed: boolean }) {
+  const [signingOut, setSigningOut] = useState(false);
+  const { name, email } = me.user;
+  return (
+    <>
+      <DropdownMenu>
+        <CollapsedTooltip label={name} collapsed={collapsed}>
+          <DropdownMenuTrigger
+            aria-label={`Account: ${name}, ${standing(me)}`}
+            className={cn(ROW, 'min-h-11 px-1.5 py-1.5 hover:bg-sidebar-hover', collapsed && 'justify-center px-0')}
+          >
+            <span
+              aria-hidden="true"
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sidebar-count text-caption font-bold"
+            >
+              {initialsOf(name)}
+            </span>
+            {!collapsed && (
+              <>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-small font-semibold">{name}</span>
+                  <span className="truncate text-caption text-sidebar-idle">{standing(me)}</span>
+                </span>
+                <ChevronUp aria-hidden="true" className="size-4 shrink-0 text-sidebar-idle" />
+              </>
+            )}
+          </DropdownMenuTrigger>
+        </CollapsedTooltip>
+        <DropdownMenuContent side="top" align="start" className="w-60">
+          <DropdownMenuLabel className="flex flex-col gap-1 py-2">
+            <span className="truncate text-body font-medium text-foreground">{name}</span>
+            <span className="truncate text-caption font-normal text-muted-foreground">{email}</span>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => setSigningOut(true)}>
+            <LogOut aria-hidden="true" />
+            Sign out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <SignOutDialog open={signingOut} onOpenChange={setSigningOut} />
+    </>
   );
 }
 
@@ -229,7 +381,7 @@ function BottomBar({ views, current, search }: { views: AdminView[]; current: Ad
   return (
     <nav
       aria-label="Admin sections"
-      className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-card pb-safe md:hidden"
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card pb-safe md:hidden"
     >
       <ul className="flex">
         {views.map((view) => {
@@ -242,7 +394,7 @@ function BottomBar({ views, current, search }: { views: AdminView[]; current: Ad
                 aria-current={active ? 'page' : undefined}
                 aria-label={view.label}
                 className={cn(
-                  'flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-xs focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset',
+                  'flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-caption focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset',
                   active ? 'font-medium text-primary' : 'text-muted-foreground',
                 )}
               >

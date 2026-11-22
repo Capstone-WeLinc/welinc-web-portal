@@ -1,34 +1,17 @@
 import { AppWindow, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { RoleChip } from '@/components/ui/role-chip';
 import type { LauncherSystem } from '@/lib/auth';
 import { SYSTEM_ICONS } from './systemIcons';
 
 
-/** design.md's role pill colors, by role code across systems; a code it doesn't list is slate. */
-const ROLE_PILLS: Record<string, string> = {
-  ADMIN: 'bg-role-admin-bg text-role-admin-fg',
-  CHIEF_MECHANIC: 'bg-role-chief-mechanic-bg text-role-chief-mechanic-fg',
-  MECHANIC: 'bg-role-mechanic-bg text-role-mechanic-fg',
-  OPERATIONS: 'bg-role-operations-bg text-role-operations-fg',
-  CUSTOMER_SUPPORT: 'bg-role-customer-support-bg text-role-customer-support-fg',
-  DRIVER: 'bg-role-driver-bg text-role-driver-fg',
-};
-const SLATE_PILL = 'bg-role-driver-bg text-role-driver-fg';
-
-/** The person's roles in a system as design.md's pills; nothing when there are none. */
+/** The person's roles in a system as neutral RoleChips (suite spec 0016 AC-15); nothing when there are none. */
 export function RolePills({ roles }: { roles: { code: string; name: string }[] }) {
   if (roles.length === 0) return null;
   return (
     <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Your roles">
       {roles.map((role) => (
-        <li
-          key={role.code}
-          className={cn(
-            'rounded-full px-2 py-0.5 text-xs font-medium tracking-wide uppercase',
-            ROLE_PILLS[role.code] ?? SLATE_PILL,
-          )}
-        >
-          {role.name}
+        <li key={role.code}>
+          <RoleChip>{role.name}</RoleChip>
         </li>
       ))}
     </ul>

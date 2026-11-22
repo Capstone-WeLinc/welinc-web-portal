@@ -88,19 +88,8 @@
   --hero-danger: #fca5a5;
   --hero-success: #34d399;
 
-  /* Role pills (design.md, shared across the suite) */
-  --role-admin-bg: #1a1f6e;
-  --role-admin-fg: #ffffff;
-  --role-chief-mechanic-bg: #e8b800;
-  --role-chief-mechanic-fg: #0f172a;
-  --role-mechanic-bg: #d1fae5;
-  --role-mechanic-fg: #065f46;
-  --role-operations-bg: #e8e9f1;
-  --role-operations-fg: #1a1f6e;
-  --role-customer-support-bg: #e0f2fe;
-  --role-customer-support-fg: #075985;
-  --role-driver-bg: #f1f5f9;
-  --role-driver-fg: #334155;
+  /* The content column's left edge; AdminShell sets it to its sidebar's width (the banner centers on it) */
+  --content-left: 0px;
 }
 
 @theme inline {
@@ -235,19 +224,6 @@
   --color-hero-deep: var(--hero-deep);
   --color-hero-danger: var(--hero-danger);
   --color-hero-success: var(--hero-success);
-
-  --color-role-admin-bg: var(--role-admin-bg);
-  --color-role-admin-fg: var(--role-admin-fg);
-  --color-role-chief-mechanic-bg: var(--role-chief-mechanic-bg);
-  --color-role-chief-mechanic-fg: var(--role-chief-mechanic-fg);
-  --color-role-mechanic-bg: var(--role-mechanic-bg);
-  --color-role-mechanic-fg: var(--role-mechanic-fg);
-  --color-role-operations-bg: var(--role-operations-bg);
-  --color-role-operations-fg: var(--role-operations-fg);
-  --color-role-customer-support-bg: var(--role-customer-support-bg);
-  --color-role-customer-support-fg: var(--role-customer-support-fg);
-  --color-role-driver-bg: var(--role-driver-bg);
-  --color-role-driver-fg: var(--role-driver-fg);
 }
 
 /*
@@ -338,6 +314,25 @@
 
   body {
     @apply bg-background font-sans text-foreground antialiased;
+  }
+}
+
+/*
+  Where the SaveBar hangs (design.md, Saving and drafts): 24px above the bottom from 768px up; on
+  phones 16px above the tab bar (the shell sets --tab-bar-height) and the safe area.
+*/
+@utility bottom-save-bar {
+  bottom: calc(1rem + var(--tab-bar-height, 0px) + env(safe-area-inset-bottom));
+  @media (width >= 48rem) {
+    bottom: 1.5rem;
+  }
+}
+
+/* Set by the shell on phones with a bottom tab bar, so floating bars sit above it. */
+@utility has-tab-bar {
+  --tab-bar-height: 4rem;
+  @media (width >= 48rem) {
+    --tab-bar-height: 0px;
   }
 }
 

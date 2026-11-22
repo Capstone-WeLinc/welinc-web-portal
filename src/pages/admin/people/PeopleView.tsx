@@ -15,7 +15,8 @@ import { NoSystemScope, SystemSwitcher, Toolbar, ViewEmpty, ViewError, ViewHeade
 import { roleNames, useSystemsCatalog } from '../useCatalogs';
 import type { CatalogSystem } from '@/lib/adminApi';
 import { useAdminScope } from '../useAdminSystem';
-import { RoleBadge, StatusBadge, SuiteAdminBadge, TemporaryBadge } from './Badges';
+import { StatusBadge, SuiteAdminBadge, TemporaryBadge } from './Badges';
+import { RoleChip } from '@/components/ui/role-chip';
 import { accountStatus, parseStatus, roleName, STATUS_FILTERS, STATUS_LABELS } from './personStatus';
 
 /** How long typing waits before the search runs. */
@@ -196,15 +197,11 @@ function PersonRoles({
     <>
       {person.suiteAdmin && <SuiteAdminBadge />}
       {person.roles.map((r) => (
-        <RoleBadge
-          key={`${r.system}:${r.role}`}
-          code={r.role}
-          name={
-            system
-              ? roleName(r.role, roleNames(catalog, r.system))
-              : `${r.system} ${roleName(r.role, roleNames(catalog, r.system))}`
-          }
-        />
+        <RoleChip key={`${r.system}:${r.role}`}>
+          {system
+            ? roleName(r.role, roleNames(catalog, r.system))
+            : `${r.system} ${roleName(r.role, roleNames(catalog, r.system))}`}
+        </RoleChip>
       ))}
       {person.temporaryUntil && <TemporaryBadge until={person.temporaryUntil} />}
     </>
