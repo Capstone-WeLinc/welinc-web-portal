@@ -317,8 +317,16 @@
     @apply border-border outline-ring/50;
   }
 
+  /* No rubber band past the top or bottom on macOS, which showed the browser's white behind
+     the page; the root also takes the canvas color in case anything still peeks through */
+  html {
+    @apply bg-background;
+    overscroll-behavior: none;
+  }
+
   body {
     @apply bg-background font-sans text-foreground antialiased;
+    overscroll-behavior: none;
   }
 }
 

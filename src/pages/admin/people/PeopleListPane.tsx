@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { ChevronDown, Plus, Search, Users, X } from 'lucide-react';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,12 +78,15 @@ export function PeopleListPane({
   selectedId,
   reloadKey,
   onSelect,
+  onAdd,
 }: {
   me: AdminMe;
   selectedId: string | undefined;
   /** Bumped after an action on the person pane, so the groups load again (AC-18). */
   reloadKey: number;
   onSelect: (id: string) => void;
+  /** Opens Add person over the page, keeping the open person, the search and the sort. */
+  onAdd: (system: SystemCode | null) => void;
 }) {
   const { q, system, sort, set } = useListParams(me);
   const [typed, setTyped] = useState(q);
@@ -125,10 +128,10 @@ export function PeopleListPane({
           <h1 id="admin-view-title" className="text-title text-foreground">
             People
           </h1>
-          <Link to={`/admin/people/new${systemQuery(system)}`} className={buttonVariants({ size: 'sm' })}>
+          <Button size="sm" onClick={() => onAdd(system)}>
             <Plus aria-hidden="true" />
             Add person
-          </Link>
+          </Button>
         </div>
         <div className="relative">
           <Search
@@ -193,7 +196,7 @@ export function PeopleListPane({
         </DropdownMenu>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {failed?.kind === 'error' ? (
           <div className="p-5">
             <ViewError message={errorMessage(failed.error, "We couldn't load people.")} onRetry={() => setAttempt((n) => n + 1)} />
@@ -213,7 +216,7 @@ export function PeopleListPane({
               onClearAll={clearAll}
             />
           ) : (
-            <EmptyList system={system} />
+            <EmptyList onAdd={() => onAdd(system)} />
           )
         ) : (
           PEOPLE_GROUPS.map(({ group, label }) => (
@@ -240,10 +243,6 @@ export function PeopleListPane({
       </div>
     </section>
   );
-}
-
-function systemQuery(system: SystemCode | null): string {
-  return system ? `?system=${system}` : '';
 }
 
 type GroupLoader = ReturnType<typeof useGroup>;
@@ -422,17 +421,17 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
   );
 }
 
-function EmptyList({ system }: { system: SystemCode | null }) {
+function EmptyList({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="flex flex-col items-center gap-3 px-5 py-10 text-center">
       <span className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-strong">
         <Users className="size-5" aria-hidden="true" />
       </span>
       <p className="text-body text-muted-strong">No one has access yet.</p>
-      <Link to={`/admin/people/new${systemQuery(system)}`} className={buttonVariants({ size: 'sm' })}>
+      <Button size="sm" onClick={onAdd}>
         <Plus aria-hidden="true" />
         Add person
-      </Link>
+      </Button>
     </div>
   );
 }

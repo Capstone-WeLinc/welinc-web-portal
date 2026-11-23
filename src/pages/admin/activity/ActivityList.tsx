@@ -52,9 +52,14 @@ export function ActivityList({
     }
   };
 
+  // Inside a person's card the states sit centred with the card's padding; on the feed they
+  // stay on the canvas, left aligned like every other view
+  const inCard = !showPerson;
+  const stateClass = inCard ? 'items-center px-5 py-10 text-center' : undefined;
+
   if (load.kind === 'loading') {
     return (
-      <div aria-busy="true" className="flex flex-col gap-3">
+      <div aria-busy="true" className={cn('flex flex-col gap-3', inCard && 'px-5 py-3')}>
         <span className="sr-only">Loading activity</span>
         {[0, 1, 2].map((i) => (
           <Skeleton key={i} className="h-10" />
@@ -67,12 +72,13 @@ export function ActivityList({
       <ViewError
         message={errorMessage(load.error, "We couldn't load the activity.")}
         onRetry={() => setAttempt((n) => n + 1)}
+        className={stateClass}
       />
     );
   }
   const { data, nextCursor } = load.value;
   if (data.length === 0) {
-    return <ViewEmpty icon={<History className="size-5" aria-hidden="true" />} message={emptyMessage} />;
+    return <ViewEmpty icon={<History className="size-5" aria-hidden="true" />} message={emptyMessage} className={stateClass} />;
   }
 
   const days = byDay(data);

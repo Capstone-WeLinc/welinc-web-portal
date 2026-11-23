@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AdminMe } from '@/lib/admin';
 import type { CatalogSystem, ManagedPerson, PersonDetail } from '@/lib/adminApi';
 import {
+  activityFilters,
   accessRows,
   accessSummary,
   actionSystem,
@@ -506,5 +507,24 @@ describe('the Access tab rows (AC-12)', () => {
   it('does not offer Give access on your own page', () => {
     const p = detail({ id: 'me', roles: [{ role: 'ADMIN', system: 'VRMS' }] });
     expect(held(accessRows(p, vrmsAndVmms, catalog), 'VMMS')).toEqual({ kind: 'missing', system: 'VMMS', canGive: false });
+  });
+});
+
+describe('the Activity filter (AC-15)', () => {
+  it('offers only the systems the person is in and the viewer admins', () => {
+    const inAll = person({ roles: [{ role: 'MECHANIC', system: 'VRMS' }], otherSystems: ['VMMS', 'BMS'] });
+    expect(activityFilters(inAll, suite)).toEqual(['VRMS', 'VMMS', 'BMS']);
+    expect(activityFilters(inAll, vrmsAndVmms)).toEqual(['VRMS', 'VMMS']);
+  });
+
+  it('never offers a system the person is not in, so no pick can answer 404', () => {
+    const vrmsAndBms = person({ roles: [{ role: 'MECHANIC', system: 'VRMS' }], otherSystems: ['BMS'] });
+    expect(activityFilters(vrmsAndBms, suite)).toEqual(['VRMS', 'BMS']);
+  });
+
+  it('hides the filter when there is one system or none to pick', () => {
+    const vrmsPerson = person({ roles: [{ role: 'MECHANIC', system: 'VRMS' }], otherSystems: [] });
+    expect(activityFilters(vrmsPerson, vrmsAndVmms)).toEqual([]);
+    expect(activityFilters(person({ roles: [], otherSystems: [] }), suite)).toEqual([]);
   });
 });

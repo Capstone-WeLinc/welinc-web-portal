@@ -64,6 +64,17 @@ export function personSystems(person: Pick<ManagedPerson, 'roles' | 'otherSystem
   return SYSTEMS.filter((s) => inSystem.has(s));
 }
 
+/**
+ * AC-15: the Activity tab's system filter, the systems both the viewer admins and the person is
+ * in. A system the person isn't in answers 404, so it is never offered; with fewer than two
+ * there is nothing to pick and the filter hides.
+ */
+export function activityFilters(person: Pick<ManagedPerson, 'roles' | 'otherSystems'>, me: AdminMe): SystemCode[] {
+  const theirs = new Set(personSystems(person));
+  const shared = viewerSystems(me).filter((s) => theirs.has(s));
+  return shared.length >= 2 ? shared : [];
+}
+
 /** AC-6: a code chip per system, filled where the viewer admins it (suite admin: all). */
 export function systemChips(person: ManagedPerson, me: AdminMe): { system: SystemCode; filled: boolean }[] {
   return personSystems(person).map((system) => ({ system, filled: viewerAdmins(me, system) }));
