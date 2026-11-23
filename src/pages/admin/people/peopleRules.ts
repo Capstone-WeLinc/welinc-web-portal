@@ -237,3 +237,46 @@ export function signInFacts(person: PersonDetail, now = Date.now()): { label: st
 export function isPending(person: Pick<ManagedPerson, 'isActive' | 'isLocked' | 'passwordSet'>): boolean {
   return person.isActive && !person.isLocked && !person.passwordSet;
 }
+
+export type AccessRow =
+  | {
+      kind: 'held';
+      system: SystemCode;
+      roles: string[];
+      roleCodes: string[];
+      temporaryUntil: string | null;
+      /** What the row offers: Change role, the temporary note, or nothing (self, a suite admin). */
+      action: 'change' | 'temporary' | 'none';
+    }
+  | { kind: 'missing'; system: SystemCode; canGive: boolean }
+  | { kind: 'readonly'; system: SystemCode; roles: string[] };
+
+/**
+ * AC-12: the Access tab's rows in VRMS, VMMS, BMS order. A suite admin sees all three systems; a
+ * system admin sees their own plus the person's other systems. Rows the viewer admins can be
+ * changed (not on your own page, a temporary role or a suite admin); the others are read only.
+ */
+export function accessRows(
+  person: Pick<PersonDetail, 'id' | 'roles' | 'otherSystems' | 'suiteAdmin'>,
+  me: AdminMe,
+  catalog: CatalogSystem[] | null,
+): AccessRow[] {
+  const holds = personSystems(person);
+  const self = person.id === me.user.id;
+  return SYSTEMS.filter((s) => holds.includes(s) || viewerAdmins(me, s)).map((system): AccessRow => {
+    if (!holds.includes(system)) {
+      return { kind: 'missing', system, canGive: !person.suiteAdmin && !self };
+    }
+    const roles = roleLabels(person, system, catalog);
+    if (!viewerAdmins(me, system)) return { kind: 'readonly', system, roles };
+    const temporaryUntil = temporaryUntilIn(person, system);
+    return {
+      kind: 'held',
+      system,
+      roles,
+      roleCodes: person.roles.filter((r) => r.system === system).map((r) => r.role),
+      temporaryUntil,
+      action: self || person.suiteAdmin ? 'none' : temporaryUntil ? 'temporary' : 'change',
+    };
+  });
+}

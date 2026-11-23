@@ -3,27 +3,52 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Users } from 'lucide-react';
 import type { AdminMe } from '@/lib/admin';
 import { cn } from '@/lib/utils';
+import { useSystemsCatalog } from '../useCatalogs';
+import { AddPersonDialog, type AddStart } from './AddPersonDialog';
 import { PeopleListPane } from './PeopleListPane';
+import { parseListSystem, personSystems } from './peopleRules';
 import { PersonPane } from './PersonPane';
 
+/** The address without `/new` or a person, keeping `?system`, `?q` and `?sort`. */
+function listHref(search: string): string {
+  return `/admin/people${search}`;
+}
+
 /**
- * Suite spec 0017, AC-1 (board `People8`): `/admin/people` is one page, the list pane beside the
- * whole person. Picking a row replaces the address with `/admin/people/:id` (keeping `?system`,
- * `?q` and `?sort`), so Back leaves People instead of stepping through people. Below 1024px the
- * list and the person are separate screens (the person pane has a back link).
+ * Suite spec 0017, AC-1, AC-14 (board `People8`): `/admin/people` is one page, the list pane beside
+ * the whole person. Picking a row replaces the address with `/admin/people/:id` (keeping
+ * `?system`, `?q` and `?sort`), so Back leaves People instead of stepping through people.
+ * `/admin/people/new` opens the Add person dialog over the list. Below 1024px the list and the
+ * person are separate screens (the person pane has a back link).
  */
-export function PeoplePage({ me }: { me: AdminMe }) {
+export function PeoplePage({ me, onMeChanged }: { me: AdminMe; onMeChanged: () => void }) {
   const { id } = useParams();
   const { search } = useLocation();
   const navigate = useNavigate();
-  const selected = id && id !== 'new' ? id : undefined;
+  const catalog = useSystemsCatalog();
+  const adding = id === 'new';
+  const selected = id && !adding ? id : undefined;
   // Bumped after an action on the person, so the list loads again once (AC-18)
   const [listVersion, setListVersion] = useState(0);
+  // Bumped when the dialog changed the open person, so the pane reads them again
+  const [personVersion, setPersonVersion] = useState(0);
+  // Give access opens the dialog on step 2 for the selected person (AC-14)
+  const [giving, setGiving] = useState<AddStart>(null);
 
   const select = useCallback(
     (next: string) => navigate(`/admin/people/${next}${search}`, { replace: true }),
     [navigate, search],
   );
+  const listChanged = useCallback(() => setListVersion((n) => n + 1), []);
+
+  const start: AddStart = adding
+    ? { system: parseListSystem(me, new URLSearchParams(search).get('system')) ?? undefined }
+    : giving;
+
+  const closeDialog = () => {
+    if (adding) navigate(listHref(search), { replace: true });
+    setGiving(null);
+  };
 
   return (
     <div className="lg:flex lg:h-below-bar">
@@ -32,11 +57,36 @@ export function PeoplePage({ me }: { me: AdminMe }) {
       </div>
       <div className={cn('min-w-0 flex-1 lg:overflow-y-auto', !selected && 'max-lg:hidden')}>
         {selected ? (
-          <PersonPane key={selected} me={me} id={selected} onListChanged={() => setListVersion((n) => n + 1)} />
+          <PersonPane
+            key={selected}
+            me={me}
+            id={selected}
+            reloadKey={personVersion}
+            onListChanged={listChanged}
+            onMeChanged={onMeChanged}
+            onGiveAccess={(person, system) =>
+              setGiving({
+                who: { kind: 'existing', id: person.id, name: person.name, email: person.email, systems: personSystems(person) },
+                system,
+              })
+            }
+          />
         ) : (
           <NoneSelected />
         )}
       </div>
+      <AddPersonDialog
+        start={start}
+        me={me}
+        catalog={catalog}
+        onClose={closeDialog}
+        onAdded={(personId) => {
+          setGiving(null);
+          listChanged();
+          if (personId === selected) setPersonVersion((n) => n + 1);
+          else navigate(`/admin/people/${personId}${search}`, { replace: true });
+        }}
+      />
     </div>
   );
 }

@@ -21,12 +21,15 @@ export function ActivityList({
   load: fetchPage,
   reloadKey,
   showPerson,
+  showSystem,
   system,
   emptyMessage,
 }: {
   load: (cursor?: string) => Promise<EventPage>;
   reloadKey: string;
   showPerson?: boolean;
+  /** Each row starts with its system's code (a person's activity across systems, suite spec 0017, AC-15). */
+  showSystem?: boolean;
   /** Null on a suite wide feed: the person link then picks the event's system, if any. */
   system: SystemCode | null;
   emptyMessage: string;
@@ -125,6 +128,11 @@ export function ActivityList({
                             </Link>
                             <span className="text-muted-foreground"> · </span>
                           </>
+                        )}
+                        {showSystem && event.system && (
+                          <span className="mr-1.5 inline-flex h-5 items-center rounded-sm bg-info-bg px-1.5 align-text-bottom font-mono text-caption text-primary">
+                            {event.system}
+                          </span>
                         )}
                         {label}
                       </p>

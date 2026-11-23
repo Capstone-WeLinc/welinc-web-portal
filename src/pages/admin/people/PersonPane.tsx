@@ -1,20 +1,26 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { ArrowLeft, Check, CircleAlert, Clock, Minus } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Check, CircleAlert, Minus } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { InitialsTile } from '@/components/ui/initials-tile';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { errorStatus, type AdminMe } from '@/lib/admin';
+import { errorStatus, type AdminMe, type SystemCode } from '@/lib/admin';
 import { errorMessage, getPerson, personActivity, type CatalogSystem, type PersonDetail } from '@/lib/adminApi';
 import { formatDate, formatDateTime } from '@/lib/format';
+import { notify } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import { describeEvent } from '../activity/describeEvent';
 import { ViewError } from '../AdminStates';
 import { useAsync } from '../useAsync';
 import { useEventCatalog, useSystemsCatalog } from '../useCatalogs';
+import { AccessTab } from './AccessTab';
 import { CardAction, PaneCard, StatusPill, SystemChip } from './peopleParts';
-import { accessSummary, isPending, orList, personPill, roleLine, signInFacts, untilLabel } from './peopleRules';
+import { accessSummary, isPending, orList, personPill, roleLine, signInFacts } from './peopleRules';
+import type { PersonActions } from './personActions';
+import { PersonHeaderActions } from './PersonHeaderActions';
+import { ActivityTab, DevicesTab } from './PersonTabs';
+import { TemporaryTag } from './TemporaryTag';
 
 export type PersonTab = 'overview' | 'access' | 'devices' | 'activity';
 
@@ -25,23 +31,38 @@ type Load =
   | { kind: 'ready'; person: PersonDetail };
 
 /**
- * Suite spec 0017, AC-2, AC-7 to AC-11 (board `People8`): the whole person, never "inside one
+ * Suite spec 0017, AC-2, AC-7 to AC-18 (board `People8`): the whole person, never "inside one
  * system". The person call sends no `system`, so welinc-auth answers with every role across the
  * viewer's systems (AC-19); a 404 means the account is gone or outside the viewer's systems.
  */
 export function PersonPane({
   me,
   id,
+  reloadKey,
+  onListChanged,
+  onMeChanged,
+  onGiveAccess,
 }: {
   me: AdminMe;
   id: string;
+  /** Bumped when something outside the pane changed this person (the Add person dialog). */
+  reloadKey: number;
   /** Called once after an action settles, so the list loads again (AC-18). */
   onListChanged: () => void;
+  /** Fetches `me` again after a role change (AC-18). */
+  onMeChanged: () => void;
+  /** Opens the Add person dialog on step 2 for this person and system (AC-14). */
+  onGiveAccess: (person: PersonDetail, system: SystemCode) => void;
 }) {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  // Bumped after each action, so the tabs' own reads (sessions, activity) load again
+  const [version, setVersion] = useState(0);
   const [tab, setTab] = useState<PersonTab>('overview');
   const catalog = useSystemsCatalog();
+  const navigate = useNavigate();
+  const { search } = useLocation();
+  const name = load.kind === 'ready' ? load.person.name : 'This person';
 
   useEffect(() => {
     let cancelled = false;
@@ -59,9 +80,46 @@ export function PersonPane({
     return () => {
       cancelled = true;
     };
-  }, [id, attempt]);
+  }, [id, attempt, reloadKey]);
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
+
+  /**
+   * AC-18: read the person again once an action settles. After this page's own action a 404 means
+   * they left the viewer's systems: back to the list. After someone else's change, show the latest.
+   */
+  const reload = useCallback(
+    async (who: string, own: boolean, quietGone = false) => {
+      onListChanged();
+      setVersion((n) => n + 1);
+      try {
+        const person = await getPerson(id);
+        setLoad({ kind: 'ready', person });
+      } catch (error) {
+        if (errorStatus(error) !== 404) return;
+        if (own) {
+          if (!quietGone) notify(`${who} is no longer in your systems.`, 'info');
+          navigate(`/admin/people${search}`, { replace: true });
+        } else {
+          setLoad({ kind: 'missing' });
+        }
+      }
+    },
+    [id, navigate, onListChanged, search],
+  );
+
+  const actions: PersonActions = {
+    settled: ({ roleChanged = false, quietGone = false } = {}) => {
+      if (roleChanged) onMeChanged();
+      void reload(name, true, quietGone);
+    },
+    conflict: (error) => {
+      if (errorStatus(error) !== 404) return false;
+      notify(`${name} changed while you were here. Showing the latest.`, 'info');
+      void reload(name, false);
+      return true;
+    },
+  };
 
   return (
     <div className="flex min-h-full flex-col">
@@ -75,7 +133,11 @@ export function PersonPane({
       )}
       {load.kind === 'ready' && (
         <Tabs value={tab} onValueChange={(next) => setTab(next as PersonTab)} className="flex-1 gap-0">
-          <PersonHeader person={load.person} catalog={catalog}>
+          <PersonHeader
+            person={load.person}
+            catalog={catalog}
+            actions={<PersonHeaderActions person={load.person} me={me} actions={actions} />}
+          >
             <TabsList aria-label="Person sections" className="-mb-px h-11 gap-5">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="access">Access</TabsTrigger>
@@ -85,7 +147,22 @@ export function PersonPane({
           </PersonHeader>
           <div className="flex-1 px-4 py-6 sm:px-6 lg:px-9">
             <TabsContent value="overview">
-              <OverviewTab person={load.person} me={me} catalog={catalog} onTab={setTab} />
+              <OverviewTab person={load.person} me={me} catalog={catalog} version={version} onTab={setTab} />
+            </TabsContent>
+            <TabsContent value="access">
+              <AccessTab
+                person={load.person}
+                me={me}
+                catalog={catalog}
+                actions={actions}
+                onGiveAccess={(system) => onGiveAccess(load.person, system)}
+              />
+            </TabsContent>
+            <TabsContent value="devices">
+              <DevicesTab person={load.person} me={me} version={version} actions={actions} />
+            </TabsContent>
+            <TabsContent value="activity">
+              <ActivityTab person={load.person} me={me} version={version} />
             </TabsContent>
           </div>
         </Tabs>
@@ -179,11 +256,13 @@ function OverviewTab({
   person,
   me,
   catalog,
+  version,
   onTab,
 }: {
   person: PersonDetail;
   me: AdminMe;
   catalog: CatalogSystem[] | null;
+  version: number;
   onTab: (tab: PersonTab) => void;
 }) {
   return (
@@ -192,7 +271,7 @@ function OverviewTab({
         <AccessCard person={person} catalog={catalog} onChange={() => onTab('access')} />
         <SignInCard person={person} onDevices={() => onTab('devices')} />
       </div>
-      <RecentActivity person={person} me={me} onAll={() => onTab('activity')} />
+      <RecentActivity person={person} me={me} version={version} onAll={() => onTab('activity')} />
     </div>
   );
 }
@@ -226,19 +305,6 @@ function AccessCard({
         </p>
       )}
     </PaneCard>
-  );
-}
-
-/** "Until [date]": temporary access that ends by itself (AC-10, AC-12). */
-export function TemporaryTag({ until }: { until: string }) {
-  return (
-    <span
-      title="Temporary access ends by itself"
-      className="inline-flex items-center gap-1.5 rounded-full bg-warning-bg px-2 py-0.5 text-caption text-warning tabular-nums"
-    >
-      <Clock className="size-3" aria-hidden="true" />
-      {untilLabel(until)}
-    </span>
   );
 }
 
@@ -276,10 +342,20 @@ function SignInCard({ person, onDevices }: { person: PersonDetail; onDevices: ()
 }
 
 /** AC-10: the five newest events across the viewer's systems, "See all" opens Activity. */
-function RecentActivity({ person, me, onAll }: { person: PersonDetail; me: AdminMe; onAll: () => void }) {
+function RecentActivity({
+  person,
+  me,
+  version,
+  onAll,
+}: {
+  person: PersonDetail;
+  me: AdminMe;
+  version: number;
+  onAll: () => void;
+}) {
   const catalog = useEventCatalog();
   const [attempt, setAttempt] = useState(0);
-  const { state } = useAsync(`${person.id}|${person.updatedAt}|${me.user.id}|${attempt}`, () =>
+  const { state } = useAsync(`${person.id}|${version}|${me.user.id}|${attempt}`, () =>
     personActivity(person.id, null, undefined, 5),
   );
   return (

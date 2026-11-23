@@ -14,7 +14,6 @@ import { landingView, viewHref, viewsFor, type AdminViewPath } from './adminView
 import { ActivityView } from './activity/ActivityView';
 import { PermissionsView } from './permissions/PermissionsView';
 import { DeletionRequestsView } from './deletion/DeletionRequestsView';
-import { AddPersonPage } from './people/AddPersonPage';
 import { PeoplePage } from './people/PeoplePage';
 import { OverviewView } from './overview/OverviewView';
 import { SuiteAdminsView } from './suite/SuiteAdminsView';
@@ -98,10 +97,9 @@ function AdminConsole({ me, onChanged }: { me: AdminMe; onChanged: () => void })
   const grants = me.temporaryGrants?.length ? me.temporaryGrants : undefined;
   // The full band, with Open and End now, where temporary access is the subject; a pill elsewhere
   const fullBand = current.path === 'overview' || current.path === 'temporary-access';
-  // Lists and the matrix sit on the canvas in their own table cards; the Add person form gets a
-  // page card. People is the list beside the person, edge to edge (suite spec 0017, AC-1).
-  const onCard = params.id === 'new';
-  const flush = current.path === 'people' && !onCard;
+  // Lists and the matrix sit on the canvas in their own table cards. People is the list beside
+  // the person, edge to edge (suite spec 0017, AC-1).
+  const flush = current.path === 'people';
 
   return (
     <AdminShell
@@ -114,13 +112,9 @@ function AdminConsole({ me, onChanged }: { me: AdminMe; onChanged: () => void })
     >
       <section
         aria-labelledby="admin-view-title"
-        className={cn(
-          'min-w-0',
-          onCard && 'rounded-2xl border border-transparent bg-card p-4 shadow-card sm:p-6',
-          flush && 'h-full',
-        )}
+        className={cn('min-w-0', flush && 'h-full')}
       >
-        <AdminViewBody me={me} view={current.path} id={params.id} onChanged={onChanged} />
+        <AdminViewBody me={me} view={current.path} onChanged={onChanged} />
       </section>
     </AdminShell>
   );
@@ -130,12 +124,10 @@ function AdminConsole({ me, onChanged }: { me: AdminMe; onChanged: () => void })
 function AdminViewBody({
   me,
   view,
-  id,
   onChanged,
 }: {
   me: AdminMe;
   view: AdminViewPath;
-  id?: string;
   onChanged: () => void;
 }) {
   switch (view) {
@@ -146,8 +138,7 @@ function AdminViewBody({
     case 'temporary-access':
       return <TemporaryAccessView me={me} onChanged={onChanged} />;
     case 'people':
-      if (id === 'new') return <AddPersonPage me={me} />;
-      return <PeoplePage me={me} />;
+      return <PeoplePage me={me} onMeChanged={onChanged} />;
     case 'deletion-requests':
       return <DeletionRequestsView me={me} />;
     case 'activity':
