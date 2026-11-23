@@ -19,6 +19,13 @@ vi.mock("./admin/useAdminMe", () => ({ useAdminMe: () => null }));
 const get = vi.mocked(api.get);
 const replace = vi.fn();
 const USER = { id: "u1", name: "Ramil Aquino", email: "vmms.mech@welinc.com", picture: null };
+// Suite spec 0016, AC-12a: every launcher answer carries the session's cutoffs
+const CUTOFFS = {
+  sessionExpiresAt: "2026-11-23T10:30:00.000Z",
+  sessionAbsoluteExpiresAt: "2026-11-23T22:00:00.000Z",
+  serverTime: "2026-11-23T10:00:00.000Z",
+};
+
 const web = (system: string) => ({
   system,
   name: `${system} name`,
@@ -66,7 +73,7 @@ describe("spec 0014 phone only people at the portal", () => {
   });
 
   it("picks the phone only screen, and the refusal page before anything else", () => {
-    const answer = { user: USER, systems: [], mobileSystems: [phone("VMMS", true)] };
+    const answer = { user: USER, systems: [], mobileSystems: [phone("VMMS", true)], ...CUTOFFS };
     expect(screenForAnswer(new URLSearchParams(""), answer).kind).toBe("phone-only");
     expect(
       screenForAnswer(new URLSearchParams("error=APP_NOT_ALLOWED&system=VMMS"), {
@@ -75,7 +82,7 @@ describe("spec 0014 phone only people at the portal", () => {
       }),
     ).toMatchObject({ kind: "app-not-allowed", system: "VMMS" });
     // An older welinc-auth without the list still goes straight in
-    expect(screenForAnswer(new URLSearchParams(""), { user: USER, systems: [web("VRMS")] }).kind).toBe("go");
+    expect(screenForAnswer(new URLSearchParams(""), { user: USER, systems: [web("VRMS")], ...CUTOFFS }).kind).toBe("go");
   });
 
   it("shows a card per phone system with no link, the roles, and Sign out", async () => {

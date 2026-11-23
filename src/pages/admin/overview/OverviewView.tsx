@@ -45,13 +45,13 @@ export function OverviewView() {
 const RECENT_SHOWN = 8;
 
 /** Columns inside one bordered container; the 1px gaps over the border color draw the dividers. */
-const DIVIDED_GRID = 'grid gap-px overflow-hidden rounded-lg border border-border bg-border';
+const DIVIDED_GRID = 'grid gap-px overflow-hidden rounded-2xl border border-transparent bg-border shadow-card';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   const id = `overview-${title.toLowerCase().replaceAll(' ', '-')}`;
   return (
     <section aria-labelledby={id} className="flex flex-col gap-3">
-      <h3 id={id} className="text-base font-semibold text-foreground">
+      <h3 id={id} className="text-group font-semibold text-foreground">
         {title}
       </h3>
       {children}
@@ -63,7 +63,7 @@ function AdminsPerSystem({ report }: { report: Report }) {
   return (
     <Section title="Admins per system">
       {report.systemsWithoutAdmin.length > 0 && (
-        <p role="alert" className="flex items-start gap-2 text-sm text-destructive">
+        <p role="alert" className="flex items-start gap-2 text-body text-destructive">
           <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           No active admin in {report.systemsWithoutAdmin.join(', ')}. Make someone admin there.
         </p>
@@ -73,8 +73,8 @@ function AdminsPerSystem({ report }: { report: Report }) {
         {report.systems.map((system) => (
           <div key={system.system} className="flex min-w-0 flex-col gap-3 bg-card p-4">
             <div>
-              <p className="text-sm font-semibold text-foreground">{system.system}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-body font-semibold text-foreground">{system.system}</p>
+              <p className="text-caption text-muted-foreground">
                 {system.admins.length} {system.adminRole?.name ?? 'admin'}
                 {system.admins.length === 1 ? '' : 's'}
               </p>
@@ -85,13 +85,13 @@ function AdminsPerSystem({ report }: { report: Report }) {
                 <li key={admin.id} className="flex min-w-0 items-baseline justify-between gap-3">
                   <Link
                     to={`/admin/people/${admin.id}?system=${system.system}`}
-                    className="min-w-0 truncate text-sm text-primary underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+                    className="min-w-0 truncate text-body text-primary underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
                   >
                     {admin.name}
                   </Link>
                   <time
                     dateTime={admin.since}
-                    className="shrink-0 text-xs text-muted-foreground tabular-nums"
+                    className="shrink-0 text-caption text-muted-foreground tabular-nums"
                     aria-label={`admin since ${formatDate(admin.since)}`}
                   >
                     {formatDate(admin.since)}
@@ -102,7 +102,7 @@ function AdminsPerSystem({ report }: { report: Report }) {
             {system.temporaryGrants.length > 0 && (
               <ul className="flex flex-col gap-2 border-t border-border pt-3">
                 {system.temporaryGrants.map((grant) => (
-                  <li key={grant.id} className="flex items-start gap-2 text-xs text-foreground">
+                  <li key={grant.id} className="flex items-start gap-2 text-caption text-foreground">
                     <Clock className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
                     <Link
                       to="/admin/temporary-access"
@@ -197,23 +197,23 @@ function Attention({ report }: { report: Report }) {
   return (
     <Section title="Needs attention">
       {open.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nothing needs a look right now.</p>
+        <p className="text-body text-muted-foreground">Nothing needs a look right now.</p>
       ) : (
         <div className={DIVIDED_GRID + ' md:grid-cols-2'}>
           {open.map((group) => (
             <div key={group.title} className="flex min-w-0 flex-col gap-2 bg-card p-4 md:last:odd:col-span-2">
-              <p className="text-sm font-semibold text-foreground">
+              <p className="text-body font-semibold text-foreground">
                 {group.title} <span className="font-normal text-muted-foreground tabular-nums">({group.count})</span>
               </p>
               <ul className="flex flex-col gap-1.5">
                 {group.rows.map((row) => (
-                  <li key={row.key} className="text-sm">
-                    {row.label} <span className="text-xs text-muted-foreground tabular-nums">{row.detail}</span>
+                  <li key={row.key} className="text-body">
+                    {row.label} <span className="text-caption text-muted-foreground tabular-nums">{row.detail}</span>
                   </li>
                 ))}
               </ul>
               {group.count > group.rows.length && (
-                <Link to={group.more} className="text-xs text-primary underline-offset-4 hover:underline">
+                <Link to={group.more} className="text-caption text-primary underline-offset-4 hover:underline">
                   See all {group.count}
                 </Link>
               )}
@@ -231,7 +231,7 @@ function RecentChanges({ report }: { report: Report }) {
   return (
     <Section title="Recent admin changes">
       {report.recentAdminChanges.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No admin changes yet.</p>
+        <p className="text-body text-muted-foreground">No admin changes yet.</p>
       ) : (
         <DataTable columns={[{ label: 'When' }, { label: 'Person' }, { label: 'Change' }, { label: 'By' }]}>
           {report.recentAdminChanges.slice(0, RECENT_SHOWN).map((change) => (
@@ -255,7 +255,7 @@ function RecentChanges({ report }: { report: Report }) {
                   {change.system ? ` (${change.system})` : ''}
                   {change.newValue && change.type === 'ROLE_CHANGED' ? `, now ${change.newValue}` : ''}
                 </p>
-                {change.reason && <p className="text-xs break-words text-muted-foreground">"{change.reason}"</p>}
+                {change.reason && <p className="text-caption break-words text-muted-foreground">"{change.reason}"</p>}
               </Cell>
               <Cell>
                 <Muted>{change.actor ? change.actor.name : 'WeLinc (automatic)'}</Muted>
@@ -267,7 +267,7 @@ function RecentChanges({ report }: { report: Report }) {
       {report.recentAdminChanges.length > RECENT_SHOWN && (
         <Link
           to="/admin/activity?system=all"
-          className="self-start text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+          className="self-start text-body font-medium text-primary underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
         >
           See all activity
         </Link>

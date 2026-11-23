@@ -201,7 +201,7 @@ export default function ForgotPassword() {
         <div className="mb-6">
           <Link
             to="/login"
-            className="inline-flex min-h-11 items-center gap-2 rounded-md text-sm text-white/50 transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
+            className="inline-flex min-h-11 items-center gap-2 rounded-md text-body text-white/50 transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
             Back to sign in
@@ -216,7 +216,7 @@ export default function ForgotPassword() {
           {step === 'done' ? (
             <div className="text-center" role="status">
               <CheckCircle className="mx-auto mb-4 size-12 text-hero-success" aria-hidden="true" />
-              <h2 className="mb-2 text-2xl font-black text-white">Password changed</h2>
+              <h2 className="mb-2 text-title font-black text-white">Password changed</h2>
               <p className="mb-6 text-white/60">Sign in with your new password.</p>
               <Button asChild className={heroButton}>
                 <Link to="/login">Sign in</Link>
@@ -224,8 +224,8 @@ export default function ForgotPassword() {
             </div>
           ) : step === 'email' ? (
             <>
-              <h2 className="mb-1 text-2xl font-black text-white">Reset your password</h2>
-              <p className="mb-8 text-sm text-white/50">Enter your email and we'll send you a 6 digit code.</p>
+              <h2 className="mb-1 text-title font-black text-white">Reset your password</h2>
+              <p className="mb-8 text-body text-white/50">Enter your email and we'll send you a 6 digit code.</p>
               {notices}
               <form onSubmit={handleRequestCode} className="flex flex-col gap-5">
                 <div>
@@ -251,8 +251,8 @@ export default function ForgotPassword() {
             </>
           ) : step === 'code' ? (
             <>
-              <h2 className="mb-1 text-2xl font-black text-white">Check your email</h2>
-              <p className="mb-6 text-sm break-words text-white/50">
+              <h2 className="mb-1 text-title font-black text-white">Check your email</h2>
+              <p className="mb-6 text-body break-words text-white/50">
                 If <span className="font-semibold text-white/80">{cleanEmail}</span> has a WeLinc account, we sent
                 it a 6 digit code.
               </p>
@@ -298,12 +298,12 @@ export default function ForgotPassword() {
                   {loading ? 'Verifying' : 'Verify'}
                 </Button>
               </form>
-              <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm">
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-body">
                 <button
                   type="button"
                   onClick={() => void resend()}
                   disabled={wait > 0 || resending}
-                  className="min-h-11 cursor-pointer rounded-md font-semibold text-highlight tabular-nums hover:text-highlight-hover focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-white/40"
+                  className="min-h-11 cursor-pointer rounded-md font-semibold text-highlight tabular-nums hover:text-commit-hover focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-white/40"
                 >
                   {wait > 0 ? `Resend code in ${wait} s` : resending ? 'Sending' : 'Resend code'}
                 </button>
@@ -323,8 +323,8 @@ export default function ForgotPassword() {
             </>
           ) : (
             <>
-              <h2 className="mb-1 text-2xl font-black text-white">Set a new password</h2>
-              <p className="mb-6 text-sm break-words text-white/50">
+              <h2 className="mb-1 text-title font-black text-white">Set a new password</h2>
+              <p className="mb-6 text-body break-words text-white/50">
                 For <span className="text-highlight">{cleanEmail}</span>.
               </p>
               {notices}
@@ -346,7 +346,7 @@ export default function ForgotPassword() {
                     />
                     <RevealButton shown={showNewPassword} onToggle={() => setShowNewPassword((v) => !v)} />
                   </div>
-                  <p id="forgot-password-rules" className="mt-1.5 text-xs leading-normal text-white/50">
+                  <p id="forgot-password-rules" className="mt-1.5 text-caption font-normal leading-normal text-white/50">
                     At least 8 characters, with an uppercase letter, a lowercase letter, a number and a special
                     character.
                   </p>

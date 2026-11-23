@@ -23,12 +23,12 @@ export function CrashScreen({ code, variant }: CrashScreenProps) {
           <TriangleAlert className="size-6" aria-hidden="true" />
         </div>
         <div>
-          <h1 className="text-lg font-semibold text-foreground">Something went wrong on this page</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="text-subheading font-semibold text-foreground">Something went wrong on this page</h1>
+          <p className="mt-1 text-body text-muted-foreground">
             Try reloading. If it keeps happening, send this code to your admin.
           </p>
           {code && (
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-2 text-body text-muted-foreground">
               Reference <span className="font-mono font-semibold text-foreground select-all">{code}</span>
             </p>
           )}

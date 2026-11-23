@@ -15,6 +15,20 @@ const noRawColors = [
   { selector: `TemplateElement[value.raw=${RAW_COLOR}]`, message: 'Raw color value. Use a design token (bg-primary, var(--primary)).' },
 ]
 
+// Suite spec 0016 AC-17: classes the Control room standard removed (design.md, Banned and Typography).
+const BANNED_CLASSES = [
+  { pattern: '^.*-\\[.+\\]$', message: 'Arbitrary value. Use a Tailwind scale step or a token.' },
+  { pattern: '^(.*[:-])?role-.+$', message: 'Color never encodes a role. Use RoleChip or InitialsTile.' },
+  { pattern: '^(.*:)?ease-(snappy|drawer)$', message: 'Removed motion name. Use ease-enter or ease-exit.' },
+]
+const SWEEP_CLASSES = [
+  { pattern: '^(.*:)?shadow-(xs|sm|md|lg)$', message: 'Banned shadow. Use shadow-card, shadow-pop, shadow-bar or shadow-dialog.' },
+  {
+    pattern: '^(.*:)?text-(xs|sm|base|lg|xl|2xl)$',
+    message: 'Old type size. Use text-caption, text-body, text-group, text-subheading, text-heading or text-title.',
+  },
+]
+
 export default defineConfig([
   globalIgnores(['dist']),
   {
@@ -31,17 +45,24 @@ export default defineConfig([
   },
   {
     files: ['src/**/*.{ts,tsx}'],
-    plugins: { 'better-tailwindcss': betterTailwindcss },
+    plugins: { 'better-tailwindcss': betterTailwindcss, 'design-sweep': betterTailwindcss },
     settings: {
       'better-tailwindcss': { entryPoint: 'src/index.css' },
     },
     rules: {
       'better-tailwindcss/no-unknown-classes': 'error',
-      'better-tailwindcss/no-restricted-classes': [
-        'error',
-        { restrict: [{ pattern: '^.*-\\[.+\\]$', message: 'Arbitrary value. Use a Tailwind scale step or a token.' }] },
-      ],
+      'better-tailwindcss/no-restricted-classes': ['error', { restrict: BANNED_CLASSES }],
+      // Spec 0016 AC-17: the page sweep moved every page off the old sizes and shadows.
+      'design-sweep/no-restricted-classes': ['error', { restrict: SWEEP_CLASSES }],
       'no-restricted-syntax': noRawColors,
+    },
+  },
+  {
+    // Spec 0016 AC-20: the sign in hero is a brand surface and keeps its soft gold glows
+    // (shadow-lg), so only the old type sizes are banned there.
+    files: ['src/pages/auth/**/*.{ts,tsx}'],
+    rules: {
+      'design-sweep/no-restricted-classes': ['error', { restrict: SWEEP_CLASSES.filter((rule) => !rule.pattern.includes('shadow')) }],
     },
   },
   {

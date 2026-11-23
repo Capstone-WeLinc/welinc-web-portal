@@ -34,8 +34,16 @@ const USER = {
   email: "pedro@welinc.com",
   picture: null,
 };
-const ONE = { user: USER, systems: [card("VRMS", "http://localhost:8001")] };
+// Suite spec 0016, AC-12a: real answers carry the session's cutoffs, 30 minutes out here, so the
+// session watch has nothing to check while a test runs
+const CUTOFFS = {
+  sessionExpiresAt: new Date(Date.now() + 30 * 60_000).toISOString(),
+  sessionAbsoluteExpiresAt: new Date(Date.now() + 12 * 3_600_000).toISOString(),
+  serverTime: new Date().toISOString(),
+};
+const ONE = { user: USER, systems: [card("VRMS", "http://localhost:8001")], ...CUTOFFS };
 const TWO = {
+  ...CUTOFFS,
   user: USER,
   systems: [
     card("VMMS", "http://localhost:8002"),
@@ -290,11 +298,11 @@ describe("Portal", () => {
       await user.click(
         await screen.findByRole("menuitem", { name: "Sign out" }),
       );
-      expect(
-        await screen.findByRole("alertdialog", {
-          name: "Sign out of every WeLinc system?",
-        }),
-      ).toBeTruthy();
+      const dialog = await screen.findByRole("alertdialog", {
+        name: "Sign out of WeLinc?",
+      });
+      // Names only the person's own systems, never all three (spec 0007, AC-17)
+      expect(dialog.textContent).not.toContain("VRMS, VMMS and BMS");
       await user.click(screen.getByRole("button", { name: "Sign out" }));
     };
 

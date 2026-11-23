@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { askForCode, errorStatus, fetchAdminMe, isAdmin, needsCode, type AdminMe } from '@/lib/admin';
 import { onSessionEnded } from '@/lib/api';
 import { signInAgainHref } from '@/lib/auth';
+import { useSessionWatch } from '@/lib/sessionWatch/watch';
 import { cn } from '@/lib/utils';
 import { LauncherShell } from '../launcher/LauncherShell';
 import { AdminShell } from './AdminShell';
@@ -68,6 +69,10 @@ export default function AdminPage() {
       .catch(() => undefined);
   }, []);
 
+  // Suite spec 0016, AC-12b: the signing out soon watch, once the session is known to be live. A
+  // reload or a pasted link starts with no cutoffs, so the watch asks /auth/sso once itself.
+  useSessionWatch(load.kind === 'ready');
+
   switch (load.kind) {
     case 'loading':
       return <AdminLoading />;
@@ -108,7 +113,7 @@ function AdminConsole({ me, onChanged }: { me: AdminMe; onChanged: () => void })
     >
       <section
         aria-labelledby="admin-view-title"
-        className={cn('min-w-0', onCard && 'rounded-lg border border-border bg-card p-4 shadow-xs sm:p-6')}
+        className={cn('min-w-0', onCard && 'rounded-2xl border border-transparent bg-card p-4 shadow-card sm:p-6')}
       >
         <AdminViewBody me={me} view={current.path} id={params.id} onChanged={onChanged} />
       </section>
@@ -170,8 +175,8 @@ function CodeOwed({ me, onPassed }: { me: AdminMe; onPassed: () => void }) {
           <ShieldCheck className="size-6" aria-hidden="true" />
         </div>
         <div>
-          <h1 className="text-lg font-semibold text-foreground">Confirm it's you to open Admin</h1>
-          <p className="mt-1 text-sm text-muted-foreground">We email a 6 digit code to {me.user.email}.</p>
+          <h1 className="text-subheading font-semibold text-foreground">Confirm it's you to open Admin</h1>
+          <p className="mt-1 text-body text-muted-foreground">We email a 6 digit code to {me.user.email}.</p>
         </div>
         <Button size="touch" onClick={ask}>
           Send the code
@@ -189,7 +194,7 @@ function NotAnAdmin({ me }: { me: AdminMe }) {
         <div className="flex size-12 items-center justify-center rounded-lg bg-muted text-muted-strong">
           <ShieldOff className="size-6" aria-hidden="true" />
         </div>
-        <h1 role="alert" className="text-lg font-semibold text-foreground">
+        <h1 role="alert" className="text-subheading font-semibold text-foreground">
           Admin is for admin accounts only.
         </h1>
         <BackToLauncher />
@@ -222,7 +227,7 @@ function AdminLoading() {
               <Skeleton key={i} className="h-11 w-36 md:w-full" />
             ))}
           </div>
-          <Skeleton className="h-64 flex-1 rounded-lg" />
+          <Skeleton className="h-64 flex-1 rounded-2xl" />
         </div>
       </div>
     </LauncherShell>
@@ -237,8 +242,8 @@ function AdminError({ onRetry }: { onRetry: () => void }) {
           <TriangleAlert className="size-6" aria-hidden="true" />
         </div>
         <div>
-          <h1 className="text-lg font-semibold text-foreground">We couldn't load Admin.</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Check your connection, then try again.</p>
+          <h1 className="text-subheading font-semibold text-foreground">We couldn't load Admin.</h1>
+          <p className="mt-1 text-body text-muted-foreground">Check your connection, then try again.</p>
         </div>
         <Button size="touch" onClick={onRetry}>
           <RotateCw aria-hidden="true" />

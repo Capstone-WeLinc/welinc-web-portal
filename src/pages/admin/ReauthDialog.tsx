@@ -97,7 +97,7 @@ export function ReauthDialog() {
             aria-describedby={error ? 'reauth-error' : undefined}
           />
           {error && (
-            <p id="reauth-error" role="alert" className="flex items-start gap-2 text-xs text-destructive">
+            <p id="reauth-error" role="alert" className="flex items-start gap-2 text-caption text-destructive">
               <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
               {error}
             </p>

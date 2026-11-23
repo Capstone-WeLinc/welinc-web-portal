@@ -131,7 +131,7 @@ export function StepUpDialog() {
         </AlertDialogHeader>
 
         {(error || stage.kind === 'failed') && (
-          <p role="alert" className="flex items-start gap-2 text-sm text-destructive">
+          <p role="alert" className="flex items-start gap-2 text-body text-destructive">
             <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             {stage.kind === 'failed' ? stage.message : error}
           </p>
@@ -164,7 +164,7 @@ export function StepUpDialog() {
             >
               <InputOTPGroup>
                 {Array.from({ length: CODE_LENGTH }, (_, i) => (
-                  <InputOTPSlot key={i} index={i} className="size-11 text-base" />
+                  <InputOTPSlot key={i} index={i} className="size-11 text-base-input" />
                 ))}
               </InputOTPGroup>
             </InputOTP>

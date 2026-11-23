@@ -103,7 +103,7 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
         <main className="relative z-10 w-full max-w-md">
           <div className="mb-8 flex items-center justify-center gap-3 lg:hidden">
             <HeroLogo size="sm" />
-            <span className="text-lg font-black text-white">WeLinc Logistics</span>
+            <span className="text-subheading font-black text-white">WeLinc Logistics</span>
           </div>
 
           <HeroCard>
@@ -115,8 +115,8 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
                   <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-highlight shadow-lg shadow-highlight/20">
                     <Truck size={22} className="text-primary" strokeWidth={2.5} aria-hidden="true" />
                   </div>
-                  <h2 className="mb-1 text-2xl font-black text-white">Sign in</h2>
-                  <p className="text-sm text-white/50">Enter your credentials to access your workspace</p>
+                  <h2 className="mb-1 text-title font-black text-white">Sign in</h2>
+                  <p className="text-body text-white/50">Enter your credentials to access your workspace</p>
                 </div>
 
                 {notice && !error && (
@@ -126,7 +126,7 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
                       <button
                         type="button"
                         onClick={signInAgain}
-                        className="mt-2 min-h-11 cursor-pointer rounded-md text-sm font-semibold text-highlight hover:text-highlight-hover focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
+                        className="mt-2 min-h-11 cursor-pointer rounded-md text-body font-semibold text-highlight hover:text-commit-hover focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
                       >
                         Sign in again
                       </button>
@@ -161,7 +161,7 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
                       <HeroLabel htmlFor="login-password">Password</HeroLabel>
                       <Link
                         to="/forgot-password"
-                        className="mb-2 rounded-md text-xs text-highlight/80 transition-colors hover:text-highlight focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
+                        className="mb-2 rounded-md text-caption font-normal text-highlight/80 transition-colors hover:text-highlight focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
                       >
                         Forgot password?
                       </Link>

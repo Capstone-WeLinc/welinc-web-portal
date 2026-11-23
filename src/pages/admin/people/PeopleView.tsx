@@ -9,13 +9,14 @@ import type { AdminMe } from '@/lib/admin';
 import { errorMessage, listPeople, type ManagedPerson, type PeopleStatus, type Scope } from '@/lib/adminApi';
 import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { notifyError } from '@/lib/notify';
 import { useAsync } from '../useAsync';
 import { NoSystemScope, SystemSwitcher, Toolbar, ViewEmpty, ViewError, ViewHeader } from '../AdminStates';
 import { roleNames, useSystemsCatalog } from '../useCatalogs';
 import type { CatalogSystem } from '@/lib/adminApi';
 import { useAdminScope } from '../useAdminSystem';
-import { RoleBadge, StatusBadge, SuiteAdminBadge, TemporaryBadge } from './Badges';
+import { StatusBadge, SuiteAdminBadge, TemporaryBadge } from './Badges';
+import { RoleChip } from '@/components/ui/role-chip';
 import { accountStatus, parseStatus, roleName, STATUS_FILTERS, STATUS_LABELS } from './personStatus';
 
 /** How long typing waits before the search runs. */
@@ -110,7 +111,7 @@ function PeopleList({ system }: { system: Scope }) {
       const page = await listPeople({ system, q: q || undefined, status, cursor: load.value.next });
       replace((current) => ({ items: [...current.items, ...page.items], next: page.next }));
     } catch (error) {
-      toast.error(errorMessage(error, "We couldn't load more people."));
+      notifyError(errorMessage(error, "We couldn't load more people."));
     } finally {
       setLoadingMore(false);
     }
@@ -159,7 +160,7 @@ function PeopleList({ system }: { system: Scope }) {
         <>
           {/* design.md: a table from md up, stacked rows on phones */}
           <PeopleTable people={load.value.items} system={system} catalog={catalog} />
-          <ul className="divide-y divide-border rounded-lg border border-border md:hidden">
+          <ul className="divide-y divide-border rounded-2xl border border-transparent bg-card shadow-card md:hidden">
             {load.value.items.map((person) => (
               <li key={person.id}>
                 <PersonRow person={person} system={system} catalog={catalog} />
@@ -196,15 +197,11 @@ function PersonRoles({
     <>
       {person.suiteAdmin && <SuiteAdminBadge />}
       {person.roles.map((r) => (
-        <RoleBadge
-          key={`${r.system}:${r.role}`}
-          code={r.role}
-          name={
-            system
-              ? roleName(r.role, roleNames(catalog, r.system))
-              : `${r.system} ${roleName(r.role, roleNames(catalog, r.system))}`
-          }
-        />
+        <RoleChip key={`${r.system}:${r.role}`}>
+          {system
+            ? roleName(r.role, roleNames(catalog, r.system))
+            : `${r.system} ${roleName(r.role, roleNames(catalog, r.system))}`}
+        </RoleChip>
       ))}
       {person.temporaryUntil && <TemporaryBadge until={person.temporaryUntil} />}
     </>
@@ -220,7 +217,7 @@ function PersonStatus({ person }: { person: ManagedPerson }) {
   );
 }
 
-const TH = 'px-4 py-2.5 text-left text-xs font-medium tracking-wide text-muted-strong uppercase';
+const TH = 'px-4 py-2.5 text-left text-label text-muted-strong';
 
 /**
  * design.md tables: a light header, divided rows, the whole row one link (the name cell's link
@@ -237,8 +234,8 @@ function PeopleTable({
 }) {
   const showOther = people.some((p) => p.otherSystems.length > 0);
   return (
-    <div className="hidden overflow-hidden rounded-lg border border-border md:block">
-      <table className="w-full text-sm">
+    <div className="hidden overflow-hidden rounded-2xl border border-transparent bg-card shadow-card md:block">
+      <table className="w-full text-body">
         <thead className="bg-muted">
           <tr>
             {/* break-all lets the browser shrink this column until emails split mid word; a floor keeps a typical address whole */}
@@ -274,7 +271,7 @@ function PeopleTable({
                 >
                   {person.name}
                 </Link>
-                <p className="text-xs break-all text-muted-foreground">{person.email}</p>
+                <p className="text-caption break-all text-muted-foreground">{person.email}</p>
               </td>
               <td className="px-4 py-3 align-middle">
                 <div className="flex flex-wrap gap-1.5">
@@ -282,7 +279,7 @@ function PeopleTable({
                 </div>
               </td>
               {showOther && (
-                <td className="hidden px-4 py-3 align-middle text-xs text-muted-foreground lg:table-cell">
+                <td className="hidden px-4 py-3 align-middle text-caption text-muted-foreground lg:table-cell">
                   {person.otherSystems.length > 0 ? person.otherSystems.join(', ') : '—'}
                 </td>
               )}
@@ -291,7 +288,7 @@ function PeopleTable({
                   <PersonStatus person={person} />
                 </div>
               </td>
-              <td className="hidden px-4 py-3 align-middle text-xs whitespace-nowrap text-muted-foreground tabular-nums lg:table-cell">
+              <td className="hidden px-4 py-3 align-middle text-caption whitespace-nowrap text-muted-foreground tabular-nums lg:table-cell">
                 {formatDate(person.createdAt)}
               </td>
               <td className="px-2 py-3 align-middle">
@@ -320,13 +317,13 @@ function PersonRow({
       className="flex min-h-11 items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset"
     >
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium break-words text-foreground">{person.name}</p>
-        <p className="text-xs break-all text-muted-foreground">{person.email}</p>
+        <p className="text-body font-medium break-words text-foreground">{person.name}</p>
+        <p className="text-caption break-all text-muted-foreground">{person.email}</p>
         <div className="mt-2 flex flex-wrap gap-1.5">
           <PersonRoles person={person} system={system} catalog={catalog} />
           <PersonStatus person={person} />
           {person.otherSystems.length > 0 && (
-            <span className="text-xs text-muted-foreground">Also in {person.otherSystems.join(', ')}</span>
+            <span className="text-caption text-muted-foreground">Also in {person.otherSystems.join(', ')}</span>
           )}
         </div>
       </div>
@@ -349,7 +346,7 @@ function StatusFilter({
         aria-label="Status"
         value={value ?? ''}
         onChange={(e) => onChange(parseStatus(e.target.value))}
-        className="h-11 w-full appearance-none rounded-lg border border-input bg-card pr-9 pl-3 text-base text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden md:h-10 md:text-sm"
+        className="h-11 w-full appearance-none rounded-lg border border-input bg-card pr-9 pl-3 text-base-input text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden md:h-10 md:text-body"
       >
         <option value="">Every status</option>
         {STATUS_FILTERS.map((s) => (
@@ -368,7 +365,7 @@ function StatusFilter({
 
 function PeopleSkeleton() {
   return (
-    <div aria-busy="true" aria-live="polite" className="divide-y divide-border rounded-lg border border-border">
+    <div aria-busy="true" aria-live="polite" className="divide-y divide-border rounded-2xl border border-transparent bg-card shadow-card">
       <span className="sr-only">Loading people</span>
       {[0, 1, 2, 3, 4].map((i) => (
         <div key={i} className="flex flex-col gap-2 px-4 py-3">

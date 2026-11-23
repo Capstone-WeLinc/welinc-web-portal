@@ -11,7 +11,7 @@ import {
   RotateCcw,
   Trash2,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { notifyError, notifySuccess } from '@/lib/notify';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,7 +57,8 @@ import { roleNames, useSystemsCatalog } from '../useCatalogs';
 import { useAdminSystem } from '../useAdminSystem';
 import { useAsync } from '../useAsync';
 import { BackToPeople } from './AddPersonPage';
-import { DeletedBadge, RoleBadge, StatusBadge, SuiteAdminBadge, TemporaryBadge } from './Badges';
+import { DeletedBadge, StatusBadge, SuiteAdminBadge, TemporaryBadge } from './Badges';
+import { RoleChip } from '@/components/ui/role-chip';
 import { PersonForm } from './PersonForm';
 import type { PersonFormValues } from './personValues';
 import { accountStatus, roleName } from './personStatus';
@@ -72,11 +73,11 @@ type Load =
 async function run(action: () => Promise<unknown>, done: string, failed: string): Promise<boolean> {
   try {
     await action();
-    toast.success(done);
+    notifySuccess(done);
     return true;
   } catch (error) {
     if (error instanceof ReauthCancelled) return false;
-    toast.error(errorMessage(error, failed));
+    notifyError(errorMessage(error, failed));
     return false;
   }
 }
@@ -138,7 +139,7 @@ function Person({ id, system, me }: { id: string; system: SystemCode; me: AdminM
       <BackToPeople system={system} />
       {load.kind === 'loading' && <PersonSkeleton />}
       {load.kind === 'missing' && (
-        <p role="alert" className="py-8 text-sm text-foreground">
+        <p role="alert" className="py-8 text-body text-foreground">
           This person isn't in {system}, or the account no longer exists.
           {me.suiteAdmin && ' Pick another system above.'}
         </p>
@@ -292,7 +293,7 @@ function PersonDetails({
 
       <div className="mb-6 flex flex-wrap gap-1.5">
         {person.roles.map((r) => (
-          <RoleBadge key={r.role} code={r.role} name={roleName(r.role, names)} />
+          <RoleChip key={r.role}>{roleName(r.role, names)}</RoleChip>
         ))}
         {person.suiteAdmin && <SuiteAdminBadge />}
         {person.temporaryUntil && <TemporaryBadge until={person.temporaryUntil} />}
@@ -304,7 +305,7 @@ function PersonDetails({
         <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
           <Fact label="Email">
             <span className="break-all">{person.email}</span>
-            <span className="block text-xs text-muted-foreground">
+            <span className="block text-caption text-muted-foreground">
               {person.emailVerified ? 'Confirmed' : 'Not confirmed yet'}
             </span>
           </Fact>
@@ -315,7 +316,7 @@ function PersonDetails({
           {person.deletedAt && <Fact label="Deleted">{formatDateTime(person.deletedAt)}</Fact>}
         </dl>
         {person.otherSystems.length > 0 && !deleted && (
-          <p className="mt-3 text-xs text-muted-foreground">
+          <p className="mt-3 text-caption text-muted-foreground">
             This account is shared. Deactivating it signs them out of every system; to take them out of {system} only,
             remove the {system} role instead.
           </p>
@@ -432,7 +433,7 @@ function EditDialog({
     setServerError('');
     try {
       const next = await updatePerson(person.id, system, input);
-      toast.success(`${next.name} is saved.`);
+      notifySuccess(`${next.name} is saved.`);
       onSaved({ ...person, ...next });
     } catch (error) {
       if (!(error instanceof ReauthCancelled)) setServerError(errorMessage(error, "We couldn't save the changes."));
@@ -544,15 +545,15 @@ function Sessions({ personId, system, version }: { personId: string; system: Sys
   }
   if (state.kind === 'loading') return <Skeleton className="h-12" />;
   const sessions: SessionView[] = state.value;
-  if (sessions.length === 0) return <p className="text-sm text-muted-foreground">Not signed in anywhere right now.</p>;
+  if (sessions.length === 0) return <p className="text-body text-muted-foreground">Not signed in anywhere right now.</p>;
   return (
     <ul className="divide-y divide-border">
       {sessions.map((s) => (
         <li key={s.sid} className="flex items-start gap-3 py-3">
           <MonitorSmartphone className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
           <div className="min-w-0">
-            <p className="text-sm break-words text-foreground">{s.device}</p>
-            <p className="text-xs text-muted-foreground tabular-nums">
+            <p className="text-body break-words text-foreground">{s.device}</p>
+            <p className="text-caption text-muted-foreground tabular-nums">
               {s.kind === 'mobile' ? 'Mobile app' : 'Web'}
               {s.systems.length > 0 && ` · ${s.systems.join(', ')}`} · last active {formatDateTime(s.lastActiveAt)}
             </p>
@@ -566,7 +567,7 @@ function Sessions({ personId, system, version }: { personId: string; system: Sys
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="mb-6 border-t border-border pt-4 last:mb-0">
-      <h3 className="mb-3 text-xs font-medium tracking-wide text-muted-strong uppercase">{title}</h3>
+      <h3 className="mb-3 text-label text-muted-strong">{title}</h3>
       {children}
     </section>
   );
@@ -575,8 +576,8 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-sm text-foreground">{children}</dd>
+      <dt className="text-caption text-muted-foreground">{label}</dt>
+      <dd className="text-body text-foreground">{children}</dd>
     </div>
   );
 }

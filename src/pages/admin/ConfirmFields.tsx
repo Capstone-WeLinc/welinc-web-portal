@@ -37,7 +37,7 @@ export function ReasonField({
         aria-invalid={error ? true : undefined}
         aria-describedby={`${id}-help`}
       />
-      <p id={`${id}-help`} className={cn('text-xs tabular-nums', error ? 'text-destructive' : 'text-muted-foreground')}>
+      <p id={`${id}-help`} className={cn('text-caption tabular-nums', error ? 'text-destructive' : 'text-muted-foreground')}>
         {error || `${length} of ${REASON_MAX} characters, at least ${REASON_MIN}`}
       </p>
     </div>
@@ -72,7 +72,7 @@ export function PasswordField({
         aria-describedby={error ? `${id}-error` : undefined}
       />
       {error && (
-        <p id={`${id}-error`} role="alert" className="flex items-start gap-2 text-xs text-destructive">
+        <p id={`${id}-error`} role="alert" className="flex items-start gap-2 text-caption text-destructive">
           <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           {error}
         </p>

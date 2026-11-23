@@ -38,7 +38,7 @@ export function UserAvatar({
       {src && <AvatarImage src={src} alt="" />}
       <AvatarFallback
         className={cn(
-          'text-xs font-semibold',
+          'text-caption font-semibold',
           onDark ? 'bg-highlight text-highlight-foreground' : 'bg-primary text-primary-foreground',
         )}
       >
@@ -49,14 +49,14 @@ export function UserAvatar({
 }
 
 /** The account menu: who is signed in, and Sign out everywhere (AC-17). `onDark` for the navy band. */
-export function AccountMenu({ user, onDark = true }: { user: User; onDark?: boolean }) {
+export function AccountMenu({ user, onDark = true, systems }: { user: User; onDark?: boolean; systems?: readonly string[] }) {
   const [signingOut, setSigningOut] = useState(false);
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger
           className={cn(
-            'flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-medium focus-visible:ring-2 focus-visible:outline-hidden',
+            'flex min-h-11 items-center gap-2 rounded-lg px-2 text-body font-medium focus-visible:ring-2 focus-visible:outline-hidden',
             onDark
               ? 'text-white hover:bg-white/10 focus-visible:ring-highlight'
               : 'text-foreground hover:bg-accent focus-visible:ring-ring',
@@ -71,8 +71,8 @@ export function AccountMenu({ user, onDark = true }: { user: User; onDark?: bool
           <DropdownMenuLabel className="flex items-center gap-3 font-normal">
             <UserAvatar user={user} className="size-10" />
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
-              <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+              <p className="truncate text-body font-medium text-foreground">{user.name}</p>
+              <p className="truncate text-caption text-muted-foreground">{user.email}</p>
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
@@ -84,7 +84,7 @@ export function AccountMenu({ user, onDark = true }: { user: User; onDark?: bool
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-      <SignOutDialog open={signingOut} onOpenChange={setSigningOut} />
+      <SignOutDialog open={signingOut} onOpenChange={setSigningOut} systems={systems} />
     </>
   );
 }
@@ -93,7 +93,7 @@ export function Brand() {
   return (
     <div className="flex items-center gap-2.5">
       <LogoMark className="h-5 text-highlight" />
-      <span className="text-lg font-semibold tracking-tight text-white">WeLinc</span>
+      <span className="text-subheading font-semibold tracking-tight text-white">WeLinc</span>
     </div>
   );
 }
@@ -112,6 +112,7 @@ export function LauncherShell({
   homeLink = false,
   hero,
   overlap = true,
+  systems,
   children,
 }: {
   user?: User;
@@ -123,6 +124,8 @@ export function LauncherShell({
   hero?: ReactNode;
   /** The first cards overlap the band's bottom edge (the launcher); off for working pages (Admin). */
   overlap?: boolean;
+  /** The person's own systems, named in the Sign out dialog (`signedInSystems`). */
+  systems?: readonly string[];
   children: ReactNode;
 }) {
   const { pathname } = useLocation();
@@ -144,7 +147,7 @@ export function LauncherShell({
           )}
           <div className="flex items-center gap-2">
             {signedIn && adminEntry && <AdminEntry />}
-            {user && <AccountMenu user={user} />}
+            {user && <AccountMenu user={user} systems={systems} />}
           </div>
         </header>
         {hero && (

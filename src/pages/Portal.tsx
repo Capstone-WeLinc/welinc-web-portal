@@ -19,6 +19,7 @@ import {
   type Screen,
 } from '../lib/auth';
 import { checkSso } from '../lib/session';
+import { holdCutoffs, useSessionWatch } from '../lib/sessionWatch/watch';
 
 /** The launcher asks /auth/sso again on focus at most this often (spec 0007, AC-18). */
 export const RECHECK_MS = 10_000;
@@ -87,12 +88,17 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
   }, [start, params, show]);
 
   const onSignedIn = (answer: LauncherAnswer) => {
+    // Suite spec 0016, AC-12b: the login and code step answers carry the new session's cutoffs
+    holdCutoffs(answer);
     if (start.kind === 'request') window.location.assign(resumeAddress(start.request));
     else {
       forgetReason();
       show(screenForAnswer(params, answer));
     }
   };
+
+  // Suite spec 0016, AC-12b: the signing out soon watch runs on the signed in screens only
+  useSessionWatch(screen.kind === 'launcher' || screen.kind === 'phone-only' || screen.kind === 'app-not-allowed');
 
   // AC-18: a tab coming back asks again, at most once every 10 seconds
   const lastCheck = useRef(0);

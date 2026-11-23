@@ -84,12 +84,12 @@ export function PersonForm({
           onChange={(e) => setValues({ ...values, email: e.target.value })}
           {...field('email')}
         />
-        {emailHint && !errors.email && <p className="text-xs text-muted-foreground">{emailHint}</p>}
+        {emailHint && !errors.email && <p className="text-caption text-muted-foreground">{emailHint}</p>}
         <FieldError id={`${id}-email-error`} message={errors.email} />
       </div>
 
       <fieldset className="flex flex-col gap-2" {...field('role')}>
-        <legend className="mb-2 text-sm font-medium text-foreground">
+        <legend className="mb-2 text-body font-medium text-foreground">
           {system} role <span aria-hidden="true">*</span>
         </legend>
         <div role="radiogroup" aria-label={`${system} role`} className="flex flex-col gap-2">
@@ -113,8 +113,8 @@ export function PersonForm({
                   className="sr-only"
                 />
                 <span className="flex flex-col">
-                  <span className="text-sm font-medium">{role.name}</span>
-                  <span className={cn('text-xs', selected ? 'text-primary-foreground' : 'text-muted-foreground')}>
+                  <span className="text-body font-medium">{role.name}</span>
+                  <span className={cn('text-caption', selected ? 'text-primary-foreground' : 'text-muted-foreground')}>
                     {role.description}
                     {role.isSystemAdmin && ' Giving this role asks for your password.'}
                   </span>
@@ -127,7 +127,7 @@ export function PersonForm({
       </fieldset>
 
       {serverError && (
-        <p role="alert" className="flex items-start gap-2 text-sm text-destructive">
+        <p role="alert" className="flex items-start gap-2 text-body text-destructive">
           <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           {serverError}
         </p>
@@ -140,7 +140,7 @@ export function PersonForm({
 function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
   return (
-    <p id={id} className="flex items-center gap-1.5 text-xs text-destructive">
+    <p id={id} className="flex items-center gap-1.5 text-caption text-destructive">
       <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
       {message}
     </p>

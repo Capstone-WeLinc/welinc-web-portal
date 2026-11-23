@@ -107,10 +107,10 @@ export function MatrixReviewDialog({
           <div className="flex flex-col gap-4">
             {byRole.map(({ role, items }) => (
               <section key={role.code} aria-label={role.name}>
-                <h3 className="mb-1 text-xs font-semibold tracking-wide text-muted-strong uppercase">{role.name}</h3>
+                <h3 className="mb-1 text-label text-muted-strong">{role.name}</h3>
                 <ul className="flex flex-col gap-1">
                   {items.map((c) => (
-                    <li key={c.key} className="flex items-start gap-2 text-sm text-foreground">
+                    <li key={c.key} className="flex items-start gap-2 text-body text-foreground">
                       {c.allowed ? (
                         <Plus aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
                       ) : (
@@ -142,7 +142,7 @@ export function MatrixReviewDialog({
             />
             <p
               id="matrix-note-help"
-              className={cn('text-xs tabular-nums', touched && problem ? 'text-destructive' : 'text-muted-foreground')}
+              className={cn('text-caption tabular-nums', touched && problem ? 'text-destructive' : 'text-muted-foreground')}
             >
               {touched && problem
                 ? problem
@@ -151,7 +151,7 @@ export function MatrixReviewDialog({
           </div>
           {failure && (
             <div role="alert" className="flex flex-col items-start gap-2">
-              <p className="text-sm text-destructive">{failure.message}</p>
+              <p className="text-body text-destructive">{failure.message}</p>
               {failure.stale && (
                 <Button type="button" variant="outline" onClick={onReload}>
                   Reload the matrix

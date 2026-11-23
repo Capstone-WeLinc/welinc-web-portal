@@ -31,14 +31,14 @@ The portal's admin screens from suite spec 0013. They talk only to welinc-auth's
 - `useAsync` reloads only on a key change and never sets state in an effect: put every input plus a retry counter in the key.
 - Confirms are `AlertDialog`s whose action calls `preventDefault`, stays open and blocks close while busy; destructive actions use the destructive variant. Results go to sonner toasts with `errorMessage(error, fallback)`.
 - Every view filter is a `Segmented` control inside a `Toolbar` (hidden when empty). The system filter is always `SystemSwitcher`: "All systems" first only with `allowAll`, and nothing at all when there is one system to pick. A second filter that isn't a system (People's status) is a select, so it never looks like another switcher.
-- List views sit on the canvas in their own bordered tables; only a person's page and Add person get a card (`AdminPage`, `onCard`). Never put a bordered table inside a card.
+- List views sit on the canvas as table cards (`AdminTable`: `bg-card`, `shadow-card`, suite spec 0016); only a person's page and Add person get a page card (`AdminPage`, `onCard`). Never put a table card inside a card.
 - Suite admin versus system admin changes what shows (suite only views, the `All` switcher, matrix editing); the server still enforces every rule, so hiding is never the only check.
 - The matrix draft holds only flipped cells; the editor remounts on `system|version`, and a save sends `version`, so a `MATRIX_STALE` answer reloads it.
 - Password check codes (`WRONG_PASSWORD`, `ACCOUNT_LOCKED`, `RATE_LIMITED`) get their messages in `reauthFailure` (`lib/adminErrors.ts`); view specific codes (`MATRIX_STALE`, `GRANT_ACTIVE`, `ACCOUNT_EXISTS`, the suite admin 409s) are handled in their view. `ACCOUNT_LOCKED` clears the password field.
 
 ## Gotchas
 
-- Nothing here touches `localStorage` or `sessionStorage`: passwords, reauth tokens and the step up ticket live in component state only (spec 0003, AC-36).
+- Passwords, reauth tokens and the step up ticket live in component state only, never in `localStorage` or `sessionStorage` (spec 0003, AC-36). The one stored thing is a view preference: the sidebar collapse, `welinc:sidebar:<user id>` (`useSidebarCollapsed.ts`, suite spec 0016).
 - The sidebar links and the landing redirect go through `viewHref` (`adminViews.ts`), which keeps `?system=` and drops every other query; a new link between views should use it too.
 - `?system=all` means suite wide only for a suite admin; the overview's links use it.
 - The step up and reauth hosts are module singletons registered by the two dialogs' effects; without the dialogs mounted, `askForCode` resolves false and the call fails.

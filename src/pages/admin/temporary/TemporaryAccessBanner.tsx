@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Clock, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { toast } from 'sonner';
+import { notifyError } from '@/lib/notify';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,7 +63,7 @@ function GrantBand({ grant, url }: { grant: Grant; url?: string }) {
       // AC-10 ended this web session too: back to the login screen
       goToSignedOut();
     } catch (error) {
-      toast.error(errorMessage(error, "We couldn't end temporary access."));
+      notifyError(errorMessage(error, "We couldn't end temporary access."));
       setBusy(false);
       setConfirming(false);
     }
@@ -74,7 +74,7 @@ function GrantBand({ grant, url }: { grant: Grant; url?: string }) {
       role="status"
       className="flex flex-col gap-3 rounded-lg border border-highlight bg-highlight/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
     >
-      <p className="flex items-start gap-2 text-sm text-foreground">
+      <p className="flex items-start gap-2 text-body text-foreground">
         <Clock className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
         <span>
           Temporary <strong>{grant.system} {grant.roleName}</strong> until{' '}
@@ -138,7 +138,7 @@ export function TemporaryAccessChip({ grants }: { grants: AdminMe['temporaryGran
   return (
     <Link
       to="/admin/temporary-access"
-      className="flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border border-highlight bg-highlight/20 px-3 text-xs font-medium text-foreground hover:bg-highlight/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+      className="flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border border-highlight bg-highlight/20 px-3 text-caption font-medium text-foreground hover:bg-highlight/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
     >
       <Clock className="size-3.5 shrink-0" aria-hidden="true" />
       <span className="max-sm:sr-only">

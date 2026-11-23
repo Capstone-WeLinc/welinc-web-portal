@@ -18,7 +18,7 @@ The SSO portal: a React 19 + Vite SPA. Login goes to `welinc-auth` through the g
 | `src/lib/auth.ts` | Pure login helpers: notices and error messages, the screen choice, the resume address |
 | `src/lib/session.ts`, `src/lib/launcher.ts` | `checkSso` and `signOutEverywhere`; the launcher's display rules (greeting, initials, picture) |
 | `src/components/LogoMark.tsx`, `src/assets/` | The SVG logo mark (design.md: never the square `welinc-logo.jpg` at icon size) and the bundled login images |
-| `src/components/ui/` | shadcn components, including the sonner `Toaster`; `src/lib/notify.ts` has `notifyError` |
+| `src/components/ui/` | shadcn components, including the sonner `Toaster`; `src/lib/notify.ts` has `notify`, `notifyError` and `notifySuccess`, which draw our `Toast` through sonner's `toast.custom` (suite spec 0016 AC-11); never call sonner directly |
 | `src/index.css` | Tailwind v4 setup and the design tokens, the one place color values live; also the `brand-grid` and `pb-safe` utilities, since lint refuses bracketed values in components |
 
 ## Commands
@@ -41,9 +41,11 @@ Tests sit beside the source as `*.test.ts(x)`.
 - `VITE_API_BASE_URL` is checked by `env.schema.ts`, run from `vite.config.ts` before dev and every build (spec 0010): missing or malformed stops it, and a production build also refuses `http` and `localhost`. `src/` reads it with no `||` fallback (`no-localhost-fallback.test.ts` fails on a local address outside comments). A new `VITE_*` name goes in `env.schema.ts`, `.env.example`, `.env.development` and `src/vite-env.d.ts` (the drift test in `env.schema.test.ts` checks the first three), plus `env:` in `ci.yml` and an `ARG` in `Dockerfile.prod`.
 - Never keep a token, a user or a session flag in `localStorage` or a URL (spec 0003, AC-36). The session is welinc-auth's `welinc_sso` cookie, which no script can read.
 - Touch targets are 44px on phones: the default `Button` size adds `max-sm:h-11` and the dialog Close is `size-11` below `sm`. Keep new controls at that height.
+- `Button` variants are `default`, `outline`, `ghost`, `destructive` (quiet red text, never a solid red fill), `commit` (gold, only on the navy save bar) and `link`. There is no `secondary`; use `outline`.
 
 ## Gotchas
 
+- Type sizes (`text-body`, `text-caption` and the rest) and theme shadows are registered in `extendTailwindMerge` in `src/lib/utils.ts`. Add any new size or shadow token there too, or `cn()` reads it as a color and drops the color class beside it.
 - Only roles for systems `VRMS`, `VMMS` or `BMS` count. A user with none gets 403 `NO_SYSTEM_ACCESS` from `/auth/login` and no session.
 - Personal env overrides go in `.env.local`.
 - On Windows, run Vitest from a path with an uppercase drive letter (`C:/Users/...`). From Git Bash's `/c/Users/...` every test file fails with "Vitest failed to find the current suite".

@@ -20,7 +20,13 @@ import {
 // covers: spec 0003 AC-36 (messages, when the form must show, where the login goes next)
 const params = (query: string) => new URLSearchParams(query);
 const REQUEST = 'a'.repeat(43);
-const answer = { user: { id: 'u1', name: 'Pedro', email: 'p@welinc.com', picture: null }, systems: [] };
+// Suite spec 0016, AC-12a: every launcher answer carries the session's cutoffs
+const CUTOFFS = {
+  sessionExpiresAt: "2026-11-23T10:30:00.000Z",
+  sessionAbsoluteExpiresAt: "2026-11-23T22:00:00.000Z",
+  serverTime: "2026-11-23T10:00:00.000Z",
+};
+const answer = { user: { id: 'u1', name: 'Pedro', email: 'p@welinc.com', picture: null }, systems: [], ...CUTOFFS };
 
 describe('portal session helpers', () => {
   it('has a plain message for each error code and reason', () => {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { notifySuccess } from '@/lib/notify';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -39,7 +39,7 @@ function Choices<T extends string | number>({
 }) {
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="mb-2 text-sm font-medium text-foreground">{label}</legend>
+      <legend className="mb-2 text-body font-medium text-foreground">{label}</legend>
       <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2">
         {options.map((option) => {
           const selected = option.value === value;
@@ -52,7 +52,7 @@ function Choices<T extends string | number>({
               disabled={disabled}
               onClick={() => onChange(option.value)}
               className={cn(
-                'min-h-11 rounded-lg border px-3 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:opacity-50 md:min-h-9',
+                'min-h-11 rounded-lg border px-3 text-body transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:opacity-50 md:min-h-9',
                 selected
                   ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border bg-card text-foreground hover:bg-accent',
@@ -124,7 +124,7 @@ export function TemporaryAccessDialog({
     }
     try {
       const grant = await startGrant({ system, role, hours, reason: reason.trim(), reauthToken: token });
-      toast.success(`You have ${grant.system} ${grant.roleName} access for ${hours} ${hours === 1 ? 'hour' : 'hours'}.`);
+      notifySuccess(`You have ${grant.system} ${grant.roleName} access for ${hours} ${hours === 1 ? 'hour' : 'hours'}.`);
       reset();
       onOpenChange(false);
       onStarted();
@@ -205,7 +205,7 @@ export function TemporaryAccessDialog({
             error={passwordError}
           />
           {formError && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-body text-destructive">
               {formError}
             </p>
           )}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, UserRoundCheck } from 'lucide-react';
-import { toast } from 'sonner';
+import { notifySuccess } from '@/lib/notify';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { errorCode, type AdminMe, type SystemCode } from '@/lib/admin';
@@ -49,7 +49,7 @@ function AddPerson({ system }: { system: SystemCode }) {
     setServerError('');
     try {
       const person = await createPerson(input);
-      toast.success(
+      notifySuccess(
         input.attachExisting
           ? `${person.name} now has a ${system} role.`
           : person.setupEmailSent === false
@@ -139,18 +139,18 @@ function AttachExisting({
           <UserRoundCheck className="size-5" aria-hidden="true" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-medium break-words text-foreground">
+          <p className="text-body font-medium break-words text-foreground">
             {existing.input.email} already has a WeLinc account
             {existing.name ? ` (${existing.name})` : ''}.
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-body text-muted-foreground">
             {existing.systems.length > 0 ? `It is used in ${existing.systems.join(', ')}. ` : ''}
             You can add the {system} role to that account. Their name and password stay as they are.
           </p>
         </div>
       </div>
       {serverError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-body text-destructive">
           {serverError}
         </p>
       )}

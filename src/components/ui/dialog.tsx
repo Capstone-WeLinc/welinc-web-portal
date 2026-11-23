@@ -20,7 +20,7 @@ function DialogOverlay({ className, ...props }: React.ComponentProps<typeof Dial
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-foreground/50 duration-200 ease-snappy data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        "fixed inset-0 z-70 bg-foreground/50 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-(--duration-dialog-in) data-[state=open]:ease-enter data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-(--duration-dialog-out) data-[state=closed]:ease-exit",
         className
       )}
       {...props}
@@ -39,7 +39,8 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed inset-x-4 top-1/2 z-50 mx-auto grid max-h-dvh -translate-y-1/2 gap-4 overflow-y-auto rounded-xl border bg-card p-6 text-card-foreground shadow-lg duration-200 ease-snappy data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg",
+          // Suite spec 0016 AC-5 and AC-10: rounded-3xl on shadow-dialog, fades and rises 8px, fades out
+          "fixed inset-x-4 top-1/2 z-70 mx-auto grid max-h-dvh -translate-y-1/2 gap-4 overflow-y-auto rounded-3xl border border-transparent bg-card p-6 text-card-foreground shadow-dialog data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-2 data-[state=open]:duration-(--duration-dialog-in) data-[state=open]:ease-enter data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-(--duration-dialog-out) data-[state=closed]:ease-exit sm:max-w-lg",
           className
         )}
         {...props}
@@ -47,7 +48,7 @@ function DialogContent({
         {children}
         <DialogPrimitive.Close
           aria-label="Close"
-          className="absolute top-3 right-3 inline-flex size-11 items-center sm:top-4 sm:right-4 sm:size-9 justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden [&_svg]:size-4"
+          className="absolute top-3 right-3 inline-flex size-11 items-center sm:top-4 sm:right-4 sm:size-9 justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card focus-visible:outline-hidden [&_svg]:size-4"
         >
           <XIcon aria-hidden="true" />
         </DialogPrimitive.Close>
@@ -71,14 +72,14 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
-  return <DialogPrimitive.Title data-slot="dialog-title" className={cn("text-lg font-semibold", className)} {...props} />
+  return <DialogPrimitive.Title data-slot="dialog-title" className={cn("text-subheading", className)} {...props} />
 }
 
 function DialogDescription({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Description>) {
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-body text-muted-foreground", className)}
       {...props}
     />
   )

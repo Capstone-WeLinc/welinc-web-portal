@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { reportRequestFailed, reportRequestOk } from './connection/connection';
 
 /** The gateway address, checked before dev or build starts (env.schema.ts, spec 0010). */
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -32,7 +33,16 @@ export function noticeSessionEnd(error: unknown) {
   if (response?.status === 401 && response.data?.code === 'NOT_SIGNED_IN') sessionEnded?.();
 }
 
-api.interceptors.response.use(undefined, (error: unknown) => {
-  noticeSessionEnd(error);
-  return Promise.reject(error);
-});
+api.interceptors.response.use(
+  (response) => {
+    // Suite spec 0016 AC-12: any answer ends the offline banner
+    reportRequestOk();
+    return response;
+  },
+  (error: unknown) => {
+    const status = (error as { response?: { status?: number } } | null)?.response?.status;
+    reportRequestFailed(status, axios.isCancel(error));
+    noticeSessionEnd(error);
+    return Promise.reject(error);
+  },
+);

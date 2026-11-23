@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { currentSystem, mobileSystemsOf, type LauncherAnswer, type Notice } from '@/lib/auth';
-import { firstName, greetingFor } from '@/lib/launcher';
+import { firstName, greetingFor, signedInSystems } from '@/lib/launcher';
 import { AdminCard, AdminCardIfAdmin } from './AdminCard';
 import { LauncherShell } from './LauncherShell';
 import { SystemCard } from './SystemCard';
@@ -54,7 +54,7 @@ function ManageSection({
     <section aria-labelledby="launcher-manage" className={only ? undefined : 'mt-10'}>
       <h2
         id="launcher-manage"
-        className={only ? 'sr-only' : 'mb-3 text-xs font-medium tracking-wide text-muted-strong uppercase'}
+        className={only ? 'sr-only' : 'mb-3 text-label text-muted-strong'}
       >
         Manage
       </h2>
@@ -79,17 +79,18 @@ export default function Launcher({ answer, params, banner }: LauncherProps) {
   return (
     <LauncherShell
       user={answer.user}
+      systems={signedInSystems(answer)}
       adminEntry={false}
       hero={
         <>
-          <p className="text-xs font-medium tracking-wide text-highlight uppercase">
+          <p className="text-label text-highlight">
             {suiteAdminOnly ? 'Suite admin' : 'Your workspace'}
           </p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+          <h1 className="mt-2 text-title text-white sm:text-display">
             {greetingFor(new Date().getHours())}
             {name && `, ${name}`}
           </h1>
-          <p className="mt-2 text-sm text-white/70 sm:text-base">
+          <p className="mt-2 text-body text-white/70 sm:text-group sm:font-normal">
             {suiteAdminOnly ? 'You manage accounts and roles across the suite.' : 'Pick where you want to work today.'}
           </p>
         </>
@@ -98,7 +99,7 @@ export default function Launcher({ answer, params, banner }: LauncherProps) {
       {banner && (
         <div
           role="alert"
-          className="mb-6 flex items-start gap-3 rounded-lg border border-destructive/30 bg-card p-4 text-sm text-foreground"
+          className="mb-6 flex items-start gap-3 rounded-xl border border-destructive/30 bg-card p-4 text-body text-foreground"
         >
           <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden="true" />
           <p>{banner.message}</p>
@@ -137,7 +138,7 @@ export default function Launcher({ answer, params, banner }: LauncherProps) {
           </div>
           {phoneOnly.length > 0 && (
             // Suite spec 0014, AC-7: the systems held only on a phone, named quietly
-            <p className="mt-6 text-sm text-muted-foreground">
+            <p className="mt-6 text-body text-muted-foreground">
               On the mobile app: {phoneOnly.map((s) => s.system).join(', ')}
             </p>
           )}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, Lock, Minus } from 'lucide-react';
-import { toast } from 'sonner';
+import { notifySuccess } from '@/lib/notify';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { AdminMe } from '@/lib/admin';
@@ -56,7 +56,7 @@ export function PermissionsView({ me }: { me: AdminMe }) {
       {system && state.kind === 'ready' && state.value && (
         <div className="flex max-w-5xl flex-col gap-8">
           {state.value.permissions.length === 0 ? (
-            <p className="py-8 text-sm text-muted-foreground">
+            <p className="py-8 text-body text-muted-foreground">
               {system} has no permission matrix yet. Its roles alone decide what people may do.
             </p>
           ) : (
@@ -100,22 +100,22 @@ function MatrixEditor({
   return (
     <div className="flex flex-col gap-3">
       {editable && anyLocked && (
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <p className="flex items-center gap-1.5 text-caption text-muted-foreground">
           <Lock className="size-3.5 shrink-0" aria-hidden="true" />
           Locked: that role always keeps this setting.
         </p>
       )}
       {/* One table: a sticky role header with each role's count, a muted row per group */}
-      <div className="rounded-lg border border-border bg-card">
+      <div className="rounded-2xl border border-transparent bg-card shadow-card">
         <div
           aria-hidden="true"
-          className="sticky top-16 z-1 hidden items-end gap-3 rounded-t-lg border-b border-border bg-muted px-4 py-2 md:flex"
+          className="sticky top-16 z-1 hidden items-end gap-3 rounded-t-2xl border-b border-border bg-muted px-4 py-2 md:flex"
         >
-          <span className="flex-1 text-xs font-medium tracking-wide text-muted-strong uppercase">Permission</span>
+          <span className="flex-1 text-label text-muted-strong">Permission</span>
           {matrix.roles.map((role) => (
             <span key={role.code} className="flex w-28 shrink-0 flex-col items-center text-center">
-              <span className="text-xs font-medium tracking-wide text-muted-strong uppercase">{role.name}</span>
-              <span className="text-xs text-muted-strong tabular-nums">
+              <span className="text-label text-muted-strong">{role.name}</span>
+              <span className="text-caption text-muted-strong tabular-nums">
                 {allowedCount(role.code)} of {all.length}
               </span>
             </span>
@@ -125,7 +125,7 @@ function MatrixEditor({
           <section key={group} aria-labelledby={`matrix-group-${group}`} className="border-t border-border first-of-type:border-t-0">
             <h3
               id={`matrix-group-${group}`}
-              className="border-b border-border bg-muted/50 px-4 py-2 text-xs font-medium tracking-wide text-muted-strong uppercase max-md:first:rounded-t-lg"
+              className="border-b border-border bg-muted/50 px-4 py-2 text-label text-muted-strong max-md:first:rounded-t-2xl"
             >
               {group}
             </h3>
@@ -133,8 +133,8 @@ function MatrixEditor({
               {permissions.map((p) => (
                 <li key={p.key} className="flex flex-col gap-2 px-4 py-3 md:flex-row md:items-center md:gap-3 md:py-2.5">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium break-words text-foreground">{p.label}</p>
-                    {p.description && <p className="text-xs break-words text-muted-foreground">{p.description}</p>}
+                    <p className="text-body font-medium break-words text-foreground">{p.label}</p>
+                    {p.description && <p className="text-caption break-words text-muted-foreground">{p.description}</p>}
                   </div>
                   <div className="flex flex-wrap gap-x-2 gap-y-1 md:flex-nowrap md:gap-3">
                     {matrix.roles.map((role) => {
@@ -154,7 +154,7 @@ function MatrixEditor({
                             ) : (
                               <Minus aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
                             )}
-                            <span className={cn('text-sm md:sr-only', value ? 'text-foreground' : 'text-muted-foreground')}>
+                            <span className={cn('text-body md:sr-only', value ? 'text-foreground' : 'text-muted-foreground')}>
                               {role.name}
                             </span>
                             <span className="sr-only">{value ? ': allowed' : ': not allowed'}</span>
@@ -179,7 +179,7 @@ function MatrixEditor({
                             onChange={() => setDraft((d) => toggle(matrix, d, role.code, p.key))}
                             aria-label={`${role.name}: ${p.label}${locked ? ' (locked)' : ''}${changed ? ' (changed, not saved)' : ''}`}
                           />
-                          <span className="text-sm text-foreground md:sr-only">{role.name}</span>
+                          <span className="text-body text-foreground md:sr-only">{role.name}</span>
                           {locked && <Lock aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />}
                         </label>
                       );
@@ -196,9 +196,9 @@ function MatrixEditor({
         <div
           role="region"
           aria-label="Unsaved changes"
-          className="sticky bottom-0 flex flex-col gap-3 rounded-lg border border-border bg-card p-3 shadow-md sm:flex-row sm:items-center sm:justify-between"
+          className="sticky bottom-0 flex flex-col gap-3 rounded-xl border border-transparent bg-card p-3 shadow-pop sm:flex-row sm:items-center sm:justify-between"
         >
-          <p className="text-sm text-foreground tabular-nums">
+          <p className="text-body text-foreground tabular-nums">
             {changes.length === 1 ? '1 change not saved' : `${changes.length} changes not saved`}
           </p>
           <div className="flex gap-2">
@@ -217,7 +217,7 @@ function MatrixEditor({
         onClose={() => setReviewing(false)}
         onSaved={(next) => {
           setReviewing(false);
-          toast.success(
+          notifySuccess(
             changes.length === 1
               ? `1 permission saved. ${next.system} admins got an email.`
               : `${changes.length} permissions saved. ${next.system} admins got an email.`,

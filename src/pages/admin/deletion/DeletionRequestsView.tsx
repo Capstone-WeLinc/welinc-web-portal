@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Inbox } from 'lucide-react';
-import { toast } from 'sonner';
+import { notifyError, notifySuccess } from '@/lib/notify';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -102,10 +102,10 @@ function PendingList({ system }: { system: Scope }) {
     setBusy(request.id);
     try {
       await approveDeletion(request.id, system);
-      toast.success(`${request.user?.name ?? 'The account'} is deleted. You can restore it during the grace period.`);
+      notifySuccess(`${request.user?.name ?? 'The account'} is deleted. You can restore it during the grace period.`);
       drop(request.id);
     } catch (err) {
-      toast.error(errorMessage(err, "We couldn't approve this request."));
+      notifyError(errorMessage(err, "We couldn't approve this request."));
     } finally {
       setBusy(null);
     }
@@ -213,7 +213,7 @@ function RejectDialog({
     setBusy(true);
     try {
       await rejectDeletion(request.id, system, note.trim());
-      toast.success(`We told ${request.user?.name ?? 'them'} the request was rejected.`);
+      notifySuccess(`We told ${request.user?.name ?? 'them'} the request was rejected.`);
       setNote('');
       onRejected(request.id);
     } catch (err) {
@@ -251,7 +251,7 @@ function RejectDialog({
             aria-invalid={error ? true : undefined}
             aria-describedby="reject-note-help"
           />
-          <p id="reject-note-help" className={cn('text-xs tabular-nums', error ? 'text-destructive' : 'text-muted-foreground')}>
+          <p id="reject-note-help" className={cn('text-caption tabular-nums', error ? 'text-destructive' : 'text-muted-foreground')}>
             {error || `${length} of ${NOTE_MAX} characters`}
           </p>
         </div>
@@ -281,10 +281,10 @@ function GraceList({ system }: { system: Scope }) {
     setBusy(item.user.id);
     try {
       await restorePerson(item.user.id, system);
-      toast.success(`${item.user.name} is back, still inactive. Reactivate them on their page.`);
+      notifySuccess(`${item.user.name} is back, still inactive. Reactivate them on their page.`);
       replace((current) => current.filter((r) => r.user.id !== item.user.id));
     } catch (err) {
-      toast.error(errorMessage(err, "We couldn't restore this account."));
+      notifyError(errorMessage(err, "We couldn't restore this account."));
     } finally {
       setBusy(null);
     }
