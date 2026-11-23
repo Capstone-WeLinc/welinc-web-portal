@@ -3,13 +3,13 @@ import { cn } from '@/lib/utils';
 
 /**
  * design.md tables for the admin lists, from one markup: a real table from md up (light header,
- * uppercase `text-xs` `muted-strong`, divided rows), and below md each row stacks into a block
+ * uppercase `text-caption` `muted-strong`, divided rows), and below md each row stacks into a block
  * (design.md: tables turn into stacked cards on phones), with the header kept for screen readers.
  */
 export function DataTable({ columns, children }: { columns: Column[]; children: ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card">
-      <table className="w-full text-sm max-md:block">
+    <div className="overflow-hidden rounded-2xl border border-transparent bg-card shadow-card">
+      <table className="w-full text-body max-md:block">
         <thead className="bg-muted max-md:sr-only">
           <tr>
             {columns.map((column, i) => (
@@ -17,7 +17,7 @@ export function DataTable({ columns, children }: { columns: Column[]; children: 
                 key={i}
                 scope="col"
                 className={cn(
-                  'px-4 py-2.5 text-left text-xs font-medium tracking-wide text-muted-strong uppercase',
+                  'px-4 py-2.5 text-left text-label text-muted-strong',
                   column.align === 'end' && 'text-right',
                   column.className,
                 )}
@@ -74,12 +74,12 @@ export function PersonCell({ name, email, extra }: { name: ReactNode; email?: st
         {name}
         {extra}
       </div>
-      {email && <p className="text-xs break-all text-muted-foreground">{email}</p>}
+      {email && <p className="text-caption break-all text-muted-foreground">{email}</p>}
     </div>
   );
 }
 
 /** Text that is secondary in a row: dates, who did it. */
 export function Muted({ children }: { children: ReactNode }) {
-  return <span className="text-xs text-muted-foreground tabular-nums">{children}</span>;
+  return <span className="text-caption text-muted-foreground tabular-nums">{children}</span>;
 }

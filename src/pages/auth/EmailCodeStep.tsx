@@ -99,10 +99,10 @@ export default function EmailCodeStep({ step, onSignedIn, onBack }: EmailCodeSte
         <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-highlight shadow-lg shadow-highlight/20">
           <MailCheck size={22} className="text-primary" strokeWidth={2.5} aria-hidden="true" />
         </div>
-        <h2 className="mb-1 text-2xl font-black text-white">
+        <h2 className="mb-1 text-title font-black text-white">
           {adminStep ? "Confirm it's you" : 'Check your email'}
         </h2>
-        <p className="text-sm break-words text-white/50">
+        <p className="text-body break-words text-white/50">
           {adminStep ? 'Admin accounts confirm each sign in. ' : ''}
           We sent a 6 digit code to <span className="font-semibold text-white/80">{step.email}</span>
         </p>
@@ -156,7 +156,7 @@ export default function EmailCodeStep({ step, onSignedIn, onBack }: EmailCodeSte
         </Button>
       </form>
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-body">
         <button
           type="button"
           onClick={() => void resend()}

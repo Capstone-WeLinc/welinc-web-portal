@@ -28,8 +28,8 @@ export default function SentryTestPage() {
             <Bug className="size-6" aria-hidden="true" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-foreground">Error monitoring test</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h1 className="text-subheading font-semibold text-foreground">Error monitoring test</h1>
+            <p className="mt-1 text-body text-muted-foreground">
               Crashes this page on purpose to check the crash screen and the Sentry report.
             </p>
           </div>
@@ -39,7 +39,7 @@ export default function SentryTestPage() {
           {crash && <Crash />}
         </div>
       ) : (
-        <Skeleton className="mx-auto mt-16 h-40 max-w-md rounded-lg" />
+        <Skeleton className="mx-auto mt-16 h-40 max-w-md rounded-2xl" />
       )}
     </LauncherShell>
   );

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('./api', () => ({ API_BASE_URL: 'http://localhost:3000' }));
 
-import { firstName, greetingFor, initialsOf, pictureUrl } from './launcher';
+import { firstName, greetingFor, initialsOf, pictureUrl, signedInSystems, signOutLine } from './launcher';
 
 // covers: spec 0007 AC-15 (greeting, first name), AC-17 (picture, initials)
 describe('launcher display rules', () => {
@@ -30,5 +30,34 @@ describe('launcher display rules', () => {
     expect(pictureUrl('https://tracker.test/p.png')).toBeNull();
     expect(pictureUrl('//evil.test/uploads/x.png')).toBeNull();
     expect(pictureUrl(null)).toBeNull();
+  });
+});
+
+describe('signedInSystems', () => {
+  const web = (system: string) => ({ system, name: system, description: '', url: '', roles: [] });
+  const phone = (system: string) => ({ ...web(system), app: { clientId: 'x', released: true } });
+
+  it('lists the web systems, then the phone only ones, each once', () => {
+    expect(signedInSystems({ systems: [web('VRMS'), web('BMS')], mobileSystems: [phone('VMMS'), phone('VRMS')] })).toEqual(['VRMS', 'BMS', 'VMMS']);
+  });
+
+  it('is empty for a suite admin with no systems and an older answer without mobileSystems', () => {
+    expect(signedInSystems({ systems: [] })).toEqual([]);
+  });
+});
+
+describe('signOutLine', () => {
+  it('names one system', () => {
+    expect(signOutLine(['VMMS'])).toBe("You'll be signed out of VMMS on this browser, and need to sign in again to use it.");
+  });
+
+  it('names two or three systems with "and"', () => {
+    expect(signOutLine(['VRMS', 'VMMS'])).toBe("You'll be signed out of VRMS and VMMS on this browser, and need to sign in again to use them.");
+    expect(signOutLine(['VRMS', 'VMMS', 'BMS'])).toContain('of VRMS, VMMS and BMS on this browser');
+  });
+
+  it('says only to sign in again when no system is known', () => {
+    expect(signOutLine()).toBe("You'll need to sign in again.");
+    expect(signOutLine([])).toBe("You'll need to sign in again.");
   });
 });

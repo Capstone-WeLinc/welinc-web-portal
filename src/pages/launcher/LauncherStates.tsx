@@ -16,7 +16,7 @@ export function LauncherLoading() {
         </div>
         <ul className={CARD_GRID}>
           {[0, 1, 2].map((i) => (
-            <li key={i} className="flex items-start gap-4 rounded-lg border border-border bg-card p-4 sm:p-5">
+            <li key={i} className="flex items-start gap-4 rounded-2xl border border-transparent bg-card shadow-card p-4 sm:p-5">
               <Skeleton className="size-11 shrink-0 rounded-lg" />
               <div className="flex flex-1 flex-col gap-2">
                 <Skeleton className="h-6 w-20" />
@@ -41,8 +41,8 @@ export function LauncherError({ onRetry }: { onRetry: () => void }) {
           <TriangleAlert className="size-6" aria-hidden="true" />
         </div>
         <div>
-          <h1 className="text-lg font-semibold text-foreground">We couldn't load your systems.</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Check your connection, then try again.</p>
+          <h1 className="text-subheading font-semibold text-foreground">We couldn't load your systems.</h1>
+          <p className="mt-1 text-body text-muted-foreground">Check your connection, then try again.</p>
         </div>
         <Button size="touch" onClick={onRetry}>
           <RotateCw aria-hidden="true" />

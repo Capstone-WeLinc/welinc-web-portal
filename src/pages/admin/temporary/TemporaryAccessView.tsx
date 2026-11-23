@@ -164,13 +164,13 @@ export function TemporaryAccessView({ me, onChanged }: { me: AdminMe; onChanged:
                   </Muted>
                 </Cell>
                 <Cell>
-                  <p className="text-xs text-foreground tabular-nums md:whitespace-nowrap">
+                  <p className="text-caption text-foreground tabular-nums md:whitespace-nowrap">
                     <span className="md:hidden">Ends </span>
                     <time dateTime={grant.endedAt ?? grant.expiresAt}>
                       {formatDateTime(grant.endedAt ?? grant.expiresAt)}
                     </time>
                   </p>
-                  <p className={cn('text-xs', grant.endedAt ? 'text-muted-foreground' : 'font-medium text-success')}>
+                  <p className={cn('text-caption', grant.endedAt ? 'text-muted-foreground' : 'font-medium text-success')}>
                     {endNote(grant)}
                   </p>
                 </Cell>

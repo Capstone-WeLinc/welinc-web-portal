@@ -15,11 +15,11 @@ export default function NoAccess({ email }: { email: string | null }) {
           <ShieldOff className="size-6" aria-hidden="true" />
         </div>
         <div>
-          <h1 role="alert" className="text-lg font-semibold text-foreground">
+          <h1 role="alert" className="text-subheading font-semibold text-foreground">
             {NO_ACCESS_MESSAGE}
           </h1>
           {email && (
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-2 text-body text-muted-foreground">
               Signed in as <span className="font-medium text-foreground">{email}</span>
             </p>
           )}

@@ -139,18 +139,18 @@ function AttachExisting({
           <UserRoundCheck className="size-5" aria-hidden="true" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-medium break-words text-foreground">
+          <p className="text-body font-medium break-words text-foreground">
             {existing.input.email} already has a WeLinc account
             {existing.name ? ` (${existing.name})` : ''}.
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-body text-muted-foreground">
             {existing.systems.length > 0 ? `It is used in ${existing.systems.join(', ')}. ` : ''}
             You can add the {system} role to that account. Their name and password stay as they are.
           </p>
         </div>
       </div>
       {serverError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-body text-destructive">
           {serverError}
         </p>
       )}

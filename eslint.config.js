@@ -52,9 +52,17 @@ export default defineConfig([
     rules: {
       'better-tailwindcss/no-unknown-classes': 'error',
       'better-tailwindcss/no-restricted-classes': ['error', { restrict: BANNED_CLASSES }],
-      // Until the page sweep (spec 0016 build plan step 8) moves every page off them; then they join BANNED_CLASSES.
-      'design-sweep/no-restricted-classes': ['warn', { restrict: SWEEP_CLASSES }],
+      // Spec 0016 AC-17: the page sweep moved every page off the old sizes and shadows.
+      'design-sweep/no-restricted-classes': ['error', { restrict: SWEEP_CLASSES }],
       'no-restricted-syntax': noRawColors,
+    },
+  },
+  {
+    // Spec 0016 AC-20: the sign in hero is a brand surface and keeps its soft gold glows
+    // (shadow-lg), so only the old type sizes are banned there.
+    files: ['src/pages/auth/**/*.{ts,tsx}'],
+    rules: {
+      'design-sweep/no-restricted-classes': ['error', { restrict: SWEEP_CLASSES.filter((rule) => !rule.pattern.includes('shadow')) }],
     },
   },
   {

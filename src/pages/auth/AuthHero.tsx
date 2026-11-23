@@ -10,20 +10,20 @@ import HERO_PHOTO_URL from '@/assets/login-hero.avif';
 // The photo is bundled with the app and the logo is the inline `LogoMark`, so the sign in page
 // never depends on an outside host
 
-/** Dark inputs on the hero: 44px tall, text-base so iOS doesn't zoom, a visible gold focus ring. */
+/** Dark inputs on the hero: 44px tall, text-base-input so iOS doesn't zoom, a visible gold focus ring. */
 export const heroInput =
-  'h-11 rounded-xl border-white/10 bg-white/6 px-4 text-base text-white placeholder:text-white/30 md:h-11 md:text-base focus-visible:border-highlight/50 focus-visible:ring-highlight/60 focus-visible:ring-offset-hero-deep';
+  'h-11 rounded-xl border-white/10 bg-white/6 px-4 text-group text-white placeholder:text-white/30 md:h-11 md:text-group focus-visible:border-highlight/50 focus-visible:ring-highlight/60 focus-visible:ring-offset-hero-deep';
 
 /** The row of code boxes: separate boxes with a gap, not one joined strip. */
 export const heroCodeGroup = 'gap-1.5 sm:gap-2.5';
 
 /** One dark code box on the hero; the active box glows gold. The tap target is the whole row (one real input), so 40px boxes fit a 375px phone. */
 export const heroCodeSlot =
-  'size-10 rounded-xl border border-white/15 bg-white/6 text-xl font-bold text-white tabular-nums shadow-none first:rounded-xl first:border last:rounded-xl sm:size-12 data-[active=true]:border-highlight data-[active=true]:bg-white/10 data-[active=true]:ring-3 data-[active=true]:ring-highlight/25';
+  'size-10 rounded-xl border border-white/15 bg-white/6 text-heading font-bold text-white tabular-nums shadow-none first:rounded-xl first:border last:rounded-xl sm:size-12 data-[active=true]:border-highlight data-[active=true]:bg-white/10 data-[active=true]:ring-3 data-[active=true]:ring-highlight/25';
 
 /** The gold submit on the hero, 44px and up. */
 export const heroButton =
-  'h-12 w-full rounded-xl bg-highlight text-base font-black text-primary shadow-lg shadow-highlight/20 hover:bg-commit-hover focus-visible:ring-highlight focus-visible:ring-offset-hero-deep disabled:opacity-100 disabled:not-aria-busy:bg-white/10 disabled:not-aria-busy:text-white/40 disabled:not-aria-busy:shadow-none';
+  'h-12 w-full rounded-xl bg-highlight text-group font-black text-primary shadow-lg shadow-highlight/20 hover:bg-commit-hover focus-visible:ring-highlight focus-visible:ring-offset-hero-deep disabled:opacity-100 disabled:not-aria-busy:bg-white/10 disabled:not-aria-busy:text-white/40 disabled:not-aria-busy:shadow-none';
 
 export function HeroLogo({ size = 'md' }: { size?: 'sm' | 'md' }) {
   return (
@@ -53,7 +53,7 @@ export function HeroPane() {
       <div className="relative z-10 flex h-full flex-col justify-between p-12">
         <div className="flex items-center gap-3">
           <HeroLogo />
-          <span className="text-xl font-black tracking-tight text-white">WeLinc Logistics</span>
+          <span className="text-heading font-black tracking-tight text-white">WeLinc Logistics</span>
         </div>
         <div>
           <h1 className="mb-4 text-4xl leading-tight font-black text-white xl:text-5xl">
@@ -63,7 +63,7 @@ export function HeroPane() {
             <br />
             Workspace
           </h1>
-          <p className="max-w-sm text-base leading-relaxed text-white/60">
+          <p className="max-w-sm text-group font-normal leading-relaxed text-white/60">
             Centralized platform for managing logistics operations, vehicle monitoring, and maintenance schedules.
           </p>
         </div>
@@ -113,7 +113,7 @@ export function HeroNotice({ tone, children }: { tone: Tone; children: ReactNode
           tone === 'error' ? 'text-hero-danger' : tone === 'success' ? 'text-hero-success' : 'text-highlight',
         )}
       />
-      <div className={cn('flex-1 text-sm', tone === 'error' ? 'text-hero-danger' : 'text-white/70')}>{children}</div>
+      <div className={cn('flex-1 text-body', tone === 'error' ? 'text-hero-danger' : 'text-white/70')}>{children}</div>
     </div>
   );
 }
@@ -121,7 +121,7 @@ export function HeroNotice({ tone, children }: { tone: Tone; children: ReactNode
 /** Field label on the hero, with the required marker. */
 export function HeroLabel({ htmlFor, children }: { htmlFor: string; children: ReactNode }) {
   return (
-    <label htmlFor={htmlFor} className="mb-2 block text-sm font-semibold text-white/70">
+    <label htmlFor={htmlFor} className="mb-2 block text-body font-semibold text-white/70">
       {children} <span className="text-hero-danger" aria-hidden="true">*</span>
     </label>
   );

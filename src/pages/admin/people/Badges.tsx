@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import type { PeopleStatus } from '@/lib/adminApi';
 import { STATUS_LABELS } from './personStatus';
 
-const PILL = 'inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium tracking-wide uppercase';
+const PILL = 'inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-caption font-medium tracking-wide uppercase';
 
 /** design.md: a status pill pairs color with its text label, soft tint and darker text. */
 const STATUS_STYLE: Record<PeopleStatus, string> = {

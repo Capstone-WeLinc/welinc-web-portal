@@ -251,7 +251,7 @@ function RejectDialog({
             aria-invalid={error ? true : undefined}
             aria-describedby="reject-note-help"
           />
-          <p id="reject-note-help" className={cn('text-xs tabular-nums', error ? 'text-destructive' : 'text-muted-foreground')}>
+          <p id="reject-note-help" className={cn('text-caption tabular-nums', error ? 'text-destructive' : 'text-muted-foreground')}>
             {error || `${length} of ${NOTE_MAX} characters`}
           </p>
         </div>

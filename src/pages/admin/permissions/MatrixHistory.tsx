@@ -30,7 +30,7 @@ export function MatrixHistory({ system, reloadKey }: { system: SystemCode; reloa
 
   return (
     <section aria-labelledby="matrix-history-title">
-      <h3 id="matrix-history-title" className="mb-2 text-base font-semibold text-foreground">
+      <h3 id="matrix-history-title" className="mb-2 text-group font-semibold text-foreground">
         Change history
       </h3>
       {state.kind === 'loading' && (
@@ -50,18 +50,18 @@ export function MatrixHistory({ system, reloadKey }: { system: SystemCode; reloa
       )}
       {state.kind === 'ready' && state.value.items.length > 0 && (
         <>
-          <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+          <ul className="divide-y divide-border rounded-2xl border border-transparent bg-card shadow-card">
             {state.value.items.map((item) => (
               <li key={item.id} className="flex flex-col gap-1 px-4 py-3">
-                <p className="text-sm break-words text-foreground">
+                <p className="text-body break-words text-foreground">
                   <span className="font-medium">{item.roleName}</span>: {item.label}.{' '}
                   {historyValue(item.before, item.after)}.
                 </p>
-                <p className="text-xs break-words text-muted-foreground">
+                <p className="text-caption break-words text-muted-foreground">
                   <span className="tabular-nums">{formatDateTime(item.createdAt)}</span>, by {item.actorName}
                   {item.imported && ', moved from VRMS'}
                 </p>
-                {item.note && <p className="text-xs break-words text-muted-foreground">Note: {item.note}</p>}
+                {item.note && <p className="text-caption break-words text-muted-foreground">Note: {item.note}</p>}
               </li>
             ))}
           </ul>

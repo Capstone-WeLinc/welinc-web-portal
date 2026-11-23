@@ -43,22 +43,22 @@ function scopeLine(me: Pick<AdminMe, 'suiteAdmin' | 'adminOf'>): string {
 export function AdminCard({ me, wide = false }: { me: Pick<AdminMe, 'suiteAdmin' | 'adminOf'>; wide?: boolean }) {
   if (!wide) return <CompactAdminCard me={me} />;
   return (
-    <div className="group relative flex h-full flex-col rounded-lg border border-border bg-card shadow-xs transition-colors duration-150 has-[a[data-card-link]:hover]:border-primary/40 motion-reduce:transition-none">
+    <div className="group relative flex h-full flex-col rounded-2xl border border-transparent bg-card shadow-card transition-colors duration-150 has-[a[data-card-link]:hover]:border-primary/40 motion-reduce:transition-none">
       <div className="flex items-start gap-4 p-4 sm:p-5">
         <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary text-highlight">
           <ShieldCheck className="size-5" aria-hidden="true" />
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h3 className="text-lg font-semibold text-foreground">
+          <h3 className="text-subheading font-semibold text-foreground">
             <Link
               to="/admin"
               data-card-link
-              className="rounded-lg after:absolute after:inset-0 after:rounded-lg focus-visible:outline-hidden focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-offset-2 focus-visible:after:ring-offset-background"
+              className="rounded-lg after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-hidden focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-offset-2 focus-visible:after:ring-offset-background"
             >
               Admin
             </Link>
           </h3>
-          <p className="text-sm text-muted-foreground">{scopeLine(me)}</p>
+          <p className="text-body text-muted-foreground">{scopeLine(me)}</p>
         </div>
         <ChevronRight
           className="mt-3 size-5 shrink-0 text-muted-foreground transition-transform duration-150 group-has-[a[data-card-link]:hover]:translate-x-1 group-has-[a[data-card-link]:focus-visible]:translate-x-1 motion-reduce:transition-none motion-reduce:group-has-[a[data-card-link]:hover]:translate-x-0"
@@ -68,7 +68,7 @@ export function AdminCard({ me, wide = false }: { me: Pick<AdminMe, 'suiteAdmin'
       <ul
         aria-label="Go straight to"
         className={cn(
-          'relative mt-auto overflow-hidden rounded-b-lg border-t border-border',
+          'relative mt-auto overflow-hidden rounded-b-2xl border-t border-border',
           // One pixel gaps over a border colored list draw the dividers in any column count
           wide ? 'grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4' : 'divide-y divide-border',
         )}
@@ -77,12 +77,12 @@ export function AdminCard({ me, wide = false }: { me: Pick<AdminMe, 'suiteAdmin'
           <li key={to} className="bg-card">
             <Link
               to={to}
-              className="group/shortcut flex min-h-11 items-center gap-3 px-4 py-2 text-sm hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset sm:px-5"
+              className="group/shortcut flex min-h-11 items-center gap-3 px-4 py-2 text-body hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset sm:px-5"
             >
               <Icon className="size-4 shrink-0 text-muted-foreground group-hover/shortcut:text-primary" aria-hidden="true" />
               <span className="min-w-0 flex-1">
                 <span className="block font-medium text-foreground">{label}</span>
-                {wide && <span className="block text-xs text-muted-foreground">{hint}</span>}
+                {wide && <span className="block text-caption text-muted-foreground">{hint}</span>}
               </span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             </Link>
@@ -101,17 +101,17 @@ function CompactAdminCard({ me }: { me: Pick<AdminMe, 'suiteAdmin' | 'adminOf'> 
   return (
     <Link
       to="/admin"
-      className="group flex h-full items-start gap-4 rounded-lg border border-border bg-card p-4 shadow-xs transition-colors duration-150 hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden motion-reduce:transition-none sm:p-5"
+      className="group flex h-full items-start gap-4 rounded-2xl border border-transparent bg-card p-4 shadow-card transition-colors duration-150 hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden motion-reduce:transition-none sm:p-5"
     >
       <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary text-highlight">
         <ShieldCheck className="size-5" aria-hidden="true" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <h3 className="text-lg font-semibold text-foreground">Admin</h3>
-        <p className="text-sm font-medium text-foreground">
+        <h3 className="text-subheading font-semibold text-foreground">Admin</h3>
+        <p className="text-body font-medium text-foreground">
           {me.suiteAdmin ? 'Suite administration' : `${me.adminOf.join(', ')} administration`}
         </p>
-        <p className="text-sm text-muted-foreground">{scopeLine(me)}</p>
+        <p className="text-body text-muted-foreground">{scopeLine(me)}</p>
       </div>
       <ChevronRight
         className="mt-3 size-5 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0 motion-reduce:group-focus-visible:translate-x-0"

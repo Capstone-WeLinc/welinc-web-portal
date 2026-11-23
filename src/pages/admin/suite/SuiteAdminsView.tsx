@@ -84,7 +84,7 @@ export function SuiteAdminsView({ me }: { me: AdminMe }) {
           </Button>
         }
       />
-      {full && <p className="mb-4 text-sm text-muted-foreground">{MAX_SUITE_ADMINS} suite admins, the most allowed.</p>}
+      {full && <p className="mb-4 text-body text-muted-foreground">{MAX_SUITE_ADMINS} suite admins, the most allowed.</p>}
       {state.kind === 'loading' && (
         <div aria-busy="true" className="flex flex-col gap-2">
           <span className="sr-only">Loading</span>
@@ -247,8 +247,8 @@ function AddSuiteAdminDialog({
             {picked ? (
               <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium break-words text-foreground">{picked.name}</p>
-                  <p className="text-xs break-all text-muted-foreground">{picked.email}</p>
+                  <p className="text-body font-medium break-words text-foreground">{picked.name}</p>
+                  <p className="text-caption break-all text-muted-foreground">{picked.email}</p>
                 </div>
                 <Button variant="ghost" disabled={busy} onClick={() => setPicked(null)}>
                   Change
@@ -273,7 +273,7 @@ function AddSuiteAdminDialog({
                 {q.length >= 2 && found.kind === 'ready' && (
                   <ul aria-label="Matching accounts" className="divide-y divide-border rounded-lg border border-border">
                     {candidates.length === 0 && (
-                      <li className="px-3 py-2 text-sm text-muted-foreground">
+                      <li className="px-3 py-2 text-body text-muted-foreground">
                         No active account without a system role matches.
                       </li>
                     )}
@@ -286,8 +286,8 @@ function AddSuiteAdminDialog({
                             'flex min-h-11 w-full flex-col items-start px-3 py-2 text-left hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset',
                           )}
                         >
-                          <span className="text-sm font-medium break-words text-foreground">{person.name}</span>
-                          <span className="text-xs break-all text-muted-foreground">{person.email}</span>
+                          <span className="text-body font-medium break-words text-foreground">{person.name}</span>
+                          <span className="text-caption break-all text-muted-foreground">{person.email}</span>
                         </button>
                       </li>
                     ))}
@@ -312,7 +312,7 @@ function AddSuiteAdminDialog({
             error={passwordError}
           />
           {formError && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-body text-destructive">
               {formError}
             </p>
           )}
@@ -418,7 +418,7 @@ function RemoveSuiteAdminDialog({
             error={passwordError}
           />
           {formError && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-body text-destructive">
               {formError}
             </p>
           )}

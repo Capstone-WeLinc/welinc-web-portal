@@ -298,11 +298,11 @@ describe("Portal", () => {
       await user.click(
         await screen.findByRole("menuitem", { name: "Sign out" }),
       );
-      expect(
-        await screen.findByRole("alertdialog", {
-          name: "Sign out of every WeLinc system?",
-        }),
-      ).toBeTruthy();
+      const dialog = await screen.findByRole("alertdialog", {
+        name: "Sign out of WeLinc?",
+      });
+      // Names only the person's own systems, never all three (spec 0007, AC-17)
+      expect(dialog.textContent).not.toContain("VRMS, VMMS and BMS");
       await user.click(screen.getByRole("button", { name: "Sign out" }));
     };
 

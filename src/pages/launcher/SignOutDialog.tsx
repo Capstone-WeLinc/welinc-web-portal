@@ -10,18 +10,21 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { notifyError } from '@/lib/notify';
+import { signOutLine } from '@/lib/launcher';
 import { signOutEverywhere } from '@/lib/session';
 
 type SignOutDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The person's own systems (`signedInSystems`), named in the line; left out where unknown. */
+  systems?: readonly string[];
 };
 
 /**
- * "Sign out of every WeLinc system?" (spec 0007, AC-17). Confirming ends the shared session,
+ * "Sign out of WeLinc?" (spec 0007, AC-17), naming only the person's own systems. Confirming ends the shared session,
  * then shows the form. A failure closes the dialog, keeps the page and shows an error toast.
  */
-export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
+export function SignOutDialog({ open, onOpenChange, systems }: SignOutDialogProps) {
   const [busy, setBusy] = useState(false);
 
   const confirm = async () => {
@@ -39,10 +42,8 @@ export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
     <AlertDialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Sign out of every WeLinc system?</AlertDialogTitle>
-          <AlertDialogDescription>
-            You'll be signed out of VRMS, VMMS and BMS on this browser, and need to sign in again to use any of them.
-          </AlertDialogDescription>
+          <AlertDialogTitle>Sign out of WeLinc?</AlertDialogTitle>
+          <AlertDialogDescription>{signOutLine(systems)}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>

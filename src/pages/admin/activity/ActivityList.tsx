@@ -76,13 +76,13 @@ export function ActivityList({
   return (
     <div className="flex flex-col gap-3">
       {/* On the feed the list is its own surface; on a person's page it sits inside their card */}
-      <div className={cn(showPerson && 'overflow-hidden rounded-lg border border-border bg-card')}>
+      <div className={cn(showPerson && 'overflow-hidden rounded-2xl border border-transparent bg-card shadow-card')}>
         {days.map(({ day, events }) => (
           <section key={day} aria-labelledby={`activity-day-${day}`}>
             <h3
               id={`activity-day-${day}`}
               className={cn(
-                'flex items-baseline gap-2 border-b border-border bg-muted px-4 py-2 text-xs font-medium text-muted-strong',
+                'flex items-baseline gap-2 border-b border-border bg-muted px-4 py-2 text-caption font-medium text-muted-strong',
                 !showPerson && 'rounded-md',
               )}
             >
@@ -97,7 +97,7 @@ export function ActivityList({
                   <li key={event.id} className="flex items-start gap-3 px-4 py-3">
                     <time
                       dateTime={event.createdAt}
-                      className="w-11 shrink-0 pt-1 text-xs text-muted-foreground tabular-nums"
+                      className="w-11 shrink-0 pt-1 text-caption text-muted-foreground tabular-nums"
                     >
                       {formatTime(event.createdAt)}
                     </time>
@@ -110,7 +110,7 @@ export function ActivityList({
                       <Icon className="size-4" aria-hidden="true" />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className={cn('text-sm break-words', failed ? 'text-destructive' : 'text-foreground')}>
+                      <p className={cn('text-body break-words', failed ? 'text-destructive' : 'text-foreground')}>
                         {showPerson && event.user && (
                           <>
                             <Link
@@ -128,7 +128,7 @@ export function ActivityList({
                         )}
                         {label}
                       </p>
-                      {details && <p className="text-xs break-words text-muted-foreground">{details}</p>}
+                      {details && <p className="text-caption break-words text-muted-foreground">{details}</p>}
                     </div>
                   </li>
                 );

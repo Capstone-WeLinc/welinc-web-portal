@@ -1,4 +1,5 @@
 import { API_BASE_URL } from './api';
+import type { LauncherAnswer } from './auth';
 
 // Display rules for the launcher (spec 0007, AC-15, AC-17), kept pure so they are easy to test.
 
@@ -44,4 +45,22 @@ export function appLine(system: { system: string; app: { released: boolean } }):
   return system.app.released
     ? `${system.system} is on the WeLinc mobile app`
     : `${system.system} is coming to the WeLinc mobile app`;
+}
+
+/**
+ * The systems one sign out ends on this browser: the web systems, then the phone only ones, each
+ * once. The shared session covers all of them.
+ */
+export function signedInSystems(answer: Pick<LauncherAnswer, 'systems' | 'mobileSystems'>): string[] {
+  return [...new Set([...answer.systems, ...(answer.mobileSystems ?? [])].map((s) => s.system))];
+}
+
+/**
+ * The Sign out dialog's line (spec 0007, AC-17): names only the person's own systems; with none
+ * known (the no access page, Admin) it just says to sign in again.
+ */
+export function signOutLine(systems?: readonly string[]): string {
+  if (!systems || systems.length === 0) return "You'll need to sign in again.";
+  const list = systems.length === 1 ? systems[0] : `${systems.slice(0, -1).join(', ')} and ${systems[systems.length - 1]}`;
+  return `You'll be signed out of ${list} on this browser, and need to sign in again to use ${systems.length === 1 ? 'it' : 'them'}.`;
 }

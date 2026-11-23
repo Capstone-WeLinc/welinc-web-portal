@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { signedInSystems } from '@/lib/launcher';
 import { Link } from 'react-router-dom';
 import { Smartphone } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -18,12 +19,12 @@ export default function AppNotAllowed({
   const [signingOut, setSigningOut] = useState(false);
   const known = useKnownSystem(system);
   return (
-    <LauncherShell user={answer.user}>
+    <LauncherShell user={answer.user} systems={signedInSystems(answer)}>
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
         <div className="flex size-12 items-center justify-center rounded-lg bg-muted text-muted-strong">
           <Smartphone className="size-6" aria-hidden="true" />
         </div>
-        <h1 role="alert" className="text-lg font-semibold text-foreground">
+        <h1 role="alert" className="text-subheading font-semibold text-foreground">
           Your role in {known ?? 'this system'} uses the WeLinc mobile app, not the web
         </h1>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
@@ -35,7 +36,7 @@ export default function AppNotAllowed({
           </Button>
         </div>
       </div>
-      <SignOutDialog open={signingOut} onOpenChange={setSigningOut} />
+      <SignOutDialog open={signingOut} onOpenChange={setSigningOut} systems={signedInSystems(answer)} />
     </LauncherShell>
   );
 }

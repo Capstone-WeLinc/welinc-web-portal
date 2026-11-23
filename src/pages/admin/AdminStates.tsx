@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { RotateCw, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { SegmentedControl, SegmentedControlItem } from '@/components/ui/segmented-control';
 import type { SystemCode } from '@/lib/admin';
 
 /** The view title row: title, one line of context, the primary action on the right. */
@@ -26,7 +26,7 @@ export function ViewError({ message, onRetry }: { message: string; onRetry: () =
       <div className="flex size-10 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
         <TriangleAlert className="size-5" aria-hidden="true" />
       </div>
-      <p className="text-sm text-foreground">{message}</p>
+      <p className="text-body text-foreground">{message}</p>
       <Button variant="outline" onClick={onRetry}>
         <RotateCw aria-hidden="true" />
         Retry
@@ -39,7 +39,7 @@ export function ViewEmpty({ icon, message, action }: { icon: ReactNode; message:
   return (
     <div className="flex flex-col items-start gap-3 py-8">
       <div className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-strong">{icon}</div>
-      <p className="text-sm text-muted-foreground">{message}</p>
+      <p className="text-body text-muted-foreground">{message}</p>
       {action}
     </div>
   );
@@ -61,31 +61,17 @@ export function Segmented<T>({
   options: { value: T; label: string }[];
   onChange: (next: T) => void;
 }) {
+  // The suite SegmentedControl (spec 0016 AC-8). Option values may be non strings, so each item's
+  // value is its index.
+  const selected = String(options.findIndex((option) => option.value === value));
   return (
-    <div
-      role="radiogroup"
-      aria-label={label}
-      className="inline-flex max-w-full gap-1 overflow-x-auto rounded-lg border border-border bg-card p-1"
-    >
-      {options.map((option) => {
-        const selected = option.value === value;
-        return (
-          <button
-            key={option.label}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            onClick={() => onChange(option.value)}
-            className={cn(
-              'min-h-10 shrink-0 rounded-md px-3 text-sm font-medium whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden md:min-h-8',
-              selected ? 'bg-primary text-primary-foreground' : 'text-muted-strong hover:bg-accent hover:text-foreground',
-            )}
-          >
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
+    <SegmentedControl aria-label={label} value={selected} onValueChange={(index) => onChange(options[Number(index)].value)}>
+      {options.map((option, index) => (
+        <SegmentedControlItem key={option.label} value={String(index)}>
+          {option.label}
+        </SegmentedControlItem>
+      ))}
+    </SegmentedControl>
   );
 }
 
@@ -122,7 +108,7 @@ export function Toolbar({ children }: { children: ReactNode }) {
 /** A deep link for a system the admin doesn't run. */
 export function NoSystemScope({ asked }: { asked?: SystemCode }) {
   return (
-    <p role="alert" className="py-8 text-sm text-foreground">
+    <p role="alert" className="py-8 text-body text-foreground">
       {asked
         ? `You aren't an admin of ${asked}. Pick one of your systems above.`
         : 'You are not an admin of any system.'}
