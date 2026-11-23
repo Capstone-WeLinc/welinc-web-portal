@@ -6,34 +6,36 @@ import { clockGap, serverNow, staySignedIn, useSigningOut, type SigningOut } fro
 import { ANNOUNCE_AGAIN_MS, countdown, spokenTimeLeft } from '@/lib/sessionWatch/timing';
 
 /**
- * Suite spec 0016 AC-12: the portal's one floating banner, top center, above the toasts. One at a
- * time by priority: offline, then signing out soon (AC-12b, only while the signed in launcher or
- * Admin runs the session watch), then "Back online" for 4 seconds. The no access note is VRMS
+ * Suite spec 0016 AC-12: the portal's one floating banner, top center, above the toasts. Offline
+ * shows on top; signing out soon (AC-12b, only while the signed in launcher or Admin runs the
+ * session watch) shows under it, never hidden by it; "Back online" shows for 4 seconds when
+ * neither is up. The no access note is VRMS
  * only: the portal's Admin views send you to their landing view on their own.
  */
 export function BannerHost() {
   const { offline, backOnlineUntil } = useConnection();
   const signingOut = useSigningOut();
-  let banner = null;
-  if (offline) {
-    banner = (
-      <Banner kind="warning" icon={WifiOff} title="You're offline">
-        Changes won't save until the connection is back. We keep trying.
-      </Banner>
-    );
-  } else if (signingOut) {
-    banner = <SigningOutBanner state={signingOut} />;
-  } else if (backOnlineUntil !== null) {
-    banner = <Banner kind="success" icon={Wifi} title="Back online" />;
-  }
+  const offlineBanner = offline ? (
+    <Banner kind="warning" icon={WifiOff} title="You're offline">
+      Changes won't save until the connection is back. We keep trying.
+    </Banner>
+  ) : null;
+  // AC-12b: the signing out card never hides behind the offline banner; it shows under it
+  const signingOutBanner = signingOut ? <SigningOutBanner state={signingOut} /> : null;
+  const backOnline = !offline && !signingOut && backOnlineUntil !== null
+    ? <Banner kind="success" icon={Wifi} title="Back online" />
+    : null;
   return (
     // Top center of the content area: AdminShell sets --content-left to its sidebar's width. The
     // signing out banner speaks through its own line, so its ticking time stays silent.
-    <div
-      aria-live={!offline && signingOut ? 'off' : 'polite'}
-      className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-2 pt-4 md:left-(--content-left) md:px-4"
-    >
-      {banner}
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-50 flex flex-col items-center gap-2 px-2 pt-4 md:left-(--content-left) md:px-4">
+      <div aria-live="polite" className="flex justify-center">
+        {offlineBanner}
+        {backOnline}
+      </div>
+      <div aria-live="off" className="flex justify-center">
+        {signingOutBanner}
+      </div>
     </div>
   );
 }

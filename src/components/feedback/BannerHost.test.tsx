@@ -60,9 +60,9 @@ describe("signing out soon", () => {
 });
 
 // A failed cutoff check (AC-12b, "failures"). The API client reports every failed request to the
-// offline signal (lib/api.ts), and AC-12 puts offline above signing out soon, so a check that
-// fails at the network level shows "You're offline" on top while the signing out banner is kept
-// underneath. Found by /check verify, where a blocked /auth/sso looked like "no banner".
+// offline signal (lib/api.ts). AC-12b: a check that fails at the network level shows "You're
+// offline" on top and the signing out banner under it, never hidden. Found by /check verify,
+// where a blocked /auth/sso looked like "no banner".
 describe("a failed check", () => {
   async function startWithFailingCheck(failure: () => Error) {
     vi.useFakeTimers();
@@ -82,11 +82,11 @@ describe("a failed check", () => {
     });
   }
 
-  it("shows the offline banner on top of a network failure, and Signing out soon returns when it is back", async () => {
+  it("shows Signing out soon under the offline banner on a network failure, and offline goes when it is back", async () => {
     await startWithFailingCheck(() => new Error("Network Error"));
     expect(screen.getByText("You're offline")).toBeInTheDocument();
-    expect(screen.queryByText("Signing out soon")).not.toBeInTheDocument();
-    // The retry gets an answer: back online, and the kept signing out banner shows again
+    expect(screen.getByText("Signing out soon")).toBeInTheDocument();
+    // The retry gets an answer: the offline banner goes, the signing out banner stays
     vi.mocked(api.get).mockResolvedValue({ data: { sessionExpiresAt: at(NOW + 125_000), sessionAbsoluteExpiresAt: at(NOW + 12 * 3_600_000), serverTime: at(Date.now()) } });
     await act(async () => {
       reportRequestOk();
