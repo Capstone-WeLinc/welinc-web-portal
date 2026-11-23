@@ -35,6 +35,8 @@ type Props = {
   banner?: ReactNode;
   /** Shown in the top bar before the account menu (the temporary access pill). */
   status?: ReactNode;
+  /** The view fills the content area edge to edge (People's list beside the person). */
+  flush?: boolean;
   children: ReactNode;
 };
 
@@ -74,8 +76,8 @@ const CONTENT_LEFT = { expanded: '15rem', collapsed: '4rem' } as const;
  * home and the account menu at the bottom. Collapsed it is a 64px icon strip with tooltips. On
  * phones it becomes a bottom tab bar for at most five views and a sheet menu past that.
  */
-export function AdminShell({ me, views, current, banner, status, children }: Props) {
-  const { pathname, search } = useLocation();
+export function AdminShell({ me, views, current, banner, status, flush, children }: Props) {
+  const { search } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const { collapsed, toggle } = useSidebarCollapsed(me.user.id);
   const bottomBar = views.length <= BOTTOM_BAR_MAX;
@@ -153,9 +155,10 @@ export function AdminShell({ me, views, current, banner, status, children }: Pro
           </header>
 
           {banner && <div className="px-4 pt-4 sm:px-6 lg:px-8">{banner}</div>}
-          <main className={cn('flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8', bottomBar && 'max-md:pb-24')}>
-            {/* VRMS spec 0025, AC-7: a view crash keeps the sidebar; another view clears it */}
-            <CrashBoundary key={pathname} variant="page">
+          <main className={cn('flex-1', !flush && 'px-4 py-4 sm:px-6 sm:py-6 lg:px-8', bottomBar && 'max-md:pb-24')}>
+            {/* VRMS spec 0025, AC-7: a view crash keeps the sidebar; another view clears it. Keyed by
+                the view, so picking another person on People keeps the list mounted. */}
+            <CrashBoundary key={current} variant="page">
               {children}
             </CrashBoundary>
           </main>
