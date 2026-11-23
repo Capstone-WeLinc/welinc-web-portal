@@ -238,6 +238,11 @@
   mask-image: linear-gradient(to bottom, var(--black) 20%, transparent);
 }
 
+/* The admin content below the 64px top bar: the People list and person scroll on their own (suite spec 0017, AC-1) */
+@utility h-below-bar {
+  height: calc(100dvh - 4rem);
+}
+
 /* Page titles (design.md, Typography): 24px on phones, 28px from 768px up */
 @utility text-title {
   font-size: 1.5rem;

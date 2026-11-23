@@ -10,6 +10,9 @@ import { errorCode, withStepUp, type SystemCode } from './admin';
 
 export type RoleAssignment = { role: string; system: SystemCode };
 
+/** Suite spec 0017, AC-21: a role on the People list and person answers, with when it ends. */
+export type PersonRole = RoleAssignment & { temporaryUntil?: string | null };
+
 export type ManagedPerson = {
   id: string;
   name: string;
@@ -23,9 +26,14 @@ export type ManagedPerson = {
   lockedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  /** Only the roles of the system the page acts in (every system's in a suite wide list). */
-  roles: RoleAssignment[];
+  /**
+   * With a `system`: only that system's roles, the rest named in `otherSystems`. Without one
+   * (suite spec 0017, AC-19): every role in every system, and `otherSystems` is empty.
+   */
+  roles: PersonRole[];
   otherSystems: SystemCode[];
+  /** The newest sign in, null if never (People list and person answers only). */
+  lastSignedInAt?: string | null;
   /** When a temporary role in this system ends (AC-11), else null. */
   temporaryUntil?: string | null;
   /** The person is a suite admin (lists and the person page). */
@@ -37,7 +45,28 @@ export type ManagedPerson = {
 
 export type PeopleStatus = 'LOCKED' | 'SETUP_PENDING' | 'EMAIL_NOT_VERIFIED' | 'ACTIVE' | 'INACTIVE' | 'PENDING_DELETION';
 
-export type PeoplePage = { items: ManagedPerson[]; next: string | null };
+/** Suite spec 0017, AC-5: the server puts each person in exactly one group. */
+export type PeopleGroup = 'attention' | 'active' | 'inactive';
+
+/** Suite spec 0017, AC-4: name A to Z, last sign in (newest first), account made (newest first). */
+export type PeopleSort = 'name' | 'lastSignedIn' | 'newest';
+
+export type PeopleCounts = Record<PeopleGroup, number>;
+
+export type PeoplePage = { items: ManagedPerson[]; next: string | null; counts?: PeopleCounts };
+
+/** The person page answer (suite spec 0017, AC-21): the list item plus the facts of the header. */
+export type PersonDetail = ManagedPerson & {
+  lastSignedInAt: string | null;
+  pendingDeletion: boolean;
+  suiteAdmin: boolean;
+  deletedAt: string | null;
+  addedBy: { id: string; name: string } | null;
+  failedSignIns30d: number;
+  sessionCount: number;
+  setupCodeExpiresAt: string | null;
+  restorableUntil: string | null;
+};
 
 export type LookupPerson = { id: string; name: string; email: string; systems: SystemCode[] };
 
@@ -162,10 +191,17 @@ export async function fetchEventCatalog(): Promise<EventCatalog> {
 
 // ---- people ---------------------------------------------------------------------------------
 
+/**
+ * `GET /auth/admin/users`. No `system` means every system the caller admins (suite spec 0017,
+ * AC-19); with `group` the answer adds `counts` for all three groups (AC-20).
+ */
 export function listPeople(params: {
   system: Scope;
   q?: string;
   status?: PeopleStatus;
+  group?: PeopleGroup;
+  sort?: PeopleSort;
+  limit?: number;
   cursor?: string;
 }): Promise<PeoplePage> {
   const { system, ...rest } = params;
@@ -174,9 +210,10 @@ export function listPeople(params: {
   );
 }
 
-export function getPerson(id: string, system: Scope): Promise<ManagedPerson> {
+/** One person; with no `system`, the whole person across the caller's systems (AC-19). */
+export function getPerson(id: string, system: Scope = null): Promise<PersonDetail> {
   return withStepUp(
-    async () => (await api.get<ManagedPerson>(`/auth/admin/users/${id}`, { params: scoped(system) })).data,
+    async () => (await api.get<PersonDetail>(`/auth/admin/users/${id}`, { params: scoped(system) })).data,
   );
 }
 
@@ -248,12 +285,13 @@ export function endPersonSessions(id: string, system: SystemCode): Promise<void>
   });
 }
 
-export function personActivity(id: string, system: Scope, cursor?: string): Promise<EventPage> {
+/** A person's events; with no `system`, every system the caller admins (suite spec 0017, AC-15). */
+export function personActivity(id: string, system: Scope, cursor?: string, limit = 20): Promise<EventPage> {
   return withStepUp(
     async () =>
       (
         await api.get<EventPage>(`/auth/admin/users/${id}/activity`, {
-          params: { ...scoped(system), cursor, limit: 20 },
+          params: { ...scoped(system), cursor, limit },
         })
       ).data,
   );
