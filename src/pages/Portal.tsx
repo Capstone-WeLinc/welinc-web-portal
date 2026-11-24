@@ -25,7 +25,7 @@ import { holdCutoffs, useSessionWatch } from '../lib/sessionWatch/watch';
 /** The launcher asks /auth/sso again on focus at most this often (spec 0007, AC-18). */
 export const RECHECK_MS = 10_000;
 
-const SESSION_ENDED: Notice = { tone: 'info', message: 'Your session ended. Sign in again.' };
+const SESSION_ENDED: Notice = { tone: 'warning', message: 'Your session ended. Sign in again.' };
 
 /**
  * The portal's front door at `/` and `/login` (spec 0007, AC-11 to AC-14). The screen is a pure

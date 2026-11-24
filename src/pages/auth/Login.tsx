@@ -1,8 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Eye, EyeOff, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { SignInToaster } from '@/components/ui/sonner';
+import { notifySignIn } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import { api } from '../../lib/api';
 import {
@@ -42,6 +44,13 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
   const [searchParams] = useSearchParams();
   const request = loginRequest(searchParams);
   const notice = noticeOverride ?? noticeFor(searchParams);
+  // Suite spec 0019, AC-15: a sign out or an ended session is a toast over the form; errors that
+  // stop a sign in stay inline
+  const toastTone = notice && notice.tone !== 'error' ? notice.tone : null;
+  const toastMessage = toastTone ? notice!.message : null;
+  useEffect(() => {
+    if (toastTone && toastMessage) notifySignIn(toastMessage, toastTone);
+  }, [toastTone, toastMessage]);
   const emailRef = useRef<HTMLInputElement>(null);
 
   const [email, setEmail] = useState('');
@@ -97,7 +106,9 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
     <div className="flex min-h-screen bg-hero">
       <HeroPane />
 
-      <div className="relative flex min-w-0 flex-1 items-center justify-center p-6 lg:p-12">
+      {/* transform-gpu makes this column the box sonner's fixed list sits in (AC-15) */}
+      <div className="relative flex min-w-0 flex-1 transform-gpu items-center justify-center p-6 lg:p-12">
+        <SignInToaster />
         <HeroBackdrop />
 
         <main className="relative z-10 w-full max-w-md">
@@ -119,7 +130,7 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
                   <p className="text-body text-white/50">Enter your credentials to access your workspace</p>
                 </div>
 
-                {notice && !error && (
+                {notice?.tone === 'error' && !error && (
                   <HeroNotice tone={notice.tone}>
                     <p>{notice.message}</p>
                     {notice.tone === 'error' && (

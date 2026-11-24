@@ -217,12 +217,20 @@ describe("Portal", () => {
   });
 
   it("always shows the form after a logout or an idle cutoff, without asking /auth/sso", async () => {
-    for (const reason of ["logout", "idle", "maxage"]) {
+    // Suite spec 0019, AC-15: the message is a toast on the sign in side (success for a sign
+    // out, a warning that stays for an ended session)
+    const messages: Record<string, RegExp> = {
+      logout: /You signed out/,
+      idle: /30 minutes without activity/,
+      maxage: /12 hour limit/,
+    };
+    for (const [reason, message] of Object.entries(messages)) {
       const view = renderPortal(`/login?reason=${reason}`);
       expect(
         await screen.findByRole("button", { name: "Sign in" }),
       ).toBeTruthy();
-      expect(screen.getByRole("status")).toBeTruthy();
+      const toast = (await screen.findByText(message)).closest("[data-slot=toast]");
+      expect(toast).toHaveAttribute("data-kind", reason === "logout" ? "success" : "warning");
       view.unmount();
     }
     expect(get).not.toHaveBeenCalled();

@@ -5,6 +5,7 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import NotFound from './pages/NotFound';
 import { Toaster } from '@/components/ui/sonner';
 import { BannerHost } from '@/components/feedback/BannerHost';
+import { SessionToastHost } from '@/components/feedback/SessionToast';
 import { StepUpDialog } from './pages/admin/StepUpDialog';
 import { ReauthDialog } from './pages/admin/ReauthDialog';
 import { onSignedOutElsewhere } from './lib/session';
@@ -70,6 +71,8 @@ export default function App() {
       {/* AC-14a, AC-14b: one password dialog for every write that answers REAUTH_REQUIRED */}
       <ReauthDialog />
       <Toaster />
+      {/* Suite spec 0019, AC-25: the session warning toast, in place of the signing out banner */}
+      <SessionToastHost />
       <BannerHost />
     </>
   );

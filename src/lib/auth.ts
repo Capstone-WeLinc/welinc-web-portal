@@ -43,20 +43,24 @@ export type LauncherAnswer = {
 export const mobileSystemsOf = (answer: LauncherAnswer): MobileSystem[] => answer.mobileSystems ?? [];
 
 /** A message shown above the form, from the address the portal was opened with. */
-export type Notice = { tone: 'info' | 'error'; message: string };
+/**
+ * A message on the sign in page. Suite spec 0019, AC-15: a sign out is a success toast, a session
+ * that ended a warning toast that stays until closed; an error stays inline above the form.
+ */
+export type Notice = { tone: 'success' | 'warning' | 'error'; message: string };
 
 const SYSTEM_NAMES: Record<string, string> = { VRMS: 'VRMS', VMMS: 'VMMS', BMS: 'BMS' };
 
 /** The plain message for each error code and reason the apps send here (AC-36). */
 export function noticeFor(params: URLSearchParams): Notice | null {
   const reason = params.get('reason');
-  if (reason === 'logout') return { tone: 'info', message: 'You signed out.' };
-  if (reason === 'ended') return { tone: 'info', message: 'Your session ended. Sign in again.' };
+  if (reason === 'logout') return { tone: 'success', message: 'You signed out.' };
+  if (reason === 'ended') return { tone: 'warning', message: 'Your session ended. Sign in again.' };
   if (reason === 'idle') {
-    return { tone: 'info', message: 'You were signed out after 30 minutes without activity.' };
+    return { tone: 'warning', message: 'You were signed out after 30 minutes without activity.' };
   }
   if (reason === 'maxage') {
-    return { tone: 'info', message: 'Your session reached its 12 hour limit. Sign in again to keep working.' };
+    return { tone: 'warning', message: 'Your session reached its 12 hour limit. Sign in again to keep working.' };
   }
   switch (params.get('error')) {
     case 'LOGIN_REQUEST_EXPIRED':

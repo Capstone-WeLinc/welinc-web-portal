@@ -98,6 +98,12 @@ describe('portal routing rules', () => {
   // covers: suite spec 0013 AC-14 (an admin whose session ended signs in and lands back on the page)
   it('says the session ended and returns an admin to the page they were on', () => {
     expect(noticeFor(params('reason=ended'))?.message).toBe('Your session ended. Sign in again.');
+    // Suite spec 0019, AC-15: a sign out is a success, an ended session a warning
+    expect(noticeFor(params('reason=logout'))?.tone).toBe('success');
+    for (const reason of ['ended', 'idle', 'maxage']) {
+      expect(noticeFor(params(`reason=${reason}`))?.tone).toBe('warning');
+    }
+    expect(noticeFor(params('error=LOGIN_STATE_INVALID'))?.tone).toBe('error');
     expect(startFor(params('reason=ended&next=%2Fadmin%2Fpeople'))).toEqual({ kind: 'form' });
     expect(signInAgainHref('/admin/people/u1?system=VRMS', true)).toBe(
       '/login?reason=ended&next=%2Fadmin%2Fpeople%2Fu1%3Fsystem%3DVRMS',
