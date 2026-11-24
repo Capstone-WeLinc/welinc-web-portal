@@ -9,6 +9,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { cn } from '@/lib/utils';
 import { api } from '../../lib/api';
 import { RATE_LIMITED_MESSAGE } from '../../lib/auth';
+import { pageTitle, useDocumentTitle } from '../../lib/title';
 import { HeroCard, HeroLabel, HeroNotice, heroButton, heroCodeGroup, heroCodeSlot, heroInput } from './AuthHero';
 
 /** A show or hide password button inside a hero input, 44px square. */
@@ -39,6 +40,7 @@ const tooMany = (err: unknown) => isAxiosError(err) && err.response?.status === 
  * email has an account (spec 0009, AC-13), so the screen never says which.
  */
 export default function ForgotPassword() {
+  useDocumentTitle(pageTitle('Forgot password'));
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');

@@ -19,6 +19,7 @@ import {
   type Screen,
 } from '../lib/auth';
 import { checkSso } from '../lib/session';
+import { pageTitle, useDocumentTitle } from '../lib/title';
 import { holdCutoffs, useSessionWatch } from '../lib/sessionWatch/watch';
 
 /** The launcher asks /auth/sso again on focus at most this often (spec 0007, AC-18). */
@@ -135,6 +136,8 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
     };
   }, [onLauncher]);
 
+  useDocumentTitle(titleFor(screen.kind, start.kind === 'request'));
+
   switch (screen.kind) {
     case 'form':
       return <Login onSignedIn={onSignedIn} notice={ended ? SESSION_ENDED : null} />;
@@ -157,5 +160,21 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
     default:
       // An app initiated login most often ends on the form; a direct visit on the launcher
       return start.kind === 'request' ? <LoginLoading /> : <LauncherLoading />;
+  }
+}
+
+/** Suite spec 0019, AC-28: the tab title of each front door screen. */
+function titleFor(kind: Screen['kind'], appLogin: boolean): string {
+  switch (kind) {
+    case 'form':
+      return pageTitle('Sign in');
+    case 'no-access':
+      return pageTitle('No access');
+    case 'error':
+    case 'checking':
+    case 'go':
+      return appLogin ? pageTitle('Sign in') : pageTitle();
+    default:
+      return pageTitle('Home');
   }
 }

@@ -7,10 +7,12 @@ import { askForCode, errorStatus, fetchAdminMe, isAdmin, needsCode, type AdminMe
 import { onSessionEnded } from '@/lib/api';
 import { signInAgainHref } from '@/lib/auth';
 import { useSessionWatch } from '@/lib/sessionWatch/watch';
+import { pageTitle, SUITE_MANAGEMENT, useDocumentTitle } from '@/lib/title';
 import { cn } from '@/lib/utils';
 import { LauncherShell } from '../launcher/LauncherShell';
+import NotFound from '../NotFound';
 import { AdminShell } from './AdminShell';
-import { landingView, viewHref, viewsFor, type AdminViewPath } from './adminViews';
+import { ADMIN_VIEWS, landingView, viewHref, viewsFor, type AdminViewPath } from './adminViews';
 import { ActivityView } from './activity/ActivityView';
 import { PermissionsView } from './permissions/PermissionsView';
 import { DeletionRequestsView } from './deletion/DeletionRequestsView';
@@ -70,6 +72,8 @@ export default function AdminPage() {
   // Suite spec 0016, AC-12b: the signing out soon watch, once the session is known to be live. A
   // reload or a pasted link starts with no cutoffs, so the watch asks /auth/sso once itself.
   useSessionWatch(load.kind === 'ready');
+  // The console names its view; every other admin state is Suite management alone
+  useDocumentTitle(load.kind === 'ready' && isAdmin(load.me) && !needsCode(load.me) ? null : pageTitle(SUITE_MANAGEMENT));
 
   switch (load.kind) {
     case 'loading':
@@ -92,6 +96,11 @@ function AdminConsole({ me, onChanged }: { me: AdminMe; onChanged: () => void })
   const view = params.id ? 'people' : params.view;
   const views = viewsFor(me);
   const current = views.find((v) => v.path === view);
+  // People names itself (the list, or the open person)
+  useDocumentTitle(current && current.path !== 'people' ? pageTitle(current.label, SUITE_MANAGEMENT) : null);
+  // Suite spec 0019, AC-26: an address that is no view at all is Wrong turn; a view you can't
+  // open (a suite only one) and `/admin` itself still land on your first view
+  if (view !== undefined && !ADMIN_VIEWS.some((v) => v.path === view)) return <NotFound />;
   if (!current) return <Navigate to={viewHref(landingView(me), search)} replace />;
 
   const grants = me.temporaryGrants?.length ? me.temporaryGrants : undefined;

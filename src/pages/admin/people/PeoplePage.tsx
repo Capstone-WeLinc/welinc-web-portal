@@ -8,6 +8,7 @@ import { AddPersonDialog, type AddStart } from './AddPersonDialog';
 import { PeopleListPane } from './PeopleListPane';
 import { parseListSystem, personSystems } from './peopleRules';
 import { PersonPane } from './PersonPane';
+import { pageTitle, SUITE_MANAGEMENT, useDocumentTitle } from '@/lib/title';
 
 /** The address without `/new` or a person, keeping `?system`, `?q` and `?sort`. */
 function listHref(search: string): string {
@@ -28,6 +29,8 @@ export function PeoplePage({ me, onMeChanged }: { me: AdminMe; onMeChanged: () =
   const catalog = useSystemsCatalog();
   const adding = id === 'new';
   const selected = id && !adding ? id : undefined;
+  // Suite spec 0019, AC-28: the open person names the tab themselves (`PersonPane`)
+  useDocumentTitle(selected ? null : pageTitle('People', SUITE_MANAGEMENT));
   // Bumped after an action on the person, so the list loads again once (AC-18)
   const [listVersion, setListVersion] = useState(0);
   // Bumped when the dialog changed the open person, so the pane reads them again

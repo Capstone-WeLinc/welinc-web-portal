@@ -88,6 +88,26 @@
   --hero-danger: #fca5a5;
   --hero-success: #34d399;
 
+  /*
+    Suite spec 0019: the drawn brand scenes (the launcher band, the 404 road, sign in). The trucks
+    wear the real WeLinc livery (white closed van, orange and blue swoosh, navy wordmark); only
+    these drawings use these values, never a working page.
+  */
+  --scene-hills: #141a55;
+  --scene-road: #0a0d36;
+  --scene-post: #cbd2ea;
+  --livery-body: #f7f8fb;
+  --livery-edge: #c9d0de;
+  --livery-orange: #f29a1f;
+  --livery-blue: #1f5cc4;
+  --livery-cab: #eef1f6;
+  --livery-cab-edge: #c3cad8;
+  --livery-glass: #14205a;
+  --livery-bumper: #2a2f45;
+  --livery-step: #8d96ab;
+  --livery-tyre: #11131f;
+  --livery-hub: #aab2c5;
+
   /* The content column's left edge; AdminShell sets it to its sidebar's width (the banner centers on it) */
   --content-left: 0px;
 }
@@ -302,6 +322,42 @@
 /* Sonner pauses every toast's timer while the toaster is hovered; the time bars pause with it */
 [data-sonner-toaster]:hover [data-slot='toast-bar'] {
   animation-play-state: paused;
+}
+
+/* Suite spec 0019, AC-26: a warning lamp on the 404 road blinks; still under reduced motion */
+@utility scene-blink {
+  animation: scene-blink 1.1s steps(1) infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes scene-blink {
+  50% {
+    opacity: 0.15;
+  }
+}
+
+/*
+  Suite spec 0019, AC-24 (Round 29 option C): the steering wheel wait swings left and right. It
+  stands still under reduced motion and keeps its label.
+*/
+@utility wheel-turn {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wheel-turn 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes wheel-turn {
+  from {
+    transform: rotate(-70deg);
+  }
+  to {
+    transform: rotate(70deg);
+  }
 }
 
 /* A scrolling strip whose cut off last item already says it scrolls (the Admin tabs on phones) */

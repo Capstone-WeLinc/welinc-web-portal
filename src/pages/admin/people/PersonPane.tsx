@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { describeEvent } from '../activity/describeEvent';
 import { ViewError } from '../AdminStates';
 import { useAsync } from '../useAsync';
+import { pageTitle, SUITE_MANAGEMENT, useDocumentTitle } from '@/lib/title';
 import { useEventCatalog, useSystemsCatalog } from '../useCatalogs';
 import { AccessTab } from './AccessTab';
 import { CardAction, PaneCard, StatusPill, SystemChip } from './peopleParts';
@@ -63,6 +64,12 @@ export function PersonPane({
   const navigate = useNavigate();
   const { search } = useLocation();
   const name = load.kind === 'ready' ? load.person.name : 'This person';
+  // Suite spec 0019, AC-28: "Maria Santos · People", the list's title while the person loads
+  useDocumentTitle(
+    load.kind === 'loading'
+      ? pageTitle('People', SUITE_MANAGEMENT)
+      : pageTitle(load.kind === 'ready' && load.person.name.trim() ? load.person.name : 'Person', 'People'),
+  );
 
   useEffect(() => {
     let cancelled = false;
