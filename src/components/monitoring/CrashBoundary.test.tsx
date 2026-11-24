@@ -1,9 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setCrashViewerStanding } from '@/lib/monitoring/standing';
 import { CrashBoundary } from './CrashBoundary';
 
-// covers: VRMS spec 0025 AC-3, AC-7
+// covers: VRMS spec 0025 AC-3, AC-7, AC-7a
 
 const reportRenderCrash = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/monitoring/sentry', () => ({ reportRenderCrash }));
@@ -19,7 +20,10 @@ beforeEach(() => {
   // React logs every error a boundary catches; the tests expect those
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  setCrashViewerStanding('u1', false);
+});
 
 describe('CrashBoundary', () => {
   it('shows its children when nothing crashes', () => {
@@ -113,5 +117,40 @@ describe('CrashBoundary', () => {
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.getByText('Profile page')).toBeInTheDocument();
+  });
+
+  it('gives an admin the caught error, the page and the code in the details box', () => {
+    setCrashViewerStanding('u1', true);
+    reportRenderCrash.mockReturnValue('abcdef0123456789abcdef0123456789');
+    window.history.replaceState(null, '', '/admin/people?q=ana@welinc.com#top');
+
+    render(
+      inRouter(
+        <CrashBoundary variant="page">
+          <Boom />
+        </CrashBoundary>,
+      ),
+    );
+
+    const box = screen.getByLabelText('Crash details');
+    expect(box).toHaveTextContent('Error: render failed');
+    expect(box.textContent).toContain('Page: /admin/people\n');
+    expect(box).not.toHaveTextContent('ana@welinc.com');
+    expect(box).toHaveTextContent('Code: abcdef01');
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('shows the staff line without a code when monitoring is off', () => {
+    reportRenderCrash.mockReturnValue(undefined);
+
+    render(
+      inRouter(
+        <CrashBoundary variant="page">
+          <Boom />
+        </CrashBoundary>,
+      ),
+    );
+
+    expect(screen.getByText('Try reloading. If it keeps happening, tell your admin what you were doing.')).toBeInTheDocument();
   });
 });
