@@ -360,6 +360,26 @@
   }
 }
 
+/*
+  Suite spec 0019, AC-21 (board `Filter18`): a part that folds open over --duration-fold, by
+  animating its grid row from 0fr to 1fr. Its one child holds the content. Set `data-open` to open.
+*/
+@utility fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--duration-fold) var(--ease-enter);
+  & > * {
+    overflow: hidden;
+    min-height: 0;
+  }
+  &[data-open] {
+    grid-template-rows: 1fr;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
 /* A scrolling strip whose cut off last item already says it scrolls (the Admin tabs on phones) */
 @utility no-scrollbar {
   scrollbar-width: none;

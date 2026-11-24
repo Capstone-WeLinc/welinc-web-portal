@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { InitialsTile } from '@/components/ui/initials-tile';
-import { SegmentedControl, SegmentedControlItem } from '@/components/ui/segmented-control';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { AdminMe, SystemCode } from '@/lib/admin';
 import {
@@ -29,8 +28,9 @@ import { ViewError } from '../AdminStates';
 import { useAsync } from '../useAsync';
 import { useSystemsCatalog } from '../useCatalogs';
 import { SystemChip } from './peopleParts';
+import { PeopleFilter } from './PeopleFilter';
+import { addSystem, filterCount, filterSystems, NO_PICKS, parsePicks, picksToParams, type FilterPicks } from './filterRules';
 import {
-  filterChoices,
   isPending,
   parseListSystem,
   parseSort,
@@ -45,12 +45,20 @@ import {
 /** How long typing waits before the search runs. */
 const SEARCH_DELAY_MS = 300;
 
-/** The list's inputs from the address (AC-1, AC-3): `?q`, `?system`, `?sort`. */
-function useListParams(me: AdminMe) {
+/**
+ * The list's inputs from the address (AC-1, AC-3): `?q`, `?system`, `?sort`, plus suite spec
+ * 0019's `?status` and `?access` (AC-21). Stale filter values are dropped and the address
+ * rewritten before any call; `rolesPending` holds the calls until the catalog can check roles.
+ */
+function useListParams(me: AdminMe, catalog: CatalogSystem[] | null) {
   const [params, setParams] = useSearchParams();
   const q = params.get('q') ?? '';
   const system = parseListSystem(me, params.get('system'));
   const sort = parseSort(params.get('sort'));
+  const raw = { status: params.get('status'), access: params.get('access') };
+  const { picks, rolesPending } = parsePicks(raw, filterSystems(me, system), catalog);
+  const clean = picksToParams(picks);
+  const stale = !rolesPending && (clean.status !== raw.status || clean.access !== raw.access);
   const set = (changes: Record<string, string | null>) =>
     setParams(
       (current) => {
@@ -63,10 +71,25 @@ function useListParams(me: AdminMe) {
       },
       { replace: true },
     );
-  return { q, system, sort, set };
+
+  useEffect(() => {
+    if (stale) set(clean);
+    // set is rebuilt each render; the clean values are in the key
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stale, clean.status, clean.access]);
+
+  return { q, system, sort, picks, filters: clean, waiting: rolesPending || stale, set };
 }
 
-type ListInputs = { q: string; system: SystemCode | null; sort: PeopleSort; attempt: number };
+type ListInputs = {
+  q: string;
+  system: SystemCode | null;
+  sort: PeopleSort;
+  filters: { status: string | null; access: string | null };
+  /** Stale filters are being dropped: no call until the address is clean. */
+  waiting: boolean;
+  attempt: number;
+};
 
 /**
  * Suite spec 0017, AC-3 to AC-6 (board `People8`): the 360px list pane. Three server groups,
@@ -88,11 +111,11 @@ export function PeopleListPane({
   /** Opens Add person over the page, keeping the open person, the search and the sort. */
   onAdd: (system: SystemCode | null) => void;
 }) {
-  const { q, system, sort, set } = useListParams(me);
+  const catalog = useSystemsCatalog();
+  const { q, system, sort, picks, filters, waiting, set } = useListParams(me, catalog);
   const [typed, setTyped] = useState(q);
   const [attempt, setAttempt] = useState(0);
-  const catalog = useSystemsCatalog();
-  const choices = filterChoices(me);
+  const filtered = filterCount(picks) > 0;
 
   // Typing waits a moment, then the search moves into the address (and loads)
   useEffect(() => {
@@ -103,7 +126,7 @@ export function PeopleListPane({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typed, q]);
 
-  const inputs: ListInputs = { q, system, sort, attempt: attempt + reloadKey };
+  const inputs: ListInputs = { q, system, sort, filters, waiting, attempt: attempt + reloadKey };
   const attention = useGroup('attention', inputs);
   const active = useGroup('active', inputs);
   const inactive = useGroup('inactive', inputs);
@@ -118,8 +141,10 @@ export function PeopleListPane({
 
   const clearAll = () => {
     setTyped('');
-    set({ q: null, system: null });
+    set({ q: null, system: null, status: null, access: null });
   };
+  const applyPicks = (next: FilterPicks) => set(picksToParams(next));
+  const add = () => onAdd(addSystem(system, picks));
 
   return (
     <section aria-label="People" className="flex min-h-0 flex-col bg-card lg:h-full">
@@ -128,12 +153,13 @@ export function PeopleListPane({
           <h1 id="admin-view-title" className="text-title text-foreground">
             People
           </h1>
-          <Button size="sm" onClick={() => onAdd(system)}>
+          <Button size="sm" onClick={add}>
             <Plus aria-hidden="true" />
-            Add person
+            Add user
           </Button>
         </div>
-        <div className="relative">
+        <div className="flex gap-2">
+        <div className="relative min-w-0 flex-1">
           <Search
             className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
@@ -147,23 +173,8 @@ export function PeopleListPane({
             className="h-10 w-full rounded-lg border border-transparent bg-background pr-3 pl-9 text-base-input text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden max-sm:h-11 md:text-body"
           />
         </div>
-        {choices.length > 0 && (
-          <SegmentedControl
-            aria-label="System"
-            value={system ?? 'all'}
-            onValueChange={(next) => set({ system: next === 'all' ? null : next })}
-            className="flex w-full"
-          >
-            <SegmentedControlItem value="all" className="flex-1">
-              All
-            </SegmentedControlItem>
-            {choices.map((s) => (
-              <SegmentedControlItem key={s} value={s} className="flex-1">
-                {s}
-              </SegmentedControlItem>
-            ))}
-          </SegmentedControl>
-        )}
+        <PeopleFilter me={me} catalog={catalog} scope={system} q={q} applied={picks} onApply={applyPicks} />
+        </div>
       </div>
 
       <div className="flex items-center justify-between gap-2 border-y border-divider bg-background py-2 pr-3 pl-5">
@@ -204,19 +215,21 @@ export function PeopleListPane({
         ) : loading ? (
           <ListSkeleton />
         ) : total === 0 ? (
-          q || system ? (
+          q || system || filtered ? (
             <NoMatch
               q={q}
               system={system}
+              picks={picks}
               onClearSearch={() => {
                 setTyped('');
                 set({ q: null });
               }}
               onClearSystem={() => set({ system: null })}
+              onClearPicks={() => applyPicks(NO_PICKS)}
               onClearAll={clearAll}
             />
           ) : (
-            <EmptyList onAdd={() => onAdd(system)} />
+            <EmptyList onAdd={add} />
           )
         ) : (
           PEOPLE_GROUPS.map(({ group, label }) => (
@@ -248,12 +261,22 @@ export function PeopleListPane({
 type GroupLoader = ReturnType<typeof useGroup>;
 
 /** One group's first page (with `counts`) and its Load more. */
-function useGroup(group: PeopleGroup, { q, system, sort, attempt }: ListInputs) {
+function useGroup(group: PeopleGroup, { q, system, sort, filters, waiting, attempt }: ListInputs) {
   const [loadingMore, setLoadingMore] = useState(false);
-  const query = { system, q: q || undefined, group, sort, limit: PEOPLE_PAGE_SIZE };
-  const { state, replace } = useAsync<PeoplePage>(`${group}|${system ?? 'all'}|${q}|${sort}|${attempt}`, () =>
-    listPeople(query),
-  );
+  const query = {
+    system,
+    q: q || undefined,
+    status: filters.status ?? undefined,
+    access: filters.access ?? undefined,
+    group,
+    sort,
+    limit: PEOPLE_PAGE_SIZE,
+  };
+  const key = waiting
+    ? `${group}|waiting`
+    : `${group}|${system ?? 'all'}|${q}|${sort}|${filters.status ?? ''}|${filters.access ?? ''}|${attempt}`;
+  // While waiting the call never starts, so the list keeps its skeletons
+  const { state, replace } = useAsync<PeoplePage>(key, () => (waiting ? new Promise<PeoplePage>(() => {}) : listPeople(query)));
   const more = async () => {
     if (state.kind !== 'ready' || !state.value.next || loadingMore) return;
     setLoadingMore(true);
@@ -376,29 +399,44 @@ function ListSkeleton() {
   );
 }
 
-/** Suite spec 0016's no match state: the search, one hint, the active filters as chips. */
+/**
+ * Suite spec 0016's no match state: the search, one hint, the active filters as chips. Suite
+ * spec 0019, AC-21: under a filter, Clear filters takes the place of Add user.
+ */
 function NoMatch({
   q,
   system,
+  picks,
   onClearSearch,
   onClearSystem,
+  onClearPicks,
   onClearAll,
 }: {
   q: string;
   system: SystemCode | null;
+  picks: FilterPicks;
   onClearSearch: () => void;
   onClearSystem: () => void;
+  onClearPicks: () => void;
   onClearAll: () => void;
 }) {
+  const count = filterCount(picks);
   return (
     <div role="status" className="flex flex-col gap-3 px-5 py-6">
-      <p className="text-body font-semibold text-foreground">{q ? `No one matches “${q}”` : `No one in ${system}`}</p>
-      <p className="text-small text-muted-foreground">Check the spelling, or search by email or role.</p>
+      <p className="text-body font-semibold text-foreground">
+        {q ? `No one matches “${q}”` : count > 0 ? 'No one matches these filters' : `No one in ${system}`}
+      </p>
+      <p className="text-small text-muted-foreground">
+        {q ? 'Check the spelling, or search by email or role.' : 'Try fewer filters, or another system.'}
+      </p>
       <div className="flex flex-wrap items-center gap-2">
         {q && <FilterChip label={`“${q}”`} onRemove={onClearSearch} />}
         {system && <FilterChip label={system} onRemove={onClearSystem} />}
-        <Button variant="link" size="sm" className="px-1" onClick={onClearAll}>
-          Clear all
+        {count > 0 && <FilterChip label={`${count} filter${count === 1 ? '' : 's'}`} onRemove={onClearPicks} />}
+      </div>
+      <div>
+        <Button variant="outline" size="sm" onClick={onClearAll}>
+          Clear filters
         </Button>
       </div>
     </div>
@@ -430,7 +468,7 @@ function EmptyList({ onAdd }: { onAdd: () => void }) {
       <p className="text-body text-muted-strong">No one has access yet.</p>
       <Button size="sm" onClick={onAdd}>
         <Plus aria-hidden="true" />
-        Add person
+        Add user
       </Button>
     </div>
   );

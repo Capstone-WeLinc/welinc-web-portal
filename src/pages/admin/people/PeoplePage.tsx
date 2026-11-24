@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Users } from 'lucide-react';
-import type { AdminMe } from '@/lib/admin';
+import type { AdminMe, SystemCode } from '@/lib/admin';
+import type { CatalogSystem } from '@/lib/adminApi';
+import { addSystem, filterSystems, parsePicks } from './filterRules';
 import { cn } from '@/lib/utils';
 import { useSystemsCatalog } from '../useCatalogs';
 import { AddPersonDialog, type AddStart } from './AddPersonDialog';
@@ -44,9 +46,7 @@ export function PeoplePage({ me, onMeChanged }: { me: AdminMe; onMeChanged: () =
   );
   const listChanged = useCallback(() => setListVersion((n) => n + 1), []);
 
-  const start: AddStart = adding
-    ? { system: parseListSystem(me, new URLSearchParams(search).get('system')) ?? undefined }
-    : giving;
+  const start: AddStart = adding ? { system: newSystem(me, search, catalog) ?? undefined } : giving;
 
   const closeDialog = () => {
     if (adding) navigate(listHref(search), { replace: true });
@@ -98,6 +98,14 @@ export function PeoplePage({ me, onMeChanged }: { me: AdminMe; onMeChanged: () =
       />
     </div>
   );
+}
+
+/** `/admin/people/new` preselects like the Add user button (suite spec 0019, AC-21). */
+function newSystem(me: AdminMe, search: string, catalog: CatalogSystem[] | null): SystemCode | null {
+  const params = new URLSearchParams(search);
+  const scope = parseListSystem(me, params.get('system'));
+  const { picks } = parsePicks({ status: null, access: params.get('access') }, filterSystems(me, scope), catalog);
+  return addSystem(scope, picks);
 }
 
 function NoneSelected() {
