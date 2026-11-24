@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { api } from '../api';
+import type { LauncherAnswer } from '../auth';
 import { notifyError } from '../notify';
 import {
   activityDelayMs,
@@ -49,6 +50,9 @@ let retryAttempt = 0;
 let checking: Promise<Check['kind']> | null = null;
 let channel: BroadcastChannel | null = null;
 const listeners = new Set<() => void>();
+/** Suite spec 0019, AC-20: the latest launcher answer, in memory only (the system switcher). */
+let answer: LauncherAnswer | null = null;
+const answerListeners = new Set<() => void>();
 
 // ---------------------------------------------------------------------------------------------
 // The store
@@ -56,6 +60,27 @@ const listeners = new Set<() => void>();
 function setBanner(next: SigningOut | null) {
   banner = next;
   for (const listener of listeners) listener();
+}
+
+/** Keeps an answer that carries a user and its systems; anything else is ignored. */
+function rememberAnswer(data: object) {
+  const next = data as Partial<LauncherAnswer>;
+  if (!next.user || !Array.isArray(next.systems)) return;
+  answer = next as LauncherAnswer;
+  for (const listener of answerListeners) listener();
+}
+
+/** The latest launcher answer this tab saw, or null before any (Admin after a reload asks once). */
+export function currentAnswer(): LauncherAnswer | null {
+  return answer;
+}
+
+/** The latest launcher answer for React (the system switcher's systems, urls and roles). */
+export function useHeldAnswer(): LauncherAnswer | null {
+  return useSyncExternalStore((listener) => {
+    answerListeners.add(listener);
+    return () => answerListeners.delete(listener);
+  }, currentAnswer);
 }
 
 /** The browser's clock moved onto welinc-auth's, with the gap from the latest answer. */
@@ -77,8 +102,9 @@ export function hasCutoffs(): boolean {
  * Every launcher answer comes through here (`/auth/sso`, the login answer, the code step answer):
  * the latest cutoffs and clock gap replace the held ones, and a running watch plans again.
  */
-export function holdCutoffs(answer: object, receivedAt: number = Date.now()): void {
-  const next = readCutoffs(answer, receivedAt);
+export function holdCutoffs(data: object, receivedAt: number = Date.now()): void {
+  rememberAnswer(data);
+  const next = readCutoffs(data, receivedAt);
   if (!next) return;
   held = next;
   plan();
@@ -133,6 +159,7 @@ function plan() {
 async function fetchCutoffs(): Promise<Check> {
   try {
     const { data } = await api.get<object>('/auth/sso');
+    rememberAnswer(data);
     const next = readCutoffs(data, Date.now());
     return next ? { kind: 'ok', held: next } : { kind: 'failed', retryAfter: null };
   } catch (error) {
@@ -347,6 +374,7 @@ export function resetSessionWatchForTests(): void {
   channel = null;
   held = null;
   banner = null;
+  answer = null;
   leaving = false;
   lastPingAt = 0;
   retryAttempt = 0;

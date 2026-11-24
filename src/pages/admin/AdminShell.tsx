@@ -1,23 +1,18 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { ChevronRight, ChevronUp, House, LogOut, Menu, PanelLeftClose, PanelLeftOpen, type LucideIcon } from 'lucide-react';
+import { ChevronRight, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { LogoBadge } from '@/components/brand/BrandLockup';
 import { LogoMark } from '@/components/LogoMark';
 import { CrashBoundary } from '@/components/monitoring/CrashBoundary';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { AdminMe } from '@/lib/admin';
-import { initialsOf } from '@/lib/launcher';
+import { signedInSystems } from '@/lib/launcher';
+import { useHeldAnswer } from '@/lib/sessionWatch/watch';
+import { SUITE_MANAGEMENT } from '@/lib/title';
 import { cn } from '@/lib/utils';
 import { AccountMenu } from '../launcher/LauncherShell';
-import { SignOutDialog } from '../launcher/SignOutDialog';
+import { SuiteSwitcher } from './SuiteSwitcher';
 import {
   BOTTOM_BAR_MAX,
   viewHref,
@@ -51,7 +46,7 @@ function grouped(views: AdminView[]): { group: AdminViewGroup | null; views: Adm
   return out;
 }
 
-/** Who this console is for, under the sidebar's title: "Suite admin" or "VRMS admin". */
+/** Who this console is for, under the Suite management title: "Suite admin" or "VRMS admin" (AC-17). */
 function standing(me: AdminMe): string {
   return me.suiteAdmin ? 'Suite admin' : `${me.adminOf.join(', ')} admin`;
 }
@@ -66,15 +61,19 @@ const ITEM_CLASSES =
 const CURRENT_CLASSES = 'bg-sidebar-current font-semibold text-sidebar-foreground';
 const ROW =
   'flex w-full items-center gap-2.5 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring-on-dark';
+const FOOTER_BUTTON =
+  'flex size-8 shrink-0 items-center justify-center rounded-lg text-sidebar-idle outline-none hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring-on-dark max-md:size-11';
 
 /** Width of the content's left edge from 768px up, so the floating banner centers on the content. */
 const CONTENT_LEFT = { expanded: '15rem', collapsed: '4rem' } as const;
 
 /**
- * The Admin console's frame (design.md, Layout and navigation): a navy 240px sidebar from md up,
- * the brand and standing at the top, the views grouped by task, then the collapse toggle, Back to
- * home and the account menu at the bottom. Collapsed it is a 64px icon strip with tooltips. On
- * phones it becomes a bottom tab bar for at most five views and a sheet menu past that.
+ * The Suite management frame (design.md, Layout and navigation; suite spec 0019, AC-17 to AC-20,
+ * board `Shell20`): a navy 240px sidebar from md up with the Suite management title and your role
+ * at the top (the logo goes Home), the views grouped by task, and a darker footer strip with the
+ * company and the collapse button. Collapsed it is a 64px icon strip with tooltips. The system
+ * switcher and the account menu sit at the top right. On phones the sidebar becomes a bottom tab
+ * bar for at most five views and a sheet menu past that.
  */
 export function AdminShell({ me, views, current, banner, status, flush, children }: Props) {
   const { search } = useLocation();
@@ -82,6 +81,10 @@ export function AdminShell({ me, views, current, banner, status, flush, children
   const { collapsed, toggle } = useSidebarCollapsed(me.user.id);
   const bottomBar = views.length <= BOTTOM_BAR_MAX;
   const currentView = views.find((v) => v.path === current);
+  const answer = useHeldAnswer();
+  const systems = answer?.systems ?? [];
+  // AC-20: a suite admin with no system roles has no switcher; the logo and account menu go Home
+  const switcher = !(me.suiteAdmin && answer !== null && systems.length === 0);
 
   // design.md, Feedback: the banner sits top center of the content area (BannerHost reads this).
   useEffect(() => {
@@ -102,14 +105,17 @@ export function AdminShell({ me, views, current, banner, status, flush, children
           )}
         >
           <SidebarBody me={me} views={views} current={current} search={search} collapsed={collapsed}>
-            <SidebarAction
-              icon={collapsed ? PanelLeftOpen : PanelLeftClose}
-              label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              onClick={toggle}
-              collapsed={collapsed}
-              aria-expanded={!collapsed}
-            />
-            <SidebarAccount me={me} collapsed={collapsed} />
+            <CollapsedTooltip label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} collapsed={collapsed}>
+              <button
+                type="button"
+                onClick={toggle}
+                aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                aria-expanded={!collapsed}
+                className={FOOTER_BUTTON}
+              >
+                {collapsed ? <PanelLeftOpen aria-hidden="true" className="size-4.5" /> : <PanelLeftClose aria-hidden="true" className="size-4.5" />}
+              </button>
+            </CollapsedTooltip>
           </SidebarBody>
         </aside>
 
@@ -118,17 +124,15 @@ export function AdminShell({ me, views, current, banner, status, flush, children
             {bottomBar ? (
               <Link
                 to="/"
-                aria-label="WeLinc home"
+                aria-label="Home"
                 className="flex size-11 items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden md:hidden"
               >
-                <span className="flex size-9 items-center justify-center rounded-lg bg-sidebar">
-                  <LogoMark className="h-3.5 text-highlight" />
-                </span>
+                <LogoBadge />
               </Link>
             ) : (
               <button
                 type="button"
-                aria-label="Open the admin menu"
+                aria-label="Open the Suite management menu"
                 aria-expanded={menuOpen}
                 onClick={() => setMenuOpen(true)}
                 className="-ml-2 flex size-11 items-center justify-center rounded-lg text-foreground hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden md:hidden"
@@ -138,7 +142,7 @@ export function AdminShell({ me, views, current, banner, status, flush, children
             )}
             <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
               <ol className="flex items-center gap-1.5 text-small">
-                <li className="text-muted-foreground max-sm:hidden">Admin</li>
+                <li className="text-muted-foreground max-sm:hidden">{SUITE_MANAGEMENT}</li>
                 <li aria-hidden="true" className="text-muted-foreground max-sm:hidden">
                   <ChevronRight className="size-4" />
                 </li>
@@ -148,10 +152,9 @@ export function AdminShell({ me, views, current, banner, status, flush, children
               </ol>
             </nav>
             {status}
-            {/* From md up the account menu sits at the bottom of the sidebar */}
-            <div className="md:hidden">
-              <AccountMenu user={me.user} onDark={false} />
-            </div>
+            {/* AC-19, AC-20: the system switcher and your account menu, top right at every size */}
+            {switcher && <SuiteSwitcher systems={systems} />}
+            <AccountMenu user={me.user} onDark={false} systems={answer ? signedInSystems(answer) : undefined} />
           </header>
 
           {banner && <div className="px-4 pt-4 sm:px-6 lg:px-8">{banner}</div>}
@@ -169,8 +172,8 @@ export function AdminShell({ me, views, current, banner, status, flush, children
         ) : (
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetContent side="left" className="bg-sidebar text-sidebar-foreground md:hidden">
-              <SheetTitle className="sr-only">Admin menu</SheetTitle>
-              <SheetDescription className="sr-only">The Admin sections, and the way back home.</SheetDescription>
+              <SheetTitle className="sr-only">{SUITE_MANAGEMENT} menu</SheetTitle>
+              <SheetDescription className="sr-only">The Suite management sections; the logo goes home.</SheetDescription>
               <SidebarBody
                 me={me}
                 views={views}
@@ -213,28 +216,25 @@ function SidebarBody({
   search: string;
   collapsed?: boolean;
   onNavigate?: () => void;
-  /** Footer items below Back to home (the collapse toggle, then the account menu last; desktop only). */
+  /** The footer strip's button (the collapse toggle; desktop only). */
   children?: ReactNode;
 }) {
   const pad = collapsed ? 'px-2' : 'px-3';
   return (
     <>
       <div className={cn('shrink-0 pt-3', pad)}>
-        <CollapsedTooltip label="WeLinc home" collapsed={collapsed}>
+        <CollapsedTooltip label="Home" collapsed={collapsed}>
           <Link
             to="/"
             onClick={onNavigate}
-            aria-label={collapsed ? `WeLinc home, ${standing(me)}` : undefined}
-            className={cn(ROW, 'px-2 py-1.5 hover:bg-sidebar-hover', collapsed && 'justify-center px-0')}
+            aria-label={`Home. ${SUITE_MANAGEMENT}, ${standing(me)}`}
+            className={cn(ROW, 'px-1 py-1.5 hover:bg-sidebar-hover', collapsed && 'justify-center px-0')}
           >
-            <span
-              aria-hidden="true"
-              className="flex size-8 shrink-0 items-center justify-center rounded-md bg-highlight text-highlight-foreground"
-            >
-              <LogoMark className="h-3.5" />
-            </span>
-            <span className={cn('flex min-w-0 flex-1 flex-col', collapsed && 'sr-only')}>
-              <span className="truncate text-group font-bold">WeLinc Admin</span>
+            {/* Logo B: the mark alone on its gold square (suite spec 0019, AC-28) */}
+            <LogoBadge />
+            <span aria-hidden="true" className={cn('flex min-w-0 flex-1 flex-col', collapsed && 'hidden')}>
+              <span className="truncate text-group font-bold">{SUITE_MANAGEMENT}</span>
+              {/* AC-17: your role in plain muted white, never gold */}
               <span className="truncate text-caption font-normal text-sidebar-idle">{standing(me)}</span>
             </span>
           </Link>
@@ -242,7 +242,7 @@ function SidebarBody({
         <hr aria-hidden="true" className="mx-0.5 mt-3.5 border-sidebar-line" />
       </div>
 
-      <nav aria-label="Admin sections" className={cn('flex-1 overflow-x-hidden overflow-y-auto py-3', pad)}>
+      <nav aria-label="Suite management sections" className={cn('flex-1 overflow-x-hidden overflow-y-auto py-3', pad)}>
         {grouped(views).map(({ group, views: items }, index) => (
           <div key={group ?? 'top'} className="flex flex-col gap-0.5">
             {index > 0 && <hr aria-hidden="true" className="mx-2.5 mt-2.5 border-sidebar-line" />}
@@ -267,13 +267,22 @@ function SidebarBody({
         ))}
       </nav>
 
-      <div className={cn('flex shrink-0 flex-col gap-1 border-t border-sidebar-line py-3', pad)}>
-        <CollapsedTooltip label="Back to home" collapsed={collapsed}>
-          <Link to="/" onClick={onNavigate} className={cn(ITEM_CLASSES, collapsed && 'justify-center px-0')}>
-            <House className="size-4.5 shrink-0" aria-hidden="true" />
-            <span className={cn('truncate', collapsed && 'sr-only')}>Back to home</span>
-          </Link>
-        </CollapsedTooltip>
+      {/* AC-18 (Shell20, footer option 5): a darker strip with the mark and "WeLinc Logistics" on
+          one line and the collapse button at its right; no Collapse row, no Back to home row */}
+      <div
+        className={cn(
+          'flex min-h-14 shrink-0 items-center gap-2.5 border-t border-sidebar-line bg-black/15 px-3 py-2.5',
+          collapsed ? 'justify-center px-2' : 'justify-between',
+        )}
+      >
+        {!collapsed && (
+          <span className="flex min-w-0 flex-1 items-center gap-2.5">
+            <span aria-hidden="true" className="flex size-6.5 shrink-0 items-center justify-center rounded-md bg-sidebar-count">
+              <LogoMark className="h-2.5 text-highlight" />
+            </span>
+            <span className="truncate text-small font-semibold text-sidebar-idle">WeLinc Logistics</span>
+          </span>
+        )}
         {children}
       </div>
     </>
@@ -309,81 +318,11 @@ function SideLink({
   );
 }
 
-/** A button styled like a nav item, for the sidebar footer. */
-function SidebarAction({
-  icon: Icon,
-  label,
-  onClick,
-  collapsed,
-  ...aria
-}: {
-  icon: LucideIcon;
-  label: string;
-  onClick: () => void;
-  collapsed: boolean;
-  'aria-expanded'?: boolean;
-}) {
-  return (
-    <CollapsedTooltip label={label} collapsed={collapsed}>
-      <button type="button" onClick={onClick} className={cn(ITEM_CLASSES, collapsed && 'justify-center px-0')} {...aria}>
-        <Icon aria-hidden="true" className="size-4.5 shrink-0" />
-        <span className={cn('truncate', collapsed && 'sr-only')}>{label}</span>
-      </button>
-    </CollapsedTooltip>
-  );
-}
-
-/** The account menu at the bottom of the sidebar: you, your standing, and Sign out everywhere. */
-function SidebarAccount({ me, collapsed }: { me: AdminMe; collapsed: boolean }) {
-  const [signingOut, setSigningOut] = useState(false);
-  const { name, email } = me.user;
-  return (
-    <>
-      <DropdownMenu>
-        <CollapsedTooltip label={name} collapsed={collapsed}>
-          <DropdownMenuTrigger
-            aria-label={`Account: ${name}, ${standing(me)}`}
-            className={cn(ROW, 'min-h-11 px-1.5 py-1.5 hover:bg-sidebar-hover', collapsed && 'justify-center px-0')}
-          >
-            <span
-              aria-hidden="true"
-              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sidebar-count text-caption font-bold"
-            >
-              {initialsOf(name)}
-            </span>
-            {!collapsed && (
-              <>
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-small font-semibold">{name}</span>
-                  <span className="truncate text-caption text-sidebar-idle">{standing(me)}</span>
-                </span>
-                <ChevronUp aria-hidden="true" className="size-4 shrink-0 text-sidebar-idle" />
-              </>
-            )}
-          </DropdownMenuTrigger>
-        </CollapsedTooltip>
-        <DropdownMenuContent side="top" align="start" className="w-60">
-          <DropdownMenuLabel className="flex flex-col gap-1 py-2">
-            <span className="truncate text-body font-medium text-foreground">{name}</span>
-            <span className="truncate text-caption font-normal text-muted-foreground">{email}</span>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => setSigningOut(true)}>
-            <LogOut aria-hidden="true" />
-            Sign out
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <SignOutDialog open={signingOut} onOpenChange={setSigningOut} />
-    </>
-  );
-}
-
 /** design.md: phones get a bottom tab bar when there are at most five views. */
 function BottomBar({ views, current, search }: { views: AdminView[]; current: AdminViewPath; search: string }) {
   return (
     <nav
-      aria-label="Admin sections"
+      aria-label="Suite management sections"
       className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card pb-safe md:hidden"
     >
       <ul className="flex">

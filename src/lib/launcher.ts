@@ -1,5 +1,5 @@
 import { API_BASE_URL } from './api';
-import type { LauncherAnswer } from './auth';
+import { administers, type LauncherAnswer } from './auth';
 
 // Display rules for the launcher (spec 0007, AC-15, AC-17), kept pure so they are easy to test.
 
@@ -63,4 +63,13 @@ export function signOutLine(systems?: readonly string[]): string {
   if (!systems || systems.length === 0) return "You'll need to sign in again.";
   const list = systems.length === 1 ? systems[0] : `${systems.slice(0, -1).join(', ')} and ${systems[systems.length - 1]}`;
   return `You'll be signed out of ${list} on this browser, and need to sign in again to use ${systems.length === 1 ? 'it' : 'them'}.`;
+}
+
+/**
+ * Suite spec 0019, AC-2, AC-20: the role chip on a system's card. An admin of the system sees
+ * Admin only; anyone else their real role names there (Operations, Chief Mechanic, Mechanic).
+ */
+export function roleTag(system: LauncherAnswer['systems'][number]): string {
+  if (administers(system)) return 'Admin';
+  return system.roles.map((role) => role.name).join(', ');
 }

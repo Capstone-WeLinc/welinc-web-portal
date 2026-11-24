@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, LogOut } from 'lucide-react';
+import { LogOut, UserRound } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { LauncherAnswer } from '@/lib/auth';
 import { initialsOf, pictureUrl } from '@/lib/launcher';
+import { PROFILE_PATH } from '@/lib/routes';
 import { LogoMark } from '@/components/LogoMark';
 import { CrashBoundary } from '@/components/monitoring/CrashBoundary';
 import { cn } from '@/lib/utils';
@@ -48,7 +49,11 @@ export function UserAvatar({
   );
 }
 
-/** The account menu: who is signed in, and Sign out everywhere (AC-17). `onDark` for the navy band. */
+/**
+ * The account menu (spec 0007, AC-17; suite spec 0019, AC-19): your avatar at the top right, on
+ * the launcher and in Suite management alike. It holds Your profile (once S23 builds the page,
+ * `PROFILE_PATH`) and Sign out, nothing else. `onDark` for the navy band.
+ */
 export function AccountMenu({ user, onDark = true, systems }: { user: User; onDark?: boolean; systems?: readonly string[] }) {
   const [signingOut, setSigningOut] = useState(false);
   return (
@@ -56,16 +61,12 @@ export function AccountMenu({ user, onDark = true, systems }: { user: User; onDa
       <DropdownMenu>
         <DropdownMenuTrigger
           className={cn(
-            'flex min-h-11 items-center gap-2 rounded-lg px-2 text-body font-medium focus-visible:ring-2 focus-visible:outline-hidden',
-            onDark
-              ? 'text-white hover:bg-white/10 focus-visible:ring-highlight'
-              : 'text-foreground hover:bg-accent focus-visible:ring-ring',
+            'flex size-10 items-center justify-center rounded-full outline-none focus-visible:ring-2 max-sm:size-11',
+            onDark ? 'focus-visible:ring-ring-on-dark' : 'focus-visible:ring-ring',
           )}
           aria-label={`Account menu for ${user.name}`}
         >
-          <UserAvatar user={user} onDark={onDark} />
-          <span className="hidden max-w-40 truncate sm:inline">{user.name}</span>
-          <ChevronDown className={cn('size-4', onDark ? 'text-white/60' : 'text-muted-foreground')} aria-hidden="true" />
+          <UserAvatar user={user} onDark={onDark} className="size-10" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
           <DropdownMenuLabel className="flex items-center gap-3 font-normal">
@@ -77,6 +78,14 @@ export function AccountMenu({ user, onDark = true, systems }: { user: User; onDa
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
+            {PROFILE_PATH && (
+              <DropdownMenuItem asChild>
+                <Link to={PROFILE_PATH}>
+                  <UserRound aria-hidden="true" />
+                  Your profile
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onSelect={() => setSigningOut(true)}>
               <LogOut aria-hidden="true" />
               Sign out

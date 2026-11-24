@@ -95,6 +95,18 @@ describe('portal routing rules', () => {
     expect(screenForAnswer(params(''), mechanic)).toEqual({ kind: 'go', url: 'http://vrms.test' });
   });
 
+  // covers: suite spec 0019 AC-5 (a suite admin whose only role is temporary and not ADMIN)
+  it('keeps a suite admin with one non admin role on the launcher; a missing suiteAdmin is false', () => {
+    const temporary = {
+      ...answer,
+      suiteAdmin: true,
+      systems: [{ ...sys('VRMS'), roles: [{ code: 'MECHANIC', name: 'Mechanic' }] }],
+    };
+    expect(screenForAnswer(params(''), temporary)).toEqual({ kind: 'launcher', answer: temporary });
+    const older = { ...temporary, suiteAdmin: undefined };
+    expect(screenForAnswer(params(''), older)).toEqual({ kind: 'go', url: 'http://vrms.test' });
+  });
+
   // covers: suite spec 0013 AC-14 (an admin whose session ended signs in and lands back on the page)
   it('says the session ended and returns an admin to the page they were on', () => {
     expect(noticeFor(params('reason=ended'))?.message).toBe('Your session ended. Sign in again.');

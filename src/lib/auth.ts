@@ -37,12 +37,19 @@ export type LauncherAnswer = {
   sessionAbsoluteExpiresAt: string;
   /** welinc-auth's clock when it answered (ISO), for the clock gap. */
   serverTime: string;
+  /**
+   * Suite spec 0019, AC-6: whether the person is a suite admin. Missing from a welinc-auth older
+   * than spec 0019, which counts as false (`isSuiteAdmin`).
+   */
+  suiteAdmin?: boolean;
 };
+
+/** Suite spec 0019, AC-5, AC-6: a missing `suiteAdmin` (an older welinc-auth) is false. */
+export const isSuiteAdmin = (answer: Pick<LauncherAnswer, 'suiteAdmin'>): boolean => answer.suiteAdmin === true;
 
 /** The phone only systems, empty when the answer has none. */
 export const mobileSystemsOf = (answer: LauncherAnswer): MobileSystem[] => answer.mobileSystems ?? [];
 
-/** A message shown above the form, from the address the portal was opened with. */
 /**
  * A message on the sign in page. Suite spec 0019, AC-15: a sign out is a success toast, a session
  * that ended a warning toast that stays until closed; an error stays inline above the form.
@@ -156,9 +163,16 @@ export function screenForAnswer(params: URLSearchParams, answer: LauncherAnswer)
   // Suite spec 0013, AC-14: back to the admin page whose session ended
   const back = returnPath(params);
   if (back) return { kind: 'go', url: back };
-  // One system and no error: straight in, unless they administer it. An admin lands on the launcher
-  // so they can reach Admin from its card; a one system admin would otherwise never see it.
-  if (answer.systems.length === 1 && !params.has('error') && !administers(answer.systems[0])) {
+  // One system and no error: straight in, unless they administer it or are a suite admin. An admin
+  // lands on the launcher so they can reach Suite management from its strip; a one system admin,
+  // or a suite admin whose only role is temporary (suite spec 0019, AC-5), would otherwise never
+  // see it.
+  if (
+    answer.systems.length === 1 &&
+    !params.has('error') &&
+    !administers(answer.systems[0]) &&
+    !isSuiteAdmin(answer)
+  ) {
     return { kind: 'go', url: answer.systems[0].url };
   }
   return { kind: 'launcher', answer };
