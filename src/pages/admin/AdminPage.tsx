@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, RotateCw, ShieldCheck, ShieldOff, TriangleAlert } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -35,11 +35,19 @@ export default function AdminPage() {
   const { pathname, search } = useLocation();
   const navigate = useNavigate();
 
-  // AC-14: a session that ends while a view is open sends you to sign in, then back to this page
+  // AC-14: a session that ends while a view is open sends you to sign in, then back to this page.
+  // The page comes from the router, and only the first ended call acts: several admin calls can
+  // answer 401 at once, and by the second one the address is already the sign in page.
+  const here = useRef(pathname + search);
   useEffect(() => {
+    here.current = pathname + search;
+  }, [pathname, search]);
+  useEffect(() => {
+    let left = false;
     onSessionEnded(() => {
-      const here = window.location.pathname + window.location.search;
-      navigate(signInAgainHref(here, true), { replace: true });
+      if (left) return;
+      left = true;
+      navigate(signInAgainHref(here.current, true), { replace: true });
     });
     return () => onSessionEnded(null);
   }, [navigate]);
