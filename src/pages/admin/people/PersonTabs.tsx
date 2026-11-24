@@ -19,7 +19,7 @@ import { ViewError } from '../AdminStates';
 import { useAsync } from '../useAsync';
 import { PaneCard, SystemChip } from './peopleParts';
 import type { PersonActions } from './personActions';
-import { actionSystem, viewerSystems } from './peopleRules';
+import { actionSystem, activityFilters } from './peopleRules';
 
 /**
  * Suite spec 0017, AC-15: today's sessions list (read with AC-16's system, since the sessions
@@ -116,21 +116,25 @@ export function DevicesTab({
  * system code. The filter is All plus the viewer's systems; there is no type or date filter.
  */
 export function ActivityTab({ person, me, version }: { person: PersonDetail; me: AdminMe; version: number }) {
-  const [filter, setFilter] = useState<SystemCode | 'all'>('all');
-  const systems = viewerSystems(me);
+  const [picked, setFilter] = useState<SystemCode | 'all'>('all');
+  const systems = activityFilters(person, me);
+  // A pick from another person (or a role since removed) falls back to All
+  const filter = picked !== 'all' && systems.includes(picked) ? picked : 'all';
   const system = filter === 'all' ? null : filter;
   return (
     <PaneCard
       title="Activity"
       action={
-        <SegmentedControl aria-label="System" value={filter} onValueChange={(next) => setFilter(next as SystemCode | 'all')}>
-          <SegmentedControlItem value="all">All</SegmentedControlItem>
-          {systems.map((s) => (
-            <SegmentedControlItem key={s} value={s}>
-              {s}
-            </SegmentedControlItem>
-          ))}
-        </SegmentedControl>
+        systems.length > 0 && (
+          <SegmentedControl aria-label="System" value={filter} onValueChange={(next) => setFilter(next as SystemCode | 'all')}>
+            <SegmentedControlItem value="all">All</SegmentedControlItem>
+            {systems.map((s) => (
+              <SegmentedControlItem key={s} value={s}>
+                {s}
+              </SegmentedControlItem>
+            ))}
+          </SegmentedControl>
+        )
       }
     >
       <div className="py-2">

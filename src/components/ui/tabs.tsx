@@ -36,13 +36,23 @@ function TabsList({ className, ...props }: React.ComponentProps<typeof TabsPrimi
   )
 }
 
-function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
+function TabsTrigger({ className, onMouseDown, ...props }: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
   return (
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
+      onMouseDown={(event) => {
+        onMouseDown?.(event)
+        // Radix focuses the tab from a script on mouse down, and Chrome then shows the ring when the
+        // last focus came from the keyboard. Focusing it first without the ring makes Radix's call a
+        // no-op, so a click never rings while Tab and the arrow keys still do.
+        if (!event.defaultPrevented && event.button === 0 && !event.ctrlKey) {
+          event.currentTarget.focus({ focusVisible: false } as FocusOptions)
+        }
+      }}
       className={cn(
         "relative inline-flex h-full shrink-0 items-center justify-center gap-1.5 rounded-md px-1 text-body font-medium whitespace-nowrap text-muted-strong transition-colors outline-none hover:text-foreground disabled:pointer-events-none disabled:opacity-50",
-        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        // Inside the tab, so a tab row that clips its overflow never cuts the ring into a box
+        "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
         "data-[state=active]:font-semibold data-[state=active]:text-foreground",
         "after:absolute after:rounded-full after:bg-primary after:opacity-0 data-[state=active]:after:opacity-100",
         "group-data-[orientation=horizontal]/tabs:after:inset-x-0 group-data-[orientation=horizontal]/tabs:after:bottom-0 group-data-[orientation=horizontal]/tabs:after:h-0.5",

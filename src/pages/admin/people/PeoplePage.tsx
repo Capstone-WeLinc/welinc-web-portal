@@ -53,9 +53,15 @@ export function PeoplePage({ me, onMeChanged }: { me: AdminMe; onMeChanged: () =
   return (
     <div className="lg:flex lg:h-below-bar">
       <div className={cn('lg:w-90 lg:shrink-0 lg:border-r lg:border-border', selected && 'max-lg:hidden')}>
-        <PeopleListPane me={me} selectedId={selected} reloadKey={listVersion} onSelect={select} />
+        <PeopleListPane
+          me={me}
+          selectedId={selected}
+          reloadKey={listVersion}
+          onSelect={select}
+          onAdd={(system) => setGiving({ system: system ?? undefined })}
+        />
       </div>
-      <div className={cn('min-w-0 flex-1 lg:overflow-y-auto', !selected && 'max-lg:hidden')}>
+      <div className={cn('min-w-0 flex-1 lg:overflow-y-auto lg:overscroll-contain', !selected && 'max-lg:hidden')}>
         {selected ? (
           <PersonPane
             key={selected}

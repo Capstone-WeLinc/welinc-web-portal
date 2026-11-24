@@ -62,14 +62,14 @@ function Where() {
   return <output data-testid="where">{location.search}</output>;
 }
 
-function renderPane(viewer: AdminMe = me(), start = '/admin/people', onSelect = vi.fn(), selectedId?: string) {
+function renderPane(viewer: AdminMe = me(), start = '/admin/people', onSelect = vi.fn(), selectedId?: string, onAdd = vi.fn()) {
   render(
     <MemoryRouter initialEntries={[start]}>
-      <PeopleListPane me={viewer} selectedId={selectedId} reloadKey={0} onSelect={onSelect} />
+      <PeopleListPane me={viewer} selectedId={selectedId} reloadKey={0} onSelect={onSelect} onAdd={onAdd} />
       <Where />
     </MemoryRouter>,
   );
-  return { onSelect };
+  return { onSelect, onAdd };
 }
 
 const lastCall = (group: PeopleGroup) =>
@@ -284,16 +284,18 @@ describe('search, no match and empty (AC-3, AC-5)', () => {
 
   it('shows the empty state with Add person when nothing is searched or filtered', async () => {
     serve({}, { attention: 0, active: 0, inactive: 0 });
-    renderPane();
+    const { onAdd } = renderPane();
     expect(await screen.findByText('No one has access yet.')).toBeInTheDocument();
-    const adds = screen.getAllByRole('link', { name: 'Add person' });
-    expect(adds.at(-1)).toHaveAttribute('href', '/admin/people/new');
+    const adds = screen.getAllByRole('button', { name: 'Add person' });
+    await userEvent.click(adds.at(-1)!);
+    expect(onAdd).toHaveBeenCalledWith(null);
   });
 
-  it('keeps the picked system when Add person opens', async () => {
+  it('opens Add person in place with the picked system, without leaving the page', async () => {
     serve({ active: [person('b1', 'Bong Rivera')] }, { attention: 0, active: 1, inactive: 0 });
-    renderPane(me(), '/admin/people?system=VMMS');
+    const { onAdd } = renderPane(me(), '/admin/people?system=VMMS', vi.fn(), 'b1');
     await screen.findByText('Bong Rivera');
-    expect(screen.getByRole('link', { name: 'Add person' })).toHaveAttribute('href', '/admin/people/new?system=VMMS');
+    await userEvent.click(screen.getByRole('button', { name: 'Add person' }));
+    expect(onAdd).toHaveBeenCalledWith('VMMS');
   });
 });

@@ -3,6 +3,7 @@ import { RotateCw, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SegmentedControl, SegmentedControlItem } from '@/components/ui/segmented-control';
 import type { SystemCode } from '@/lib/admin';
+import { cn } from '@/lib/utils';
 
 /** The view title row: title, one line of context, the primary action on the right. */
 export function ViewHeader({ title, context, action }: { title: string; context?: ReactNode; action?: ReactNode }) {
@@ -20,9 +21,9 @@ export function ViewHeader({ title, context, action }: { title: string; context?
   );
 }
 
-export function ViewError({ message, onRetry }: { message: string; onRetry: () => void }) {
+export function ViewError({ message, onRetry, className }: { message: string; onRetry: () => void; className?: string }) {
   return (
-    <div role="alert" className="flex flex-col items-start gap-3 py-8">
+    <div role="alert" className={cn('flex flex-col items-start gap-3 py-8', className)}>
       <div className="flex size-10 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
         <TriangleAlert className="size-5" aria-hidden="true" />
       </div>
@@ -35,9 +36,19 @@ export function ViewError({ message, onRetry }: { message: string; onRetry: () =
   );
 }
 
-export function ViewEmpty({ icon, message, action }: { icon: ReactNode; message: string; action?: ReactNode }) {
+export function ViewEmpty({
+  icon,
+  message,
+  action,
+  className,
+}: {
+  icon: ReactNode;
+  message: string;
+  action?: ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="flex flex-col items-start gap-3 py-8">
+    <div className={cn('flex flex-col items-start gap-3 py-8', className)}>
       <div className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-strong">{icon}</div>
       <p className="text-body text-muted-foreground">{message}</p>
       {action}
