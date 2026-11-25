@@ -30,7 +30,7 @@ export function UserAvatar({
 }: {
   user: User;
   className?: string;
-  /** Gold initials for the navy band, where navy ones would vanish. */
+  /** Quiet white initials on a translucent chip for the navy band, where navy ones would vanish (gold stays for the logo). */
   onDark?: boolean;
 }) {
   const src = pictureUrl(user.picture);
@@ -40,7 +40,7 @@ export function UserAvatar({
       <AvatarFallback
         className={cn(
           'text-caption font-semibold',
-          onDark ? 'bg-highlight text-highlight-foreground' : 'bg-primary text-primary-foreground',
+          onDark ? 'bg-white/12 text-white ring-1 ring-white/20 ring-inset' : 'bg-primary text-primary-foreground',
         )}
       >
         {initialsOf(user.name)}

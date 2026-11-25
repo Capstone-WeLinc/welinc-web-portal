@@ -140,7 +140,11 @@ export type Screen =
   | { kind: 'checking' }
   | { kind: 'form' }
   | { kind: 'go'; url: string }
-  | { kind: 'launcher'; answer: LauncherAnswer }
+  /**
+   * `arrive` (suite spec 0019, AC-8): set only right after a sign in through the portal's own form
+   * in this tab, so the launcher plays Arrival 2 once. Memory only, never stored or in the address.
+   */
+  | { kind: 'launcher'; answer: LauncherAnswer; arrive?: boolean }
   | { kind: 'phone-only'; answer: LauncherAnswer }
   | { kind: 'app-not-allowed'; answer: LauncherAnswer; system: string | null }
   | { kind: 'no-access'; email: string | null }

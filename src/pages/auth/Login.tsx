@@ -18,6 +18,7 @@ import {
 import EmailCodeStep from './EmailCodeStep';
 import { AuthSplit, SplitHeading, SplitHint, SplitLabel, SplitNotice, splitButton, splitInput } from './AuthSplit';
 import { PasswordInput } from './PasswordInput';
+import { preloadLauncherMotion } from '../launcher/motion/load';
 
 type LoginProps = {
   /** Called with the login answer; the portal decides where to go next (spec 0007, AC-14). */
@@ -42,6 +43,11 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
   useEffect(() => {
     if (toastTone && toastMessage) notifySignIn(toastMessage, toastTone);
   }, [toastTone, toastMessage]);
+  // Suite spec 0019, AC-8, AC-12: fetch the launcher's motion while the form is open, so Arrival 2
+  // is ready the moment the sign in lands; Admin never loads it
+  useEffect(() => {
+    void preloadLauncherMotion();
+  }, []);
   const emailRef = useRef<HTMLInputElement>(null);
 
   const [email, setEmail] = useState('');

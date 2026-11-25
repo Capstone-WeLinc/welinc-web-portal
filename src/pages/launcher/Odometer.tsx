@@ -1,9 +1,12 @@
 import type { CSSProperties } from 'react';
+import { cn } from '@/lib/utils';
 
 const DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 /** One navy window, 24 by 34. */
-const WINDOW = 'relative flex h-8.5 w-6 items-center justify-center overflow-hidden rounded-sm bg-odometer text-heading font-bold text-white tabular-nums';
+const WINDOW = 'relative flex h-8.5 w-6 items-center justify-center overflow-hidden rounded-sm text-heading font-bold tabular-nums';
+/** Navy windows on the navy strip; soft blue windows with navy digits on the white card. */
+const TONE = { dark: 'bg-odometer text-white', light: 'bg-info-bg text-primary' } as const;
 
 /**
  * Suite spec 0019, AC-3 (the odometer kept from Round 23): a count in navy digit windows. Each
@@ -11,11 +14,19 @@ const WINDOW = 'relative flex h-8.5 w-6 items-center justify-center overflow-hid
  * a timeout or a failure) shows a dash. Screen readers get the number from the tile's own label,
  * so this is `aria-hidden`. `delay` staggers the tiles' rolls (seconds).
  */
-export function Odometer({ value, delay = 0 }: { value: number | null; delay?: number }) {
+export function Odometer({
+  value,
+  delay = 0,
+  tone = 'dark',
+}: {
+  value: number | null;
+  delay?: number;
+  tone?: keyof typeof TONE;
+}) {
   if (value === null || value === 0) {
     return (
       <span aria-hidden="true" className="inline-flex">
-        <span className={WINDOW}>{value === null ? '–' : '0'}</span>
+        <span className={cn(WINDOW, TONE[tone])}>{value === null ? '–' : '0'}</span>
       </span>
     );
   }
@@ -24,7 +35,7 @@ export function Odometer({ value, delay = 0 }: { value: number | null; delay?: n
       {String(value)
         .split('')
         .map((digit, i) => (
-          <span key={i} className={WINDOW}>
+          <span key={i} className={cn(WINDOW, TONE[tone])}>
             <span
               className="absolute inset-x-0 top-0 flex odometer-reel flex-col"
               style={{ '--n': digit, animationDelay: `${delay + i * 0.08}s` } as CSSProperties}

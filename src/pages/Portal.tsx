@@ -94,7 +94,9 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
     if (start.kind === 'request') window.location.assign(resumeAddress(start.request));
     else {
       forgetReason();
-      show(screenForAnswer(params, answer));
+      const next = screenForAnswer(params, answer);
+      // Suite spec 0019, AC-8: the one moment Arrival 2 plays; any other screen drops the flag
+      show(next.kind === 'launcher' ? { ...next, arrive: true } : next);
     }
   };
 
@@ -145,6 +147,7 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
       return (
         <Launcher
           answer={screen.answer}
+          arrive={screen.arrive === true}
           params={params}
           banner={params.has('error') ? noticeFor(params) : null}
         />

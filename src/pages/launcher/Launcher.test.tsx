@@ -86,13 +86,11 @@ describe("launcher", () => {
     ]);
   });
 
-  it("gives a suite admin with one system Temporary access instead of Audit log", async () => {
+  it("gives a suite admin the Audit log tile, not Temporary access", async () => {
     renderLauncher({ systems: [VRMS_MECHANIC], suiteAdmin: true });
-    await waitFor(() => expect(within(suite()!).getByRole("link", { name: "Temporary access: 2" })).toBeInTheDocument());
-    expect(within(suite()!).getByRole("link", { name: "Temporary access: 2" }).getAttribute("href")).toBe(
-      "/admin/temporary-access",
-    );
-    expect(within(suite()!).queryByRole("link", { name: "Audit log" })).toBeNull();
+    await waitFor(() => expect(within(suite()!).getByRole("link", { name: "Users need a look: 3" })).toBeInTheDocument());
+    expect(within(suite()!).getByRole("link", { name: "Audit log" }).getAttribute("href")).toBe("/admin/activity");
+    expect(within(suite()!).queryByRole("link", { name: /Temporary access/ })).toBeNull();
   });
 
   it("gives a suite admin with no system the large card and no system cards", async () => {

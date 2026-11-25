@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react';
 import { AppWindow, ArrowRight } from 'lucide-react';
 import { RoleChip } from '@/components/ui/role-chip';
 import type { LauncherSystem } from '@/lib/auth';
@@ -27,7 +28,25 @@ const CARD =
  * one role chip, the full name, the one line, and "Open VRMS". The whole card is one link, same
  * tab (spec 0007, AC-15, AC-16). `wide` is the single card a one system person sees.
  */
-export function SystemCard({ system, here, wide = false }: { system: LauncherSystem; here: boolean; wide?: boolean }) {
+export function SystemCard({
+  system,
+  here,
+  wide = false,
+  onLaunch,
+}: {
+  system: LauncherSystem;
+  here: boolean;
+  wide?: boolean;
+  /** Suite spec 0019, AC-10: a plain left click starts Launch 3; the link still navigates on its own. */
+  onLaunch?: (system: LauncherSystem) => void;
+}) {
+  // Never preventDefault: the browser fetches the system while the launch plays. A click someone
+  // already handled, a modifier (new tab or window) or another button keeps the launcher still.
+  const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.defaultPrevented || event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    onLaunch?.(system);
+  };
   // Anything without a fixed icon gets AppWindow (AC-15)
   const Icon = SYSTEM_ICONS[system.system] ?? AppWindow;
   const tag = roleTag(system);
@@ -49,12 +68,12 @@ export function SystemCard({ system, here, wide = false }: { system: LauncherSys
 
   if (wide) {
     return (
-      <a href={system.url} className={cn(CARD, 'flex-col gap-5 p-6 sm:flex-row sm:items-center sm:gap-6 sm:px-8 sm:py-7')}>
+      <a href={system.url} onClick={onClick} className={cn(CARD, 'flex-col gap-5 p-6 sm:flex-row sm:items-center sm:gap-6 sm:px-8 sm:py-7')}>
         {tile('size-16', 'size-7')}
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           {heading}
-          <span className="text-small text-muted-foreground">{system.name}</span>
-          <span className="text-body text-muted-strong">{line}</span>
+          <span className="text-body font-medium text-foreground">{system.name}</span>
+          <span className="text-small text-muted-foreground">{line}</span>
         </span>
         <span className="inline-flex h-12 shrink-0 items-center justify-center gap-2.5 rounded-xl bg-sidebar px-5.5 text-group font-bold text-white transition-colors group-hover:bg-primary">
           Open {system.system}
@@ -65,13 +84,14 @@ export function SystemCard({ system, here, wide = false }: { system: LauncherSys
   }
 
   return (
-    <a href={system.url} className={cn(CARD, 'h-full min-h-46 flex-col px-6 pt-5.5 pb-4.5')}>
+    <a href={system.url} onClick={onClick} className={cn(CARD, 'h-full min-h-46 flex-col px-6 pt-5.5 pb-4.5')}>
       <span className="flex items-center gap-3.5">
         {tile('size-12', 'size-5.5')}
         {heading}
       </span>
-      <span className="mt-3 text-small text-muted-foreground">{system.name}</span>
-      <span className="mt-1 text-body text-muted-strong">{line}</span>
+      {/* The full name leads; the one line under it is the quieter description */}
+      <span className="mt-3 text-body font-medium text-foreground">{system.name}</span>
+      <span className="mt-1 text-small text-muted-foreground">{line}</span>
       <span className="min-h-3 flex-1" />
       <span className="flex items-center justify-between border-t border-divider pt-3 text-body font-semibold text-primary">
         Open {system.system}

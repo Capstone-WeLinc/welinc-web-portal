@@ -24,9 +24,13 @@ const PARKED = { van: 600, l300: 1000, top: 112 };
 /** How far the road runs past each side of the drawing (a multiple of the 60 unit dash, so the dashes stay in step). */
 const ROAD_RUN = 1200;
 
-export function DepotScene({ className }: { className?: string }) {
+/** Every layer of the band's scene draws in the same 1440 by 380 unit box, so a moving layer lines up. */
+export const SCENE_VIEWBOX = '0 -180 1440 380';
+
+/** `parked={false}` leaves the road empty for the launcher's moving trucks (suite spec 0019, AC-9). */
+export function DepotScene({ className, parked = true }: { className?: string; parked?: boolean }) {
   return (
-    <svg aria-hidden="true" focusable="false" viewBox="0 -180 1440 380" className={cn('block overflow-visible', className)}>
+    <svg aria-hidden="true" focusable="false" viewBox={SCENE_VIEWBOX} className={cn('block overflow-visible', className)}>
       {/* Warehouse */}
       <path d="M70 140 V70 L200 44 L330 70 V140" {...LINE} />
       <path d="M70 70 H330" {...LINE} />
@@ -91,12 +95,16 @@ export function DepotScene({ className }: { className?: string }) {
         strokeDasharray="34 26"
       />
 
-      <g transform={`translate(${PARKED.van} ${PARKED.top})`}>
-        <LiveryVan />
-      </g>
-      <g transform={`translate(${PARKED.l300} ${PARKED.top})`}>
-        <LiveryL300 />
-      </g>
+      {parked && (
+        <>
+          <g transform={`translate(${PARKED.van} ${PARKED.top})`}>
+            <LiveryVan />
+          </g>
+          <g transform={`translate(${PARKED.l300} ${PARKED.top})`}>
+            <LiveryL300 />
+          </g>
+        </>
+      )}
     </svg>
   );
 }

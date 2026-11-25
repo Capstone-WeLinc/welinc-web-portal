@@ -6,8 +6,13 @@ import { cn } from '@/lib/utils';
   Suite spec 0019, AC-13 (board `R37SignIn`): the map on the sign in side. Bulacan, Metro Manila
   and Laguna with the three WeLinc branches; small trucks run trips out from each branch to a
   nearby town and come back, never branch to branch. Decoration only: static labels, no data,
-  `aria-hidden`. The coordinates are the board's (a 540 by 420 viewBox).
+  `aria-hidden`. The coordinates are the board's (a 540 by 420 viewBox). The launcher can show it
+  too (Round 30), where `arrive` plays Arrival 1: the branches, then their routes.
 */
+
+/** Arrival 1's timing: branch `i` pops in at `i * BRANCH_STEP` s, its routes `ROUTES_AFTER` s later. */
+const BRANCH_STEP = 0.1;
+const ROUTES_AFTER = 0.25;
 
 const WHITE = 'var(--white)';
 
@@ -84,6 +89,16 @@ const BRANCHES = [
   { cx: 332, cy: 357, plateWidth: 95, name: 'Sta. Rosa', area: 'Laguna branch' },
 ];
 
+/** Which branch a trip leaves from (its path starts at the branch's centre). */
+function branchOf(trip: Trip): number {
+  return Math.max(0, BRANCHES.findIndex((b) => trip.d.startsWith(`M${b.cx} ${b.cy} `)));
+}
+
+/** The class and delay that bring a part in with Arrival 1, or nothing when it is already in place. */
+function enter(arrive: boolean, className: string, delay: number) {
+  return arrive ? { className, style: { animationDelay: `${delay}s` } } : {};
+}
+
 const FADE = 'radial-gradient(ellipse 50% 50% at 50% 50%, var(--black) 60%, transparent 100%)';
 
 function Labels({ items, ...props }: { items: Label[] } & SVGProps<SVGTextElement>) {
@@ -104,7 +119,7 @@ function MapTruck() {
   );
 }
 
-export function BranchMap({ className }: { className?: string }) {
+export function BranchMap({ className, arrive = false }: { className?: string; arrive?: boolean }) {
   // Reduced motion: the trucks wait at their drop points instead of driving
   const still = useReducedMotion();
   return (
@@ -152,7 +167,7 @@ export function BranchMap({ className }: { className?: string }) {
       </text>
 
       {TRIPS.map((trip) => (
-        <g key={trip.d}>
+        <g key={trip.d} {...enter(arrive, 'map-fade', branchOf(trip) * BRANCH_STEP + ROUTES_AFTER)}>
           <path d={trip.d} fill="none" stroke={WHITE} strokeOpacity="0.28" strokeWidth="2" strokeDasharray="2 5" strokeLinecap="round" />
           <rect x={trip.drop[0]} y={trip.drop[1]} width="9" height="9" rx="2" fill="var(--scene-post)" />
           {still ? (
@@ -177,8 +192,8 @@ export function BranchMap({ className }: { className?: string }) {
         </g>
       ))}
 
-      {BRANCHES.map((b) => (
-        <g key={b.name}>
+      {BRANCHES.map((b, i) => (
+        <g key={b.name} {...enter(arrive, 'map-pop', i * BRANCH_STEP)}>
           <circle cx={b.cx} cy={b.cy} r="17" fill="var(--sidebar)" stroke={WHITE} strokeWidth="3" />
           <path
             d={`M${b.cx - 8} ${b.cy + 6} V${b.cy - 2} L${b.cx} ${b.cy - 8} L${b.cx + 8} ${b.cy - 2} V${b.cy + 6} Z M${b.cx - 4} ${b.cy + 6} V${b.cy + 1} H${b.cx + 4} V${b.cy + 6}`}

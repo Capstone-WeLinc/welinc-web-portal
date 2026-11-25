@@ -92,6 +92,10 @@
   --scene-land: #070a2e;
   --scene-coast: #8ca0f0;
   --scene-sea: #a0aff0;
+  /* Launch 3's route bar (`R31LaunchRoute`): the garage the truck leaves from */
+  --scene-garage: #2a3290;
+  --scene-garage-roof: #3b43a3;
+  --scene-garage-door: #060828;
   /* The odometer windows on the Suite management strip (Round 23) */
   --odometer: #232a78;
   --livery-body: #f7f8fb;
@@ -330,6 +334,59 @@
 @keyframes scene-blink {
   50% {
     opacity: 0.15;
+  }
+}
+
+/*
+  Suite spec 0019, AC-9 (board `R37LineArt`): a loop truck rocks 1 unit on its springs. Paused with
+  the loop (`data-paused` on the scene), still under reduced motion.
+*/
+@utility scene-bob {
+  animation: scene-bob 0.5s ease-in-out infinite alternate;
+  [data-paused] & {
+    animation-play-state: paused;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes scene-bob {
+  to {
+    transform: translateY(-1px);
+  }
+}
+
+/*
+  Arrival 1, faster (Round 30, the launcher map): each branch pops in, then its routes and trucks
+  fade in; set `animation-delay` per part. Still under reduced motion.
+*/
+@utility map-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: map-pop 0.3s var(--ease-enter) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@utility map-fade {
+  animation: map-fade 0.4s var(--ease-enter) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes map-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes map-fade {
+  from {
+    opacity: 0;
   }
 }
 
