@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Login from './auth/Login';
 import { LoginLoading } from './auth/AuthSplit';
@@ -22,6 +22,10 @@ import {
 import { checkSso } from '../lib/session';
 import { pageTitle, useDocumentTitle } from '../lib/title';
 import { holdCutoffs, useSessionWatch } from '../lib/sessionWatch/watch';
+import { ARRIVAL, SIGN_IN_GONE, ms } from './launcher/launchMotion';
+
+/** Suite spec 0019, AC-8 (board `R66A3`): the sign in holds, then fades out over the next screen. */
+const SIGN_IN_LEAVE = { '--arrive-at': ms(ARRIVAL.signInHold), '--arrive-for': ms(ARRIVAL.signInFade) } as CSSProperties;
 
 /** The launcher asks /auth/sso again on focus at most this often (spec 0007, AC-18). */
 export const RECHECK_MS = 10_000;
@@ -51,7 +55,14 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
     start.kind === 'form' ? { kind: 'form' } : { kind: 'checking' },
   );
   const [ended, setEnded] = useState(false);
+  // AC-8: the sign in stays mounted (the same form, as typed) while it fades out over the launcher
+  const [leaving, setLeaving] = useState(false);
   const navigate = useNavigate();
+  useEffect(() => {
+    if (!leaving) return;
+    const timer = window.setTimeout(() => setLeaving(false), SIGN_IN_GONE);
+    return () => window.clearTimeout(timer);
+  }, [leaving]);
 
   const show = useCallback(
     (next: Screen) => {
@@ -104,8 +115,15 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
     else {
       forgetReason();
       const next = screenForAnswer(params, answer);
-      // Suite spec 0019, AC-8: the one moment Arrival 2 plays; any other screen drops the flag
-      show(next.kind === 'launcher' ? { ...next, arrive: true } : next);
+      // Suite spec 0019, AC-8: the one moment Arrival A3 plays; any other screen drops the flag
+      if (next.kind === 'launcher') {
+        setLeaving(true);
+        show({ ...next, arrive: true });
+      } else if (next.kind === 'admin') {
+        // A suite admin with no system: a plain fade, then Suite management (no arrival flag goes along)
+        setLeaving(true);
+        window.setTimeout(() => show(next), SIGN_IN_GONE);
+      } else show(next);
     }
   };
 
@@ -151,9 +169,26 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
 
   useDocumentTitle(titleFor(screen.kind, start.kind === 'request'));
 
+  const signIn = screen.kind === 'form' || leaving;
+  return (
+    <>
+      {screen.kind !== 'form' && screenFor(screen, start.kind === 'request', params, onRetry)}
+      {/* One slot for the form, so its fade out keeps the same mounted form */}
+      <div
+        className={leaving ? 'signin-leave pointer-events-none fixed inset-0 z-50 overflow-hidden' : 'contents'}
+        style={leaving ? SIGN_IN_LEAVE : undefined}
+        inert={leaving}
+        aria-hidden={leaving || undefined}
+      >
+        {signIn && <Login onSignedIn={onSignedIn} notice={ended ? SESSION_ENDED : null} />}
+      </div>
+    </>
+  );
+}
+
+/** Every screen but the form, which `PortalScreen` keeps in its own slot. */
+function screenFor(screen: Screen, appLogin: boolean, params: URLSearchParams, onRetry: () => void) {
   switch (screen.kind) {
-    case 'form':
-      return <Login onSignedIn={onSignedIn} notice={ended ? SESSION_ENDED : null} />;
     case 'launcher':
       return (
         <Launcher
@@ -173,7 +208,7 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
       return <LauncherError onRetry={onRetry} />;
     default:
       // An app initiated login most often ends on the form; a direct visit on the launcher
-      return start.kind === 'request' ? <LoginLoading /> : <LauncherLoading />;
+      return appLogin ? <LoginLoading /> : <LauncherLoading />;
   }
 }
 

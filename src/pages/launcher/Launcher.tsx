@@ -1,9 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { currentSystem, mobileSystemsOf, type LauncherAnswer, type LauncherSystem, type Notice } from '@/lib/auth';
+import { cn } from '@/lib/utils';
 import { keyTarget, orderedSystems, signedInSystems, suiteTileFor } from '@/lib/launcher';
 import { LauncherFrame } from './LauncherFrame';
 import { SuiteTile, SystemTile, TileLabel } from './LauncherTiles';
+import { LaunchCover } from './LaunchCover';
+import { ARRIVAL, LAUNCH, arrivalDone, arrivalSettled, ms, nextLaunch, tileAt, type LaunchScene } from './launchMotion';
 
 type LauncherProps = {
   answer: LauncherAnswer;
@@ -12,7 +15,7 @@ type LauncherProps = {
   banner: Notice | null;
   /** Suite spec 0019, AC-8: this tab just signed in through the portal's own form. */
   arrive?: boolean;
-  /** AC-10: a system tile was opened by a plain click or its key. */
+  /** AC-10: a system tile was opened by a plain click or its key (the launcher plays the launch itself). */
   onLaunch?: (system: LauncherSystem) => void;
 };
 
@@ -30,6 +33,13 @@ const PLACE = {
   suite: { 0: '', 1: 'md:row-start-2', 2: 'md:row-start-2', 3: 'md:col-start-1 md:row-start-4' },
 } as const;
 
+/** AC-8: an arriving part's timing, as the custom properties its `arrive-*` class reads. */
+function arriveAt(at: number, duration: number): CSSProperties {
+  return { '--arrive-at': ms(at), '--arrive-for': ms(duration) } as CSSProperties;
+}
+const HEADING = arriveAt(ARRIVAL.headingAt, ARRIVAL.headingFade);
+const tileTiming = (i: number) => arriveAt(tileAt(i), ARRIVAL.tile);
+
 /** A key press is not for the launcher while focus is in a text field or a menu or dialog is open. */
 function keyIsBusy(event: KeyboardEvent): boolean {
   const target = event.target instanceof Element ? event.target : null;
@@ -43,7 +53,7 @@ function keyIsBusy(event: KeyboardEvent): boolean {
  * number key. Every address comes from welinc-auth's answer; nothing in the query string decides
  * where a tile goes.
  */
-export default function Launcher({ answer, params, banner, onLaunch }: LauncherProps) {
+export default function Launcher({ answer, params, banner, arrive = false, onLaunch }: LauncherProps) {
   const here = currentSystem(params, answer);
   const systems = orderedSystems(answer.systems);
   const phoneOnly = mobileSystemsOf(answer);
@@ -53,20 +63,64 @@ export default function Launcher({ answer, params, banner, onLaunch }: LauncherP
   const tiles = useRef<(HTMLAnchorElement | null)[]>([]);
   const total = systems.length + (suite ? 1 : 0);
 
-  // AC-2 (P5): a digit opens its tile exactly as a click would, by clicking it
+  // AC-8: the arrival is read once, as the launcher shows; its classes come off once the last tile
+  // lands, so the tiles' own hover lift works again (a finished animation would hold `transform`)
+  const [arriving, setArriving] = useState(arrive);
+  const [keysWait, setKeysWait] = useState(arrive);
+  const [timing] = useState(() => ({ keys: arrivalDone(total), settled: arrivalSettled(total) }));
+  useEffect(() => {
+    if (!arrive) return;
+    const keys = window.setTimeout(() => setKeysWait(false), timing.keys);
+    const settled = window.setTimeout(() => setArriving(false), timing.settled);
+    return () => {
+      window.clearTimeout(keys);
+      window.clearTimeout(settled);
+    };
+    // Read once, as the launcher shows
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // AC-10: the launch cover over a system that is opening. A 900ms timer always takes it away (a
+  // hidden tab may never report the animation's end), and Back from the system resets it
+  const [launching, setLaunching] = useState<{ system: LauncherSystem; scene: LaunchScene } | null>(null);
+  useEffect(() => {
+    if (!launching) return;
+    const timer = window.setTimeout(() => setLaunching(null), LAUNCH.total);
+    return () => window.clearTimeout(timer);
+  }, [launching]);
+  useEffect(() => {
+    const reset = (event: PageTransitionEvent) => {
+      if (event.persisted) setLaunching(null);
+    };
+    window.addEventListener('pageshow', reset);
+    return () => window.removeEventListener('pageshow', reset);
+  }, []);
+  const launch = (system: LauncherSystem) => {
+    // The link navigates on its own; a scene that fails to pick never stops it
+    try {
+      setLaunching({ system, scene: nextLaunch() });
+    } catch {
+      // No cover this time; the system still opens
+    }
+    onLaunch?.(system);
+  };
+
+  // AC-2 (P5): a digit opens its tile exactly as a click would, by clicking it. Keys wait while the
+  // arrival plays (AC-8) and while a launch is up
+  const busy = keysWait || launching !== null;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const index = keyTarget(event, total);
-      if (index === null || keyIsBusy(event)) return;
+      if (index === null || busy || keyIsBusy(event)) return;
       event.preventDefault();
       tiles.current[index]?.click();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [total]);
+  }, [total, busy]);
 
   return (
-    <LauncherFrame user={answer.user} systems={signedInSystems(answer)}>
+    <LauncherFrame user={answer.user} systems={signedInSystems(answer)} arrive={arriving}>
       {/* The band holds no heading, so the page's one h1 is for screen readers */}
       <h1 className="sr-only">Home</h1>
       {banner && (
@@ -77,14 +131,18 @@ export default function Launcher({ answer, params, banner, onLaunch }: LauncherP
       )}
       {total > 0 && (
         <section aria-labelledby="launcher-systems">
-          <div className="mb-4 flex items-baseline gap-3">
+          <div className={cn('mb-4 flex items-baseline gap-3', arriving && 'arrive-fade')} style={arriving ? HEADING : undefined}>
             <h2 id="launcher-systems" className="text-group font-bold text-foreground">
               Your systems
             </h2>
             <span className="font-mono text-caption font-semibold text-muted-foreground">{systems.length}</span>
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-6">
-            {labelled && <TileLabel className={PLACE.systemsLabel[count as 1 | 2 | 3]}>Systems</TileLabel>}
+            {labelled && (
+              <TileLabel className={cn(PLACE.systemsLabel[count as 1 | 2 | 3], arriving && 'arrive-fade')} style={arriving ? HEADING : undefined}>
+                Systems
+              </TileLabel>
+            )}
             {systems.map((system, i) => (
               <SystemTile
                 key={system.system}
@@ -94,11 +152,16 @@ export default function Launcher({ answer, params, banner, onLaunch }: LauncherP
                 system={system}
                 n={i + 1}
                 here={here === system.system}
-                onLaunch={onLaunch}
-                className={labelled ? 'md:row-start-2' : undefined}
+                onLaunch={launch}
+                className={cn(labelled && 'md:row-start-2', arriving && 'arrive-deal')}
+                style={arriving ? tileTiming(i) : undefined}
               />
             ))}
-            {labelled && <TileLabel className={PLACE.adminLabel[count as 1 | 2 | 3]}>Admin</TileLabel>}
+            {labelled && (
+              <TileLabel className={cn(PLACE.adminLabel[count as 1 | 2 | 3], arriving && 'arrive-fade')} style={arriving ? HEADING : undefined}>
+                Admin
+              </TileLabel>
+            )}
             {suite && (
               <SuiteTile
                 ref={(node) => {
@@ -106,7 +169,8 @@ export default function Launcher({ answer, params, banner, onLaunch }: LauncherP
                 }}
                 covers={suite.covers}
                 n={systems.length + 1}
-                className={labelled ? PLACE.suite[count] : undefined}
+                className={cn(labelled && PLACE.suite[count], arriving && 'arrive-deal')}
+                style={arriving ? tileTiming(systems.length) : undefined}
               />
             )}
           </div>
@@ -116,6 +180,7 @@ export default function Launcher({ answer, params, banner, onLaunch }: LauncherP
         // Suite spec 0014, AC-7: the systems held only on a phone, named quietly
         <p className="text-body text-muted-foreground">On the mobile app: {phoneOnly.map((s) => s.system).join(', ')}</p>
       )}
+      {launching && <LaunchCover system={launching.system} scene={launching.scene} />}
     </LauncherFrame>
   );
 }

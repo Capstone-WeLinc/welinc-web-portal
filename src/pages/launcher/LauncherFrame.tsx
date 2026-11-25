@@ -1,9 +1,13 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { BrandLockup } from '@/components/brand/BrandLockup';
 import { LogoMark } from '@/components/LogoMark';
 import { CrashBoundary } from '@/components/monitoring/CrashBoundary';
 import type { LauncherAnswer } from '@/lib/auth';
 import { AccountMenu } from './LauncherShell';
+import { ARRIVAL, ms } from './launchMotion';
+
+/** AC-8: with the arrival, the bottom fades in last, as `R66A3` does. */
+const FOOTER_ARRIVE = { '--arrive-at': ms(ARRIVAL.footerAt), '--arrive-for': ms(ARRIVAL.footerFade) } as CSSProperties;
 
 /** The launcher's column: 1200px of tiles (three of 384px, 24px apart) inside 40px sides. */
 export const LAUNCHER_COLUMN = 'mx-auto w-full max-w-320 px-6 md:px-10';
@@ -46,11 +50,14 @@ function Cartons({ className }: { className?: string }) {
 export function LauncherFrame({
   user,
   systems,
+  arrive = false,
   children,
 }: {
   user?: LauncherAnswer['user'];
   /** The person's own systems, named in the Sign out dialog. */
   systems?: readonly string[];
+  /** Suite spec 0019, AC-8: the arrival is playing. */
+  arrive?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -73,7 +80,7 @@ export function LauncherFrame({
         {/* VRMS spec 0025, AC-7: a crash here keeps the band */}
         <CrashBoundary variant="page">{children}</CrashBoundary>
       </main>
-      <footer className="relative mt-auto">
+      <footer className={arrive ? 'arrive-fade relative mt-auto' : 'relative mt-auto'} style={arrive ? FOOTER_ARRIVE : undefined}>
         <div className={`relative h-24 md:h-0 ${LAUNCHER_COLUMN}`}>
           <Cartons className="absolute right-6 bottom-0 h-20 w-auto md:right-10 md:h-50" />
         </div>

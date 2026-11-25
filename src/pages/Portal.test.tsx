@@ -131,6 +131,22 @@ describe("Portal", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it("fades the sign in out over the arriving launcher, then drops it (suite spec 0019 AC-8)", async () => {
+    get.mockRejectedValue(httpError(401));
+    post.mockResolvedValue({ data: TWO });
+    renderPortal();
+    await submit("pedro");
+
+    const links = await screen.findAllByRole("link");
+    expect(links[0]).toHaveClass("arrive-deal");
+    const layer = document.querySelector(".signin-leave");
+    expect(layer).toHaveAttribute("aria-hidden", "true");
+    expect(layer).toHaveAttribute("inert");
+    await waitFor(() => expect(document.querySelector(".signin-leave")).toBeNull());
+    expect(screen.queryByPlaceholderText("Enter password")).toBeNull();
+    expect(sessionStorage.length).toBe(0);
+  });
+
   it("continues a login request after signing in, never showing the launcher", async () => {
     get.mockRejectedValue(httpError(401));
     post.mockResolvedValue({ data: TWO });

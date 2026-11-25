@@ -96,6 +96,18 @@
   --scene-garage: #2a3290;
   --scene-garage-roof: #3b43a3;
   --scene-garage-door: #060828;
+  /* Launch 2's dock (`R29LaunchDock`) and Launch 4's cartons (`L28MLoad`) */
+  --scene-dock: #0b0f3c;
+  --scene-dock-wall: #111650;
+  --scene-shutter: #3a43a6;
+  --scene-shutter-slat: #2c348f;
+  --scene-shutter-edge: #1a2070;
+  --scene-carton: #f2d27a;
+  --scene-carton-edge: #c9a44a;
+  --livery-roof: #d5dbee;
+  --livery-seam: #bfc6e2;
+  --livery-handle: #94a3b8;
+  --livery-tail: #f04438;
   --livery-body: #f7f8fb;
   --livery-edge: #c9d0de;
   --livery-orange: #f29a1f;
@@ -535,4 +547,138 @@
   right: max(0px, calc(50% - 720px));
   color: color-mix(in oklab, var(--white) 5%, transparent);
   pointer-events: none;
+}
+
+/*
+  Suite spec 0019, AC-8 and AC-11: Arrival A3 (board `R66A3`). The timings come from
+  `src/pages/launcher/launchMotion.ts` through --arrive-at and --arrive-for on each part. Under
+  reduced motion and below 768px a part only fades, with no movement.
+*/
+@utility arrive-deal {
+  animation: arrive-deal var(--arrive-for) var(--ease-enter) var(--arrive-at) both;
+  @media (prefers-reduced-motion: reduce), (width < 48rem) {
+    animation-name: arrive-fade;
+  }
+}
+@utility arrive-fade {
+  animation: arrive-fade var(--arrive-for) ease var(--arrive-at) both;
+}
+/* The sign in over the launcher: it holds, then fades out (reduced: a 200ms fade at once) */
+@utility signin-leave {
+  animation: arrive-out var(--arrive-for) ease var(--arrive-at) both;
+  @media (prefers-reduced-motion: reduce), (width < 48rem) {
+    animation-duration: 200ms;
+    animation-delay: 0ms;
+  }
+}
+@keyframes arrive-deal {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes arrive-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes arrive-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/*
+  Suite spec 0019, AC-10 to AC-12: the launch covers. Each scene is cut from its board's 9s demo
+  loop to 900ms (`LAUNCH` in launchMotion.ts says how); the percentages below are of 900ms. Under
+  reduced motion and below 768px the cover is a 200ms fade and the scene stands still, drawn as
+  it ends (the route drawn, the cartons in).
+*/
+@utility launch-cover {
+  animation: arrive-fade 150ms ease both;
+  @media (prefers-reduced-motion: reduce), (width < 48rem) {
+    animation-duration: 200ms;
+    & * {
+      animation: none !important;
+    }
+  }
+}
+/* Launch 2: the dock frame, the shutter rolling up, the truck pulling away (`R29LaunchDock`) */
+@utility launch-dock {
+  background: var(--scene-garage-door);
+  box-shadow: inset 0 0 0 7px var(--scene-garage);
+}
+@utility launch-shutter {
+  background: repeating-linear-gradient(180deg, var(--scene-shutter) 0 11px, var(--scene-shutter-slat) 11px 13px);
+  box-shadow: 0 3px 0 var(--scene-shutter-edge);
+  animation: launch-shutter 900ms cubic-bezier(0.6, 0, 0.2, 1) both;
+}
+@utility launch-dock-sill {
+  background: var(--scene-garage);
+  box-shadow: inset 0 3px 0 var(--highlight);
+}
+@utility launch-dock-truck {
+  transform-box: view-box;
+  transform-origin: 104px 104px;
+  animation: launch-dock-truck 900ms cubic-bezier(0.55, 0, 0.6, 1) both;
+}
+@keyframes launch-shutter {
+  0%, 7% { transform: none; }
+  38%, 100% { transform: translateY(-94%); }
+}
+@keyframes launch-dock-truck {
+  0%, 42% { transform: none; opacity: 1; }
+  51% { transform: translateY(1px); }
+  87% { transform: scale(0.22); opacity: 1; }
+  96%, 100% { transform: scale(0.18); opacity: 0; }
+}
+/* Launch 3: the route draws in gold as the truck drives from the garage to the pin (`R31LaunchRoute`) */
+@utility launch-route-line {
+  stroke-dasharray: 600;
+  animation: launch-route-line 900ms cubic-bezier(0.45, 0, 0.2, 1) both;
+}
+@utility launch-route-truck {
+  animation: launch-route-truck 900ms cubic-bezier(0.45, 0, 0.2, 1) both;
+}
+@keyframes launch-route-line {
+  0%, 4% { stroke-dashoffset: 600; }
+  73%, 100% { stroke-dashoffset: 0; }
+}
+@keyframes launch-route-truck {
+  0%, 4% { transform: none; }
+  73%, 100% { transform: translateX(538px); }
+}
+/* Launch 4: three cartons slide in, the doors close, the van pulls away (`L28MLoad`) */
+@utility launch-carton {
+  animation: launch-carton 900ms ease both;
+  animation-delay: var(--carton-at, 0ms);
+}
+@utility launch-door {
+  transform-box: fill-box;
+  animation: launch-door 900ms var(--ease-enter) both;
+}
+@utility launch-load-truck {
+  animation: launch-load-truck 900ms cubic-bezier(0.5, 0, 0.8, 0.4) both;
+}
+@keyframes launch-carton {
+  0%, 4% { opacity: 0; transform: translateX(-90px); }
+  15%, 100% { opacity: 1; transform: none; }
+}
+@keyframes launch-door {
+  0%, 40% { transform: scaleX(0); }
+  54%, 100% { transform: none; }
+}
+@keyframes launch-load-truck {
+  0%, 56% { transform: none; opacity: 1; }
+  96%, 100% { transform: translateX(380px); opacity: 0; }
 }

@@ -1,4 +1,4 @@
-import { forwardRef, type MouseEvent, type ReactNode } from 'react';
+import { forwardRef, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { SuiteMark, SystemMark } from '@/components/brand/SystemMarks';
 import type { LauncherSystem } from '@/lib/auth';
@@ -44,15 +44,22 @@ function KeyCap({ n }: { n: number }) {
  */
 export const SystemTile = forwardRef<
   HTMLAnchorElement,
-  { system: LauncherSystem; n: number; here: boolean; onLaunch?: (system: LauncherSystem) => void; className?: string }
->(function SystemTile({ system, n, here, onLaunch, className }, ref) {
+  {
+    system: LauncherSystem;
+    n: number;
+    here: boolean;
+    onLaunch?: (system: LauncherSystem) => void;
+    className?: string;
+    style?: CSSProperties;
+  }
+>(function SystemTile({ system, n, here, onLaunch, className, style }, ref) {
   const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
     if (event.defaultPrevented || event.button !== 0) return;
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     onLaunch?.(system);
   };
   return (
-    <a ref={ref} href={system.url} onClick={onClick} aria-keyshortcuts={String(n)} className={cn(TILE, className)}>
+    <a ref={ref} href={system.url} onClick={onClick} aria-keyshortcuts={String(n)} className={cn(TILE, className)} style={style}>
       <KeyCap n={n} />
       <SystemMark system={system.system} className="max-md:size-11" />
       <TileText
@@ -74,10 +81,12 @@ export const SystemTile = forwardRef<
 });
 
 /** AC-3: Suite management, a white tile like the rest, a route inside the portal (no launch). */
-export const SuiteTile = forwardRef<HTMLAnchorElement, { covers: readonly string[]; n: number; className?: string }>(
-  function SuiteTile({ covers, n, className }, ref) {
+export const SuiteTile = forwardRef<
+  HTMLAnchorElement,
+  { covers: readonly string[]; n: number; className?: string; style?: CSSProperties }
+>(function SuiteTile({ covers, n, className, style }, ref) {
   return (
-    <Link ref={ref} to="/admin" aria-keyshortcuts={String(n)} className={cn(TILE, className)}>
+    <Link ref={ref} to="/admin" aria-keyshortcuts={String(n)} className={cn(TILE, className)} style={style}>
       <KeyCap n={n} />
       <SuiteMark className="max-md:size-11" />
       <TileText
@@ -87,13 +96,12 @@ export const SuiteTile = forwardRef<HTMLAnchorElement, { covers: readonly string
       />
     </Link>
   );
-  },
-);
+});
 
 /** The small mono "Systems" and "Admin" labels over the tiles. */
-export function TileLabel({ children, className }: { children: ReactNode; className?: string }) {
+export function TileLabel({ children, className, style }: { children: ReactNode; className?: string; style?: CSSProperties }) {
   return (
-    <p className={cn('-mb-1 font-mono text-label tracking-widest text-muted-foreground md:-mb-2', className)}>
+    <p className={cn('-mb-1 font-mono text-label tracking-widest text-muted-foreground md:-mb-2', className)} style={style}>
       {children}
     </p>
   );

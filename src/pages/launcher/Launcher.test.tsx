@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { api } from "@/lib/api";
 import type { LauncherAnswer } from "@/lib/auth";
@@ -11,7 +11,7 @@ vi.mock("../../lib/api", () => ({
 }));
 const get = vi.mocked(api.get);
 
-// covers: suite spec 0019 AC-1 (the band and footer), AC-2 (tiles, labels, number keys), AC-3 (Suite management), AC-7 (no admin call)
+// covers: suite spec 0019 AC-1 (the band and footer), AC-2 (tiles, labels, number keys), AC-3 (Suite management), AC-7 (no admin call), AC-8 (arrival), AC-10 (launch cover)
 
 const USER = { id: "u1", name: "Armando Cruz", email: "armando@welinc.com", picture: null };
 const CUTOFFS = {
@@ -33,7 +33,7 @@ const VMMS_OPS = sys("VMMS", "Vehicle Maintenance Management System", [["OPERATI
 const VMMS_ADMIN = sys("VMMS", "Vehicle Maintenance Management System", [["ADMIN", "Admin"]]);
 const BMS_ADMIN = sys("BMS", "Booking Management System", [["ADMIN", "Admin"]]);
 
-function renderLauncher(over: Partial<LauncherAnswer>, onLaunch = vi.fn()) {
+function renderLauncher(over: Partial<LauncherAnswer>, onLaunch = vi.fn(), arrive = false) {
   render(
     <MemoryRouter>
       <Routes>
@@ -44,6 +44,7 @@ function renderLauncher(over: Partial<LauncherAnswer>, onLaunch = vi.fn()) {
               answer={{ user: USER, systems: [], ...CUTOFFS, ...over }}
               params={new URLSearchParams()}
               banner={null}
+              arrive={arrive}
               onLaunch={onLaunch}
             />
           }
@@ -60,6 +61,11 @@ const tiles = () => within(screen.getByRole("region", { name: "Your systems" }))
 beforeEach(() => {
   get.mockReset();
 });
+afterEach(() => {
+  vi.useRealTimers();
+  window.sessionStorage.clear();
+});
+const cover = () => document.querySelector("[data-launch]");
 
 describe("launcher", () => {
   it("shows Armando's three systems in order, then Suite management, with keys 1 to 4 and the labels", () => {
@@ -133,5 +139,60 @@ describe("launcher", () => {
     const onLaunch = renderLauncher({ systems: [VRMS_CHIEF] });
     fireEvent.click(tiles()[0], { metaKey: true });
     expect(onLaunch).not.toHaveBeenCalled();
+  });
+
+  it("raises a launch cover on a plain click and takes it away after 900ms", () => {
+    vi.useFakeTimers();
+    renderLauncher({ systems: [VRMS_CHIEF] });
+    fireEvent.click(tiles()[0]);
+    const scene = cover()?.getAttribute("data-launch");
+    expect(["2", "3", "4"]).toContain(scene);
+    expect(cover()).toHaveAttribute("aria-hidden", "true");
+    expect(cover()).toHaveTextContent("VRMS");
+    act(() => vi.advanceTimersByTime(899));
+    expect(cover()).not.toBeNull();
+    act(() => vi.advanceTimersByTime(1));
+    expect(cover()).toBeNull();
+    // The next launch is never the same scene
+    fireEvent.click(tiles()[0]);
+    expect(cover()?.getAttribute("data-launch")).not.toBe(scene);
+  });
+
+  it("raises no cover on a modifier click and none for Suite management", () => {
+    renderLauncher({ systems: [VRMS_ADMIN] });
+    fireEvent.click(tiles()[0], { ctrlKey: true });
+    expect(cover()).toBeNull();
+    fireEvent.click(tiles()[1]);
+    expect(cover()).toBeNull();
+  });
+
+  it("drops the cover when the page comes back from the back forward cache", () => {
+    renderLauncher({ systems: [VRMS_CHIEF] });
+    fireEvent.click(tiles()[0]);
+    expect(cover()).not.toBeNull();
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+    });
+    expect(cover()).toBeNull();
+  });
+
+  it("deals the tiles in after a sign in and ignores keys until the last one lands", () => {
+    vi.useFakeTimers();
+    const onLaunch = renderLauncher({ systems: [VMMS_OPS, VRMS_ADMIN] }, vi.fn(), true);
+    const links = tiles();
+    expect(links.every((l) => l.classList.contains("arrive-deal"))).toBe(true);
+    expect(links.map((l) => l.style.getPropertyValue("--arrive-at"))).toEqual(["550ms", "640ms", "730ms"]);
+    fireEvent.keyDown(window, { key: "1" });
+    expect(onLaunch).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1180));
+    fireEvent.keyDown(window, { key: "1" });
+    expect(onLaunch).toHaveBeenCalledWith(expect.objectContaining({ system: "VMMS" }));
+    act(() => vi.advanceTimersByTime(120));
+    expect(tiles()[0].classList.contains("arrive-deal")).toBe(false);
+  });
+
+  it("shows the tiles in place without the arrival", () => {
+    renderLauncher({ systems: [VRMS_CHIEF] });
+    expect(tiles()[0].classList.contains("arrive-deal")).toBe(false);
   });
 });
