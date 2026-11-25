@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import mapSvg from './signin-map.svg?raw';
+import stillSvg from './signin-map-still.svg?raw';
+import trucksSvg from './signin-map-trucks.svg?raw';
 import { FIT, MAP_LABELS, NETWORK, coverScale, fitStage } from './mapStage';
 
 // covers: suite spec 0019 AC-13 (the map's labels, trucks and credit source), AC-12 (trucks on animateMotion)
@@ -13,10 +14,15 @@ describe('sign in map', () => {
     expect(MAP_LABELS.filter((l) => l.kind === 'drop')).toHaveLength(8);
   });
 
-  it('drives twelve trucks on animateMotion and keeps the OpenStreetMap note', () => {
-    expect(mapSvg.match(/<animateMotion /g)).toHaveLength(12);
-    expect(mapSvg).toContain('OpenStreetMap contributors');
-    expect(mapSvg).toContain('aria-hidden="true"');
+  it('drives twelve trucks on animateMotion on their own layer and keeps the OpenStreetMap note', () => {
+    expect(trucksSvg.match(/<animateMotion /g)).toHaveLength(12);
+    expect(stillSvg).not.toContain('<animateMotion');
+    expect(stillSvg.match(/class="gar /g)).toHaveLength(3);
+    for (const svg of [stillSvg, trucksSvg]) {
+      expect(svg).toContain('OpenStreetMap contributors');
+      expect(svg).toContain('aria-hidden="true"');
+      expect(svg).toContain('viewBox="-640 -720 1240 1500"');
+    }
   });
 
   it('scales the 1440 by 900 stage to cover the window', () => {

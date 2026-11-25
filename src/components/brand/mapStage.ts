@@ -1,7 +1,7 @@
 /*
   Suite spec 0019, AC-13: the labels on the sign in map, placed on its 1440 by 900 stage as board
   `R47Quiet` places them (the three garages and the drop points; no town, water or road names).
-  Taken from the board with the map (`signin-map.svg`); positions are stage pixels.
+  Taken from the board with the map (`signin-map-still.svg`, `signin-map-trucks.svg`); positions are stage pixels.
 */
 export type MapLabel = { text: string; kind: 'garage' | 'drop'; x: number; y: number; size: number; side: 'start' | 'end' | 'center' };
 
