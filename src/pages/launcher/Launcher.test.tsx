@@ -145,7 +145,7 @@ describe("launcher", () => {
     expect(onLaunch).not.toHaveBeenCalled();
   });
 
-  it("holds a plain click for the 2s launch while the system is fetched, then opens it", () => {
+  it("holds a plain click for the 1.2s launch, then opens the system", () => {
     vi.useFakeTimers();
     opened.mockClear();
     renderLauncher({ systems: [VRMS_CHIEF] });
@@ -155,12 +155,11 @@ describe("launcher", () => {
     expect(["2", "3", "4"]).toContain(scene);
     expect(cover()).toHaveAttribute("aria-hidden", "true");
     expect(cover()).toHaveTextContent("VRMS");
-    expect(document.head.querySelector(`link[rel="prefetch"][href="${VRMS_CHIEF.url}"]`)).not.toBeNull();
     // A second click or key while it plays starts nothing new
     fireEvent.click(tiles()[0]);
     fireEvent.keyDown(window, { key: "1" });
     expect(cover()?.getAttribute("data-launch")).toBe(scene);
-    act(() => vi.advanceTimersByTime(1999));
+    act(() => vi.advanceTimersByTime(1199));
     expect(opened).not.toHaveBeenCalled();
     act(() => vi.advanceTimersByTime(1));
     expect(opened).toHaveBeenCalledTimes(1);

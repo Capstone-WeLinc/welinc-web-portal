@@ -6,7 +6,7 @@ import { keyTarget, orderedSystems, signedInSystems, suiteTileFor } from '@/lib/
 import { LauncherFrame } from './LauncherFrame';
 import { SuiteTile, SystemTile, TileLabel } from './LauncherTiles';
 import { LaunchCover } from './LaunchCover';
-import { ARRIVAL, arrivalDone, arrivalSettled, launchHold, ms, nextLaunch, openSystem, prefetchSystem, tileAt, type LaunchScene } from './launchMotion';
+import { ARRIVAL, arrivalDone, arrivalSettled, launchHold, ms, nextLaunch, openSystem, tileAt, type LaunchScene } from './launchMotion';
 
 type LauncherProps = {
   answer: LauncherAnswer;
@@ -80,9 +80,9 @@ export default function Launcher({ answer, params, banner, arrive = false, onLau
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // AC-10: the launch cover over a system that is opening. The click is held while the scene plays
-  // and the system's page is fetched in the background, then the system opens; the cover stays up
-  // until the system's page replaces this one. Back from the system resets it.
+  // AC-10: the launch cover over a system that is opening. The click is held while the scene plays,
+  // then the system opens; the cover stays up until the system's page replaces this one. Back from
+  // the system resets it.
   const [launching, setLaunching] = useState<{ system: LauncherSystem; scene: LaunchScene } | null>(null);
   const opening = useRef<number | null>(null);
   useEffect(() => {
@@ -102,7 +102,6 @@ export default function Launcher({ answer, params, banner, arrive = false, onLau
     event.preventDefault();
     // One launch at a time: a second click or key while one plays does nothing
     if (opening.current !== null) return;
-    prefetchSystem(system.url);
     try {
       setLaunching({ system, scene: nextLaunch() });
     } catch {
