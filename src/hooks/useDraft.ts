@@ -21,10 +21,12 @@ interface DraftOptions<T> {
   changes: DraftChange<T>[];
   /** True once the server values are loaded, so a stored draft can be checked against them. */
   ready: boolean;
-  /** The server's value for a change's key now. */
-  current: (key: string) => T | undefined;
+  /** The server's value for a change's key now (the stored change comes along). */
+  current: (key: string, change: DraftChange<T>) => T | undefined;
   /** Puts the stored changes back into the caller's state. */
   onRestore: (changes: DraftChange<T>[]) => void;
+  /** The toast when a stored draft no longer fits the server; the screen's own words, if it has them. */
+  staleNotice?: { title: string; body?: string };
 }
 
 const plural = (count: number) => `${count} ${count === 1 ? 'change' : 'changes'}`;
@@ -36,7 +38,16 @@ const plural = (count: number) => `${count} ${count === 1 ? 'change' : 'changes'
  * matches the server, which drops the whole draft. Closing or reloading the tab with changes gets
  * the browser's own prompt. Call `clear` after Discard and after a successful save.
  */
-export function useDraft<T>({ userId, screenId, name, changes, ready, current, onRestore }: DraftOptions<T>) {
+export function useDraft<T>({
+  userId,
+  screenId,
+  name,
+  changes,
+  ready,
+  current,
+  onRestore,
+  staleNotice,
+}: DraftOptions<T>) {
   useEffect(() => {
     if (userId) noteDraftOwner(userId);
   }, [userId]);
@@ -44,21 +55,23 @@ export function useDraft<T>({ userId, screenId, name, changes, ready, current, o
   // Until the stored draft has been checked, an empty change list must not overwrite it.
   const [checked, setChecked] = useState(false);
 
-  const latest = useRef({ changes, name, current, onRestore });
+  const latest = useRef({ changes, name, current, onRestore, staleNotice });
   useEffect(() => {
-    latest.current = { changes, name, current, onRestore };
+    latest.current = { changes, name, current, onRestore, staleNotice };
   });
 
   const restore = useCallback(
     (draft: StoredDraft<T> | null, uid: string) => {
       setChecked(true);
       if (!draft) return;
-      const { current: now, onRestore: apply, name: label } = latest.current;
+      const { current: now, onRestore: apply, name: label, staleNotice: notice } = latest.current;
       if (!draftStillFits(draft, now)) {
         clearDraft(uid, screenId);
-        notify(`Your kept changes to ${label} were dropped`, 'info', {
-          body: 'Someone saved it since you left, so nothing of yours was applied.',
-        });
+        if (notice) notify(notice.title, 'info', notice.body ? { body: notice.body } : {});
+        else
+          notify(`Your kept changes to ${label} were dropped`, 'info', {
+            body: 'Someone saved it since you left, so nothing of yours was applied.',
+          });
         return;
       }
       setKeptAt(draft.savedAt);

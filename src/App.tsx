@@ -51,6 +51,9 @@ export default function App() {
           <Route path="/admin/:view" element={admin} />
           {/* AC-23 deep links: /admin/people/new and /admin/people/:id, both with ?system= */}
           <Route path="/admin/people/:id" element={admin} />
+          {/* Suite spec 0018, AC-1: the Roles page, one system and one role in the address */}
+          <Route path="/admin/roles/:system" element={admin} />
+          <Route path="/admin/roles/:system/:role" element={admin} />
           {SentryTestPage && (
             <Route
               path="/debug/sentry"

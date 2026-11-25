@@ -157,6 +157,8 @@
   --shadow-dialog: 0 0 0 1px rgba(15, 20, 69, 0.08), 0 24px 60px rgba(15, 20, 69, 0.24);
   /* The selected pill of a SegmentedControl on its track (suite spec 0016 AC-8) */
   --shadow-segment: 0 0 0 1px rgba(15, 20, 69, 0.12), 0 1px 2px rgba(15, 20, 69, 0.1);
+  /* A list pane beside its detail, lifted off it (suite spec 0018, board Roles9) */
+  --shadow-pane: 4px 0 16px rgba(15, 20, 69, 0.04);
 
   /* The time left bar in a success or info toast (suite spec 0016 AC-11); its length comes from the toast */
   --animate-toast-bar: toast-bar linear forwards;
@@ -260,6 +262,32 @@
 /* The admin content below the 64px top bar: the People list and person scroll on their own (suite spec 0017, AC-1) */
 @utility h-below-bar {
   height: calc(100dvh - 4rem);
+}
+
+/* The same height as a floor, for a phone screen that should fill down to the bottom (suite spec 0018, the Roles list) */
+@utility min-h-below-bar {
+  min-height: calc(100dvh - 4rem);
+}
+
+/*
+  A group that opens and closes (design.md, Motion: --duration-fold, height plus fade). Put it on
+  the wrapper, `data-open` when open, and one child with `min-h-0 overflow-hidden`. Mark the
+  closed wrapper `inert` so its controls leave the tab order. Reduced motion: only the fade.
+*/
+@utility fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--duration-fold) var(--ease-enter),
+    opacity var(--duration-fold) var(--ease-enter);
+  &[data-open] {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity var(--duration-fold) var(--ease-enter);
+  }
 }
 
 /* Page titles (design.md, Typography): 24px on phones, 28px from 768px up */
