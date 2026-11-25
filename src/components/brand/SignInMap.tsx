@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { cn } from '@/lib/utils';
 import mapSvg from './signin-map.svg?raw';
-import { MAP_LABELS, stageDrop, stagePlacement } from './mapStage';
+import { GROW_FROM, MAP_LABELS, stageDrop, stagePlacement } from './mapStage';
 
-/** The `signin-stage` variables that pin it top left (see `stagePlacement`). */
-const PINNED = { '--stage-at': '0px', '--stage-shift': '0px', '--stage-origin': '0 0' };
+/** The `signin-stage` variables that pin it top left and grow it around `GROW_FROM` (see `stagePlacement`). */
+const PINNED = { '--stage-at': '0px', '--stage-shift': '0px', '--stage-origin': `${GROW_FROM.x}px ${GROW_FROM.y}px` };
 
 const SIDE = { start: '-translate-y-1/2', end: '-translate-x-full -translate-y-1/2', center: '-translate-x-1/2 -translate-y-1/2' };
 
@@ -28,7 +28,7 @@ export function SignInMap({ className, clearOf }: { className?: string; clearOf?
       const { top, width, height } = box.getBoundingClientRect();
       const place = stagePlacement(width, height);
       const copy = clearOf?.current?.getBoundingClientRect();
-      const drop = place.pinned && copy && copy.height > 0 ? stageDrop(copy.bottom - top, place.scale) : 0;
+      const drop = place.pinned && copy && copy.height > 0 ? stageDrop(copy.bottom - top) : 0;
       setStage((now) => (now.scale === place.scale && now.pinned === place.pinned && now.drop === drop ? now : { ...place, drop }));
     };
     measure();

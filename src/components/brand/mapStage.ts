@@ -28,30 +28,42 @@ export function coverScale(width: number, height: number): number {
   return Math.max(width / STAGE.width, height / STAGE.height);
 }
 
+/** On board `R47Quiet` the copy ends 10px above the top of the highest label under it (Pulilan). */
+export const LABELS_TOP = 415;
+export const COPY_GAP = 10;
+
+/**
+ * The point the pinned stage grows around on a window bigger than the board: Pulilan's corner, just
+ * under the copy. It stays where the board puts it at any size and the map spreads out from it, so
+ * a wide window never slides the map down and away from the copy.
+ */
+export const GROW_FROM = { x: 430, y: LABELS_TOP } as const;
+
 /** From this width the copy column sits over the map, pinned top left at the board's sizes. */
 export const PIN_FROM = 1024;
 
 /**
  * Where the stage goes. From `PIN_FROM` up it is pinned top left like the copy and never shrinks,
  * so the labels keep the board's distance from the copy (a centred cover moved Pulilan onto the
- * copy line at 1280 by 720); a smaller window crops the map's bottom and right instead. Phones,
+ * copy line at 1280 by 720); a smaller window crops the map's bottom and right instead, and a
+ * bigger one grows it around `GROW_FROM` just far enough to reach the far edges. Phones,
  * with no copy column beside the map, keep the centred cover.
  */
 export function stagePlacement(width: number, height: number): { scale: number; pinned: boolean } {
-  const cover = coverScale(width, height);
-  return width >= PIN_FROM ? { scale: Math.max(1, cover), pinned: true } : { scale: cover, pinned: false };
+  if (width < PIN_FROM) return { scale: coverScale(width, height), pinned: false };
+  // Grown around GROW_FROM, the stage must still reach the window's right and bottom edges
+  const right = (width - GROW_FROM.x) / (STAGE.width - GROW_FROM.x);
+  const bottom = (height - GROW_FROM.y) / (STAGE.height - GROW_FROM.y);
+  return { scale: Math.max(1, right, bottom), pinned: true };
 }
-
-/** On board `R47Quiet` the copy ends 10px above the top of the highest label under it (Pulilan). */
-export const LABELS_TOP = 415;
-export const COPY_GAP = 10;
 
 /**
  * How far to push the pinned stage down so its labels stay clear of the copy, whose bottom is
  * `copyBottom` px from the page top: nothing while the copy ends where the board's does; more when
- * it runs longer (a narrow column wraps the title and the copy onto more lines).
+ * it runs longer (a narrow column wraps the title and the copy onto more lines). The stage grows
+ * around `GROW_FROM`, so the labels' top doesn't move with the scale.
  */
-export function stageDrop(copyBottom: number | null, scale: number): number {
+export function stageDrop(copyBottom: number | null): number {
   if (copyBottom === null) return 0;
-  return Math.max(0, Math.round(copyBottom + COPY_GAP - LABELS_TOP * scale));
+  return Math.max(0, Math.round(copyBottom + COPY_GAP - LABELS_TOP));
 }

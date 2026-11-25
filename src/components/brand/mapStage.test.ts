@@ -31,15 +31,15 @@ describe('sign in map', () => {
     expect(stagePlacement(1440, 900)).toEqual({ scale: 1, pinned: true });
     expect(stagePlacement(1280, 720)).toEqual({ scale: 1, pinned: true });
     expect(stagePlacement(1024, 768)).toEqual({ scale: 1, pinned: true });
-    expect(stagePlacement(1920, 1080).scale).toBeCloseTo(1.333, 3);
+    expect(stagePlacement(1920, 1080).scale).toBeCloseTo((1920 - 430) / (1440 - 430), 3);
+    expect(stagePlacement(1600, 1200).scale).toBeCloseTo((1200 - 415) / (900 - 415), 3);
     expect(stagePlacement(375, 812)).toEqual({ scale: coverScale(375, 812), pinned: false });
   });
 
   it('drops the pinned stage only as far as the copy runs past the board\'s copy', () => {
-    expect(stageDrop(null, 1)).toBe(0);
-    expect(stageDrop(405, 1)).toBe(0);
-    expect(stageDrop(415, 1)).toBe(10);
-    expect(stageDrop(560, 1)).toBe(155);
-    expect(stageDrop(405, 1.333)).toBe(0);
+    expect(stageDrop(null)).toBe(0);
+    expect(stageDrop(405)).toBe(0);
+    expect(stageDrop(415)).toBe(10);
+    expect(stageDrop(560)).toBe(155);
   });
 });

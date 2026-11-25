@@ -136,11 +136,12 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
             </div>
 
             <div>
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-baseline justify-between gap-3">
                 <SplitLabel htmlFor="login-password">Password</SplitLabel>
+                {/* A quiet link, so it never reads as a second label beside Password */}
                 <Link
                   to="/forgot-password"
-                  className="rounded-md text-body font-semibold text-primary underline-offset-3 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+                  className="rounded-md text-small font-medium text-muted-strong underline-offset-3 hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
                 >
                   Forgot password?
                 </Link>
@@ -167,7 +168,7 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
           </form>
 
           <SplitHint>
-            <p>No account yet? Ask your admin to add you. You'll get an email to set your password.</p>
+            <p>No account? Ask your admin to add you.</p>
           </SplitHint>
         </>
       )}

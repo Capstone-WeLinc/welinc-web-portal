@@ -150,7 +150,7 @@ export function SplitNotice({ tone, children }: { tone: 'error' | 'success'; chi
   );
 }
 
-/** The muted line under a form ("No account yet?", the resend wait). */
+/** The muted line under a form ("No account?", the resend wait). */
 export function SplitHint({ children }: { children: ReactNode }) {
   return <div className="text-body leading-normal text-muted-foreground">{children}</div>;
 }
