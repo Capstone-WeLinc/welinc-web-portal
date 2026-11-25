@@ -3,10 +3,20 @@ import type { AdminMe } from '@/lib/admin';
 import type { RoleSummary, RolesData } from '@/lib/adminApi';
 import {
   allowedCount,
+  barSubline,
+  checkDraft,
+  deletedCount,
+  draftFromStored,
+  holderNames,
+  holdsPowerAfter,
+  reachLine,
+  resetToDefaults,
+  rolesCopy,
+  storedChanges,
+  storedCurrent,
   draftCount,
   groupSummary,
   joinNames,
-  keepLiveDraft,
   matchRoles,
   parseRoleSystem,
   peopleWords,
@@ -18,7 +28,8 @@ import {
 } from './rolesRules';
 
 // covers: suite spec 0018, child 0001 AC-1 (systems and order), AC-2 (words, search), AC-3
-// (counts, help line), AC-4 (group summary and preview), AC-7 (draft bubble), AC-11 (draft kept)
+// (counts, help line), AC-4 (group summary and preview), AC-7 (draft bubble, sub line), AC-8 (faces line), AC-9 (power
+// warning), AC-10 (Reset to defaults), AC-11 (draft checked on every read), AC-12 (stored draft)
 
 const me = (over: Partial<AdminMe> = {}): AdminMe => ({
   user: { id: 'me', name: 'Leonora Castillo', email: 'suite.admin@welinc.com', picture: null },
@@ -142,19 +153,123 @@ describe('drafts (AC-7, AC-11)', () => {
     expect(draftCount({ 'MECHANIC|ticket.view': false, 'MECHANIC|ticket.edit': true, 'ADMIN|ticket.edit': false }, 'MECHANIC')).toBe(2);
   });
 
-  it('keeps only entries that still change a live role after a read', () => {
-    const kept = keepLiveDraft(toMatrix(data), {
+  it('keeps entries that still change a live role after a read, and names what it drops', () => {
+    const locked: RolesData = {
+      ...data,
+      groups: data.groups.map((g) => ({
+        ...g,
+        permissions: g.permissions.map((p) => (p.key === 'ticket.assign' ? { ...p, lockedRoles: ['MECHANIC'] } : p)),
+      })),
+    };
+    const check = checkDraft(locked, {
       'MECHANIC|ticket.edit': true, // still a change
       'MECHANIC|ticket.view': true, // the server already has it on
       'C_GONE|ticket.view': true, // the role was deleted
+      'C_GONE|ticket.edit': true,
       'MECHANIC|ticket.left': true, // the key left the catalog
+      'MECHANIC|ticket.assign': true, // locked now
     });
-    expect(kept).toEqual({ 'MECHANIC|ticket.edit': true });
+    expect(check.kept).toEqual({ 'MECHANIC|ticket.edit': true });
+    expect(check.deleted).toEqual({ C_GONE: 2 });
+    expect(deletedCount(check)).toBe(2);
+    expect(check.locked).toEqual(['MECHANIC|ticket.assign']);
+  });
+
+  it('stores each entry with the value it started from and reads it back', () => {
+    const draft = { 'MECHANIC|ticket.edit': true, 'MECHANIC|ticket.view': false };
+    const stored = storedChanges(draft);
+    expect(stored).toEqual([
+      { key: 'MECHANIC|ticket.edit', from: false, to: true },
+      { key: 'MECHANIC|ticket.view', from: true, to: false },
+    ]);
+    expect(draftFromStored(stored)).toEqual(draft);
+  });
+
+  it('checks a stored entry against the server, letting a deleted role through for the read rule', () => {
+    const change = { key: 'MECHANIC|ticket.edit', from: false, to: true };
+    expect(storedCurrent(data, change.key, change)).toBe(false);
+    expect(storedCurrent(data, 'MECHANIC|ticket.view', { ...change, key: 'MECHANIC|ticket.view' })).toBe(true);
+    const gone = { key: 'C_GONE|ticket.view', from: false, to: true };
+    expect(storedCurrent(data, gone.key, gone)).toBe(false);
+    expect(storedCurrent(data, 'MECHANIC|ticket.left', change)).toBeUndefined();
   });
 
   it('joins names for a sentence', () => {
     expect(joinNames(['Chief mechanic'])).toBe('Chief mechanic');
     expect(joinNames(['Chief mechanic', 'Parts clerk'])).toBe('Chief mechanic and Parts clerk');
     expect(joinNames(['A', 'B', 'C'])).toBe('A, B and C');
+  });
+});
+
+describe('Reset to defaults (AC-10)', () => {
+  const withDefaults: RolesData = {
+    ...data,
+    groups: data.groups.map((g) => ({
+      ...g,
+      permissions: g.permissions.map((p) =>
+        p.key === 'ticket.view' || p.key === 'ticket.costs' ? { ...p, defaultRoles: ['MECHANIC'] } : p,
+      ),
+    })),
+  };
+
+  it('stages every unlocked cell that differs from its default, and drops draft entries away from it', () => {
+    // MECHANIC has ticket.view and ticket.edit saved; its defaults are ticket.view and ticket.costs
+    const saved: RolesData = { ...withDefaults, cells: { ...withDefaults.cells, MECHANIC: ['ticket.view', 'ticket.edit'] } };
+    const { draft, changed } = resetToDefaults(saved, { 'MECHANIC|ticket.assign': true }, 'MECHANIC');
+    expect(changed).toBe(true);
+    expect(draft).toEqual({ 'MECHANIC|ticket.costs': true, 'MECHANIC|ticket.edit': false });
+  });
+
+  it('says nothing differs once the role shows its defaults', () => {
+    const first = resetToDefaults(withDefaults, {}, 'MECHANIC');
+    expect(resetToDefaults(withDefaults, first.draft, 'MECHANIC').changed).toBe(false);
+  });
+});
+
+describe('save bar and review words (AC-7 to AC-9, AC-11, AC-12)', () => {
+  it('words the sub line with the people it affects', () => {
+    expect(barSubline([])).toBeUndefined();
+    expect(barSubline([role('A', 'Chief mechanic', { peopleCount: 8 })])).toBe('Chief mechanic · affects 8 people');
+    expect(barSubline([role('A', 'Chief mechanic', { peopleCount: 1 }), role('B', 'Parts clerk')])).toBe(
+      'Chief mechanic and Parts clerk · affects 1 person',
+    );
+    expect(barSubline([role('B', 'Parts clerk')])).toBe('Parts clerk · no one holds it yet');
+  });
+
+  it('names up to three holders, else the first two and how many more', () => {
+    expect(holderNames(['Ramon Villanueva', 'Alfredo Bautista', 'Danilo Santos'], 8)).toBe('Ramon, Alfredo and 6 more');
+    expect(holderNames(['Ramon Villanueva', 'Alfredo Bautista', 'Danilo Santos'], 3)).toBe('Ramon, Alfredo and Danilo');
+    expect(holderNames(['Ramon Villanueva'], 1)).toBe('Ramon');
+    expect(holderNames([], 4)).toBeNull();
+  });
+
+  it('words who gets the change, or that no one holds the role', () => {
+    const chief = role('C', 'Chief mechanic', { peopleCount: 8 });
+    expect(reachLine(chief, ['Ramon V', 'Alfredo B', 'Danilo S'], 'VRMS')).toBe(
+      'Ramon, Alfredo and 6 more get this the next time they open VRMS',
+    );
+    expect(reachLine(role('M', 'Mechanic', { peopleCount: 1 }), ['Joel M'], 'VRMS')).toBe(
+      'Joel gets this the next time they open VRMS',
+    );
+    expect(reachLine(chief, [], 'VRMS')).toBe('8 people get this the next time they open VRMS');
+    expect(reachLine(role('P', 'Parts clerk'), [], 'VRMS')).toBe('No one holds Parts clerk yet');
+  });
+
+  it('warns only for a custom role that would manage the team or settings', () => {
+    const powered: RolesData = { ...data, cells: { ...data.cells, C_LEAD: ['ticket.view'] } };
+    const lead = role('C_LEAD', 'Night shift lead', { builtIn: false });
+    expect(holdsPowerAfter(powered, {}, lead)).toBe(false);
+    expect(holdsPowerAfter(powered, { 'C_LEAD|team.manage': true }, lead)).toBe(true);
+    expect(holdsPowerAfter({ ...powered, cells: { C_LEAD: ['settings.manage'] } }, { 'C_LEAD|settings.manage': false }, lead)).toBe(false);
+    expect(holdsPowerAfter(powered, { 'ADMIN|team.manage': true }, role('ADMIN', 'Admin'))).toBe(false);
+  });
+
+  it('uses the spec’s toast words', () => {
+    expect(rolesCopy.saved(1, 'VRMS')).toBe('Saved 1 change to VRMS roles.');
+    expect(rolesCopy.saved(3, 'VRMS')).toBe('Saved 3 changes to VRMS roles.');
+    expect(rolesCopy.deleted(2)).toBe('2 changes to a role that was deleted were removed from your draft.');
+    expect(rolesCopy.draftOutOfDate('VRMS')).toBe('Your saved draft for VRMS roles was out of date, so it was cleared.');
+    expect(rolesCopy.draftName([role('C', 'Chief mechanic')], 'VRMS')).toBe('Chief mechanic');
+    expect(rolesCopy.draftName([role('C', 'Chief mechanic'), role('M', 'Mechanic')], 'VRMS')).toBe('VRMS roles');
   });
 });

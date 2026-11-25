@@ -198,6 +198,8 @@ export async function fetchEventCatalog(): Promise<EventCatalog> {
 export function listPeople(params: {
   system: Scope;
   q?: string;
+  /** Only holders of this role in `system` (suite spec 0018: faces and the People tab). */
+  role?: string;
   status?: PeopleStatus;
   group?: PeopleGroup;
   sort?: PeopleSort;

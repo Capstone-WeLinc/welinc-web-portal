@@ -1,98 +1,207 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
-import { SaveBar, type SaveBarChange } from '@/components/ui/save-bar';
+import { SaveBar, type SaveBarChange, type SaveBarPeople } from '@/components/ui/save-bar';
+import { useDraft } from '@/hooks/useDraft';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import type { AdminMe, SystemCode } from '@/lib/admin';
-import { errorMessage, fetchRoles, type RolesData } from '@/lib/adminApi';
-import { notifySuccess } from '@/lib/notify';
+import { errorMessage, fetchRoles, listPeople, type RolesData } from '@/lib/adminApi';
+import { notify, notifyError, notifySuccess } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import { NoSystemScope, ViewError } from '../AdminStates';
-import { MatrixReviewDialog } from '../permissions/MatrixReviewDialog';
 import { pendingChanges, toggle, type MatrixDraft } from '../permissions/matrixDraft';
 import { useAsync } from '../useAsync';
 import { RoleDetail, RoleSkeleton } from './RoleDetail';
 import { RoleList } from './RoleList';
-import { joinNames, keepLiveDraft, parseRoleSystem, peopleWords, roleSystems, rolesHref, toMatrix } from './rolesRules';
+import { RoleReviewDialog, type SaveConflict } from './RoleReviewDialog';
+import {
+  barSubline,
+  checkDraft,
+  deletedCount,
+  draftFromStored,
+  parseRoleSystem,
+  reachLine,
+  resetToDefaults,
+  roleSystems,
+  rolesCopy,
+  rolesHref,
+  storedChanges,
+  storedCurrent,
+  toMatrix,
+} from './rolesRules';
 
 /**
  * Suite spec 0018, child 0001 AC-1 (board Roles9): `/admin/roles/:system/:role` is one page, the
  * role list beside one role, each scrolling on its own. `/admin/roles` and `/admin/roles/:system`
  * open the first role of the viewer's first system with `replace` (below 768px they show the
  * list instead, since the list and the role are separate screens there). Picking a role replaces
- * the address. Flipped switches collect in one draft per system, keyed `role|key`, and are saved
- * together through the matrix PATCH.
+ * the address. Each system mounts its own `SystemRoles`, so each keeps its own draft (AC-12).
  */
 export function RolesPage({ me }: { me: AdminMe }) {
   const params = useParams();
   const { search } = useLocation();
-  const navigate = useNavigate();
-  const isMobile = useIsMobile();
   const systems = roleSystems(me);
   const fromPath = parseRoleSystem(me, params.system);
   const hinted = parseRoleSystem(me, new URLSearchParams(search).get('system'));
   const system = fromPath ?? hinted ?? systems[0];
-
-  const [attempt, setAttempt] = useState(0);
-  const [drafts, setDrafts] = useState<Partial<Record<SystemCode, MatrixDraft>>>({});
-  const [reviewing, setReviewing] = useState(false);
-  const { state } = useAsync<RolesData | null>(`${system ?? ''}|${attempt}`, () =>
-    system ? fetchRoles(system) : Promise.resolve(null),
-  );
-  const data = state.kind === 'ready' ? state.value : null;
-
-  // Each read (load, after a save, after a stale save) keeps only the draft entries that still
-  // change something on a live role, adjusted during render, not in an effect
-  const [seen, setSeen] = useState<RolesData | null>(null);
-  if (data && data !== seen) {
-    setSeen(data);
-    setDrafts((current) => ({ ...current, [data.system]: keepLiveDraft(toMatrix(data), current[data.system] ?? {}) }));
-  }
 
   if (!system) return <NoSystemScope />;
   // A missing, unknown or lower case system becomes the canonical address
   if (params.system !== system) {
     return <Navigate to={fromPath ? rolesHref(system, params.role) : rolesHref(system)} replace />;
   }
+  return <SystemRoles key={system} me={me} systems={systems} system={system} roleCode={params.role} />;
+}
 
-  const draft = drafts[system] ?? {};
-  const matrix = data ? toMatrix(data) : null;
-  const role = data?.roles.find((r) => r.code === params.role);
-  if (data && !params.role && !isMobile && data.roles[0]) {
+/**
+ * One system's roles, its draft and its saving (AC-6 to AC-12). Flipped switches collect in one
+ * draft keyed `role|key`, stored through `useDraft` under `welinc:draft:<user>:roles:<system>`.
+ * Every read of the role data after a save or a conflict checks the draft again (`checkDraft`).
+ */
+function SystemRoles({
+  me,
+  systems,
+  system,
+  roleCode,
+}: {
+  me: AdminMe;
+  systems: SystemCode[];
+  system: SystemCode;
+  roleCode: string | undefined;
+}) {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const [attempt, setAttempt] = useState(0);
+  const [draft, setDraft] = useState<MatrixDraft>({});
+  const [reviewing, setReviewing] = useState(false);
+  const [holders, setHolders] = useState<Record<string, string[]>>({});
+  const asked = useRef(new Set<string>());
+  const { state, replace } = useAsync<RolesData>(`${system}|${attempt}`, () => fetchRoles(system));
+  const data = state.kind === 'ready' ? state.value : null;
+  const matrix = useMemo(() => (data ? toMatrix(data) : null), [data]);
+
+  const changes = matrix ? pendingChanges(matrix, draft) : [];
+  const touched = data ? data.roles.filter((r) => changes.some((c) => c.role === r.code)) : [];
+  const stored = useMemo(() => storedChanges(draft), [draft]);
+
+  const { keptAt, clear } = useDraft<boolean>({
+    userId: me.user.id,
+    screenId: `roles:${system}`,
+    name: rolesCopy.draftName(touched, system),
+    changes: stored,
+    ready: data !== null,
+    current: (key, change) => (data ? storedCurrent(data, key, change) : undefined),
+    onRestore: (kept) => {
+      if (!data) return;
+      const check = checkDraft(data, draftFromStored(kept));
+      setDraft(check.kept);
+      if (deletedCount(check) > 0) notify(rolesCopy.deleted(deletedCount(check)), 'warning');
+    },
+    staleNotice: { title: rolesCopy.draftOutOfDate(system) },
+  });
+
+  /** Up to three holders per role, for the faces lines (umbrella value sourcing), read once. */
+  const loadHolders = useCallback(
+    (codes: string[]) => {
+      for (const code of codes) {
+        if (asked.current.has(code)) continue;
+        asked.current.add(code);
+        listPeople({ system, role: code, limit: 3, sort: 'name' }).then(
+          (page) => setHolders((h) => ({ ...h, [code]: page.items.map((p) => p.name) })),
+          () => setHolders((h) => ({ ...h, [code]: [] })),
+        );
+      }
+    },
+    [system],
+  );
+  const touchedHeld = touched.filter((r) => r.peopleCount > 0).map((r) => r.code);
+
+  /** AC-11: read the role data again after a save or a refused save, then check the draft. */
+  const reread = async (cause: 'saved' | SaveConflict, count = 0) => {
+    const before = data;
+    let next: RolesData;
+    try {
+      next = await fetchRoles(system);
+    } catch {
+      if (cause === 'saved') {
+        setDraft({});
+        clear();
+        notifySuccess(rolesCopy.saved(count, system));
+      }
+      setAttempt((n) => n + 1);
+      return;
+    }
+    replace(() => next);
+    if (cause === 'saved') {
+      setDraft({});
+      clear();
+      notifySuccess(rolesCopy.saved(count, system));
+      return;
+    }
+    const check = checkDraft(next, draft);
+    setDraft(check.kept);
+    const nameOf = (code: string) => before?.roles.find((r) => r.code === code)?.name ?? code;
+    if (cause === 'MATRIX_STALE') notify(rolesCopy.stale(system), 'warning');
+    if (cause === 'LOCKED_CELL') {
+      const labels = check.locked.map((id) => {
+        const [role, key] = id.split('|');
+        const label = next.groups.flatMap((g) => g.permissions).find((p) => p.key === key)?.label ?? key;
+        return `${label} for ${nameOf(role)}`;
+      });
+      notifyError(labels.length > 0 ? rolesCopy.locked(labels) : "A permission in your draft is locked now. Check your changes and save again.");
+    }
+    if (cause === 'UNKNOWN_ROLE') {
+      const names = Object.keys(check.deleted).map(nameOf);
+      notifyError(names.length > 0 ? rolesCopy.unknownRole(names) : 'A role in your draft no longer exists.');
+    } else if (deletedCount(check) > 0) {
+      notify(rolesCopy.deleted(deletedCount(check)), 'warning');
+    }
+  };
+
+  const role = data?.roles.find((r) => r.code === roleCode);
+  if (data && !roleCode && !isMobile && data.roles[0]) {
     return <Navigate to={rolesHref(system, data.roles[0].code)} replace />;
   }
 
-  const setDraft = (update: (current: MatrixDraft) => MatrixDraft) =>
-    setDrafts((current) => ({ ...current, [system]: update(current[system] ?? {}) }));
-  const changes = matrix ? pendingChanges(matrix, draft) : [];
-  const touched = data ? data.roles.filter((r) => changes.some((c) => c.role === r.code)) : [];
-  const people = touched.reduce((sum, r) => sum + r.peopleCount, 0);
-
+  const flip = (code: string, key: string) => matrix && setDraft((d) => toggle(matrix, d, code, key));
+  const several = touched.length > 1;
   const barChanges: SaveBarChange[] = matrix
     ? changes.map((c) => {
         const permission = matrix.permissions.find((p) => p.key === c.key);
-        const roleName = matrix.roles.find((r) => r.code === c.role)?.name ?? c.role;
         return {
           id: `${c.role}|${c.key}`,
-          group: touched.length > 1 ? roleName : (permission?.group ?? ''),
+          section: several ? (matrix.roles.find((r) => r.code === c.role)?.name ?? c.role) : undefined,
+          group: permission?.group ?? '',
           label: permission?.label ?? c.key,
           kind: c.allowed ? 'added' : 'removed',
           from: c.allowed ? 'Off' : 'On',
           to: c.allowed ? 'On' : 'Off',
-          onUndo: () => setDraft((d) => toggle(matrix, d, c.role, c.key)),
+          onUndo: () => flip(c.role, c.key),
         };
       })
     : [];
+  const reach: SaveBarPeople[] = touched.map((r) => {
+    const names = holders[r.code] ?? [];
+    const line = reachLine(r, names, system);
+    return { key: r.code, names, text: several && r.peopleCount > 0 ? `${r.name}: ${line}` : line };
+  });
+  const reset =
+    data && role && data.canEdit && data.supportsCustomRoles && role.builtIn
+      ? {
+          disabled: !resetToDefaults(data, draft, role.code).changed,
+          onReset: () => setDraft((d) => resetToDefaults(data, d, role.code).draft),
+        }
+      : undefined;
 
   return (
     <div className="md:flex md:h-below-bar">
-      <div className={cn('md:w-90 md:shrink-0 md:border-r md:border-border', params.role && 'max-md:hidden')}>
+      <div className={cn('md:w-90 md:shrink-0 md:border-r md:border-border', roleCode && 'max-md:hidden')}>
         <RoleList
           systems={systems}
           system={system}
           data={data}
-          selected={params.role}
+          selected={roleCode}
           draft={draft}
           onSystem={(next) => navigate(rolesHref(next), { replace: true })}
           onSelect={(code) => navigate(rolesHref(system, code), { replace: true })}
@@ -101,7 +210,7 @@ export function RolesPage({ me }: { me: AdminMe }) {
       <div
         className={cn(
           'relative flex min-w-0 flex-1 flex-col md:overflow-y-auto md:overscroll-contain',
-          !params.role && 'max-md:hidden',
+          !roleCode && 'max-md:hidden',
         )}
       >
         {state.kind === 'loading' && <RoleSkeleton />}
@@ -113,7 +222,7 @@ export function RolesPage({ me }: { me: AdminMe }) {
             />
           </div>
         )}
-        {data && matrix && params.role && !role && <MissingRole system={system} first={data.roles[0]?.code} />}
+        {data && matrix && roleCode && !role && <MissingRole system={system} first={data.roles[0]?.code} />}
         {data && matrix && role && (
           <div className={cn('flex-1', data.canEdit && 'pb-24')}>
             <RoleDetail
@@ -121,43 +230,46 @@ export function RolesPage({ me }: { me: AdminMe }) {
               matrix={matrix}
               role={role}
               draft={draft}
-              onToggle={(key) => setDraft((d) => toggle(matrix, d, role.code, key))}
+              onToggle={(key) => flip(role.code, key)}
+              reset={reset}
             />
           </div>
         )}
         {data?.canEdit && (
           <SaveBar
-            name={touched.length === 1 ? touched[0].name : `${touched.length} roles`}
+            name={several ? `${touched.length} roles` : (touched[0]?.name ?? system)}
             changes={barChanges}
-            subline={
-              touched.length > 0
-                ? `${joinNames(touched.map((r) => r.name))} · ${people > 0 ? `affects ${peopleWords(people).toLowerCase()}` : 'no one holds it yet'}`
-                : undefined
-            }
-            onDiscard={() => setDraft(() => ({}))}
-            onReview={() => setReviewing(true)}
+            countDetail={several ? ` in ${touched.length} roles` : undefined}
+            subline={barSubline(touched)}
+            keptAt={keptAt}
+            people={reach}
+            onOpenList={() => loadHolders(touchedHeld)}
+            onDiscard={() => {
+              setDraft({});
+              clear();
+            }}
+            onReview={() => {
+              loadHolders(touchedHeld);
+              setReviewing(true);
+            }}
           />
         )}
       </div>
-      {matrix && (
-        <MatrixReviewDialog
+      {data?.canEdit && (
+        <RoleReviewDialog
           open={reviewing}
-          matrix={matrix}
+          data={data}
+          draft={draft}
           changes={changes}
+          holders={holders}
           onClose={() => setReviewing(false)}
-          onSaved={() => {
+          onSaved={(count) => {
             setReviewing(false);
-            notifySuccess(
-              changes.length === 1
-                ? `Saved 1 change to ${system} roles.`
-                : `Saved ${changes.length} changes to ${system} roles.`,
-            );
-            setDraft(() => ({}));
-            setAttempt((n) => n + 1);
+            void reread('saved', count);
           }}
-          onReload={() => {
+          onConflict={(code) => {
             setReviewing(false);
-            setAttempt((n) => n + 1);
+            void reread(code);
           }}
         />
       )}

@@ -6,7 +6,7 @@ import type { AdminMe } from '@/lib/admin';
 import type { RoleSummary, RolesData } from '@/lib/adminApi';
 import { RolesPage } from './RolesPage';
 
-const api = vi.hoisted(() => ({ fetchRoles: vi.fn(), saveMatrix: vi.fn() }));
+const api = vi.hoisted(() => ({ fetchRoles: vi.fn(), saveMatrix: vi.fn(), listPeople: vi.fn() }));
 const notify = vi.hoisted(() => ({ notifyError: vi.fn(), notifySuccess: vi.fn(), notify: vi.fn() }));
 
 vi.mock('@/lib/api', () => ({ API_BASE_URL: 'http://localhost:3000', api: {} }));
@@ -14,7 +14,8 @@ vi.mock('@/lib/adminApi', async (importOriginal) => ({ ...(await importOriginal<
 vi.mock('@/lib/notify', () => notify);
 
 // covers: suite spec 0018, child 0001 AC-1 (routes, redirects, missing role), AC-2 (list, switch,
-// search, headings), AC-3 (header), AC-4 (groups fold, switches, locks, Not saved), AC-6 (read only)
+// search, headings), AC-3 (header), AC-4 (groups fold, switches, locks, Not saved), AC-6 (read only),
+// AC-7 to AC-12 (multi role draft, change list, review RC, conflicts, Reset to defaults, stored drafts)
 
 const me = (over: Partial<AdminMe> = {}): AdminMe => ({
   user: { id: 'me', name: 'Leonora Castillo', email: 'suite.admin@welinc.com', picture: null },
@@ -93,6 +94,8 @@ const where = () => screen.getByTestId('where').textContent;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
+  api.listPeople.mockResolvedValue({ items: [], next: null });
   api.fetchRoles.mockImplementation(async (system: string) => vrms({ system: system as RolesData['system'] }));
 });
 
@@ -233,5 +236,184 @@ describe('RoleDetail (AC-3, AC-4, AC-6)', () => {
     expect(within(row('See tickets assigned to you')).getByText('On')).toBeInTheDocument();
     expect(within(row('See costs')).getByText('Off')).toBeInTheDocument();
     expect(screen.queryByText(/unsaved/)).toBeNull();
+  });
+});
+
+const conflict = (code: string) => Object.assign(new Error(code), { response: { data: { code } } });
+
+describe('saving (AC-7 to AC-11)', () => {
+  it('collects changes in two roles, groups the change list by role, and saves them in one review with a note', async () => {
+    const user = userEvent.setup();
+    api.listPeople.mockImplementation(async ({ role: code }: { role: string }) => ({
+      items: code === 'CHIEF_MECHANIC' ? [{ name: 'Ramon Villanueva' }, { name: 'Alfredo Bautista' }, { name: 'Danilo Santos' }] : [{ name: 'Joel Manalo' }],
+      next: null,
+    }));
+    api.saveMatrix.mockResolvedValue({});
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    await user.click(await screen.findByRole('switch', { name: 'See tickets assigned to you' })); // takes away
+    await user.click(screen.getByRole('button', { name: /^Chief Mechanic\s?8 people/ }));
+    await user.click(await screen.findByRole('switch', { name: 'See costs' })); // adds
+    expect(screen.getByText('2 unsaved changes in 2 roles')).toBeInTheDocument();
+    expect(screen.getByText('Chief Mechanic and Mechanic · affects 9 people')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('1 unsaved change')).toHaveLength(2);
+
+    await user.click(screen.getByRole('button', { name: /2 unsaved changes in 2 roles/ }));
+    expect(await screen.findByRole('heading', { name: 'Changes to 2 roles' })).toBeInTheDocument();
+    expect(await screen.findByText('Chief Mechanic: Ramon, Alfredo and 6 more get this the next time they open VRMS')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Undo See costs' })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+
+    await user.click(screen.getByRole('button', { name: 'Review and save' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Save 2 changes?' });
+    expect(within(dialog).getByRole('region', { name: 'Chief Mechanic' })).toHaveTextContent('Ramon, Alfredo and 6 more');
+    const note = within(dialog).getByRole('textbox', { name: /Note for the activity log/ });
+    const save = within(dialog).getByRole('button', { name: 'Save 2 changes' });
+    expect(save).toBeDisabled();
+    await user.type(note, 'Costs move to the chief');
+    expect(save).toBeEnabled();
+    api.fetchRoles.mockResolvedValue(vrms({ version: 4 }));
+    await user.click(save);
+    expect(api.saveMatrix).toHaveBeenCalledWith('VRMS', {
+      version: 3,
+      changes: [
+        { role: 'CHIEF_MECHANIC', key: 'ticket.costs.view', allowed: true },
+        { role: 'MECHANIC', key: 'ticket.view', allowed: false },
+      ],
+      note: 'Costs move to the chief',
+    });
+    await vi.waitFor(() => expect(notify.notifySuccess).toHaveBeenCalledWith('Saved 2 changes to VRMS roles.'));
+    await vi.waitFor(() => expect(screen.queryByText(/unsaved/)).toBeNull());
+    expect(localStorage.getItem('welinc:draft:me:roles:VRMS')).toBeNull();
+  });
+
+  it('folds an optional note when nothing is taken away', async () => {
+    const user = userEvent.setup();
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    await user.click(await screen.findByRole('switch', { name: 'See costs' }));
+    await user.click(screen.getByRole('button', { name: 'Review and save' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Save 1 change?' });
+    expect(within(dialog).queryByRole('textbox')).toBeNull();
+    expect(within(dialog).getByRole('button', { name: 'Save 1 change' })).toBeEnabled();
+    await user.click(within(dialog).getByRole('button', { name: 'Add a note for the activity log' }));
+    expect(within(dialog).getByRole('textbox', { name: 'Note for the activity log' })).toBeInTheDocument();
+  });
+
+  it('on MATRIX_STALE closes the review, reads again and keeps only entries that still apply', async () => {
+    const user = userEvent.setup();
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    await user.click(await screen.findByRole('switch', { name: 'See costs' }));
+    api.saveMatrix.mockRejectedValue(conflict('MATRIX_STALE'));
+    // Someone else turned See costs on for Mechanic meanwhile
+    api.fetchRoles.mockResolvedValue(vrms({ version: 4, cells: { ...vrms().cells, MECHANIC: ['ticket.view', 'ticket.costs.view'] } }));
+    await user.click(screen.getByRole('button', { name: 'Review and save' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Save 1 change' }));
+    expect(await screen.findByRole('switch', { name: 'See costs' })).toBeChecked();
+    expect(notify.notify).toHaveBeenCalledWith(
+      'Someone saved VRMS roles while you were editing. Your changes that still apply are kept. Check them and save again.',
+      'warning',
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await vi.waitFor(() => expect(screen.queryByText(/unsaved/)).toBeNull());
+  });
+
+  it('on UNKNOWN_ROLE drops the deleted role’s entries and names it', async () => {
+    const user = userEvent.setup();
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    await user.click(await screen.findByRole('switch', { name: 'See costs' }));
+    api.saveMatrix.mockRejectedValue(conflict('UNKNOWN_ROLE'));
+    api.fetchRoles.mockResolvedValue(vrms({ roles: vrms().roles.filter((r) => r.code !== 'MECHANIC') }));
+    await user.click(screen.getByRole('button', { name: 'Review and save' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Save 1 change' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent("This role doesn't exist or was deleted.");
+    expect(notify.notifyError).toHaveBeenCalledWith('Mechanic was deleted, so its changes were removed from your draft.');
+    await vi.waitFor(() => expect(screen.queryByText(/unsaved/)).toBeNull());
+  });
+
+  it('keeps the review open with the error on a network failure', async () => {
+    const user = userEvent.setup();
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    await user.click(await screen.findByRole('switch', { name: 'See costs' }));
+    api.saveMatrix.mockRejectedValue(new Error('Network Error'));
+    await user.click(screen.getByRole('button', { name: 'Review and save' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Save 1 change' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent("We couldn't save the changes.");
+    expect(within(dialog).getByRole('button', { name: 'Save 1 change' })).toBeEnabled();
+  });
+
+  it('Reset to defaults stages the differences, then says it is already on the defaults', async () => {
+    const user = userEvent.setup();
+    const groups = vrms().groups.map((g) => ({
+      ...g,
+      permissions: g.permissions.map((p) => (p.key === 'ticket.costs.view' ? { ...p, defaultRoles: ['MECHANIC'] } : p)),
+    }));
+    api.fetchRoles.mockResolvedValue(vrms({ groups }));
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    await user.click(await screen.findByRole('button', { name: 'More role actions' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Reset to defaults' }));
+    expect(screen.getByRole('switch', { name: 'See costs' })).toBeChecked();
+    expect(screen.getByRole('switch', { name: 'See tickets assigned to you' })).not.toBeChecked();
+    expect(screen.getByText('2 unsaved changes')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'More role actions' }));
+    expect(await screen.findByRole('menuitem', { name: /Reset to defaults\s?Already on the defaults/ })).toHaveAttribute('data-disabled');
+  });
+
+  it('has no role actions for a system admin', async () => {
+    api.fetchRoles.mockResolvedValue(vrms({ canEdit: false }));
+    renderAt('/admin/roles/VRMS/MECHANIC', me({ suiteAdmin: false, adminOf: ['VRMS'] }));
+    await screen.findByRole('heading', { level: 2, name: 'Mechanic' });
+    expect(screen.queryByRole('button', { name: 'More role actions' })).toBeNull();
+  });
+});
+
+describe('stored drafts (AC-12)', () => {
+  const store = (changes: { key: string; from: boolean; to: boolean }[], savedAt = Date.now()) =>
+    localStorage.setItem('welinc:draft:me:roles:VRMS', JSON.stringify({ savedAt, changes }));
+
+  it('writes the draft to storage as it changes', async () => {
+    const user = userEvent.setup();
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    await user.click(await screen.findByRole('switch', { name: 'See costs' }));
+    expect(JSON.parse(localStorage.getItem('welinc:draft:me:roles:VRMS') ?? '{}').changes).toEqual([
+      { key: 'MECHANIC|ticket.costs.view', from: false, to: true },
+    ]);
+  });
+
+  it('brings a kept draft back with Kept from [time]', async () => {
+    store([{ key: 'MECHANIC|ticket.costs.view', from: false, to: true }]);
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    expect(await screen.findByText(/^Kept from \d\d:\d\d$/)).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'See costs' })).toBeChecked();
+  });
+
+  it('clears a kept draft whose from no longer matches the server', async () => {
+    store([{ key: 'MECHANIC|ticket.view', from: false, to: true }]); // the server has it on
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    await screen.findByRole('switch', { name: 'See costs' });
+    await vi.waitFor(() =>
+      expect(notify.notify).toHaveBeenCalledWith('Your saved draft for VRMS roles was out of date, so it was cleared.', 'info', {}),
+    );
+    expect(screen.queryByText(/unsaved/)).toBeNull();
+  });
+
+  it('drops kept entries for a deleted role with its toast, keeping the rest', async () => {
+    store([
+      { key: 'C_GONE|ticket.view', from: false, to: true },
+      { key: 'MECHANIC|ticket.costs.view', from: false, to: true },
+    ]);
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    expect(await screen.findByText('1 unsaved change')).toBeInTheDocument();
+    expect(notify.notify).toHaveBeenCalledWith('1 change to a role that was deleted was removed from your draft.', 'warning');
+  });
+
+  it('keeps each system’s draft apart and says so on leaving', async () => {
+    const user = userEvent.setup();
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    await user.click(await screen.findByRole('switch', { name: 'See costs' }));
+    await user.click(screen.getByRole('button', { name: 'BMS' }));
+    expect(notify.notify).toHaveBeenCalledWith('Your 1 change to Mechanic are kept for when you come back', 'info');
+    await screen.findByTestId('where');
+    expect(localStorage.getItem('welinc:draft:me:roles:VRMS')).not.toBeNull();
+    expect(localStorage.getItem('welinc:draft:me:roles:BMS')).toBeNull();
   });
 });

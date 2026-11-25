@@ -49,9 +49,15 @@ export function readDraft<T>(userId: string, screenId: string, now = Date.now())
   return null;
 }
 
-/** True when every stored "from" still equals what the server has now. */
-export function draftStillFits<T>(draft: StoredDraft<T>, current: (key: string) => T | undefined) {
-  return draft.changes.every((change) => JSON.stringify(current(change.key)) === JSON.stringify(change.from));
+/**
+ * True when every stored "from" still equals what the server has now. `current` also gets the
+ * change itself, so a screen can treat an item that is gone as fitting and drop it on its own terms.
+ */
+export function draftStillFits<T>(
+  draft: StoredDraft<T>,
+  current: (key: string, change: DraftChange<T>) => T | undefined,
+) {
+  return draft.changes.every((change) => JSON.stringify(current(change.key, change)) === JSON.stringify(change.from));
 }
 
 /** Drops every draft of this user, on sign out. */

@@ -1,7 +1,13 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
-import { buttonVariants } from '@/components/ui/button';
+import { ArrowLeft, EllipsisVertical, RotateCcw } from 'lucide-react';
+import { Button, buttonVariants } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { InitialsTile } from '@/components/ui/initials-tile';
 import { RoleChip } from '@/components/ui/role-chip';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,7 +22,8 @@ import { allowedCount, permissionTotal, roleHelp, rolesHref } from './rolesRules
 /**
  * Suite spec 0018, child 0001 AC-3 and AC-4 (board Roles9): one role. The header (tile, name,
  * Built in or Custom chip, description, one help line, the facts), then the tabs. A system without
- * permissions has no Permissions tab; its People tab lands with the People milestone.
+ * permissions has no Permissions tab; its People tab lands with the People milestone. `reset` is
+ * set only for a suite admin on a built in role of a system with permissions (AC-10).
  */
 export function RoleDetail({
   data,
@@ -24,19 +31,22 @@ export function RoleDetail({
   role,
   draft,
   onToggle,
+  reset,
 }: {
   data: RolesData;
   matrix: PermissionMatrix;
   role: RoleSummary;
   draft: MatrixDraft;
   onToggle: (key: string) => void;
+  /** Reset to defaults; `disabled` when the role already shows its defaults. */
+  reset?: { disabled: boolean; onReset: () => void };
 }) {
   const total = permissionTotal(data);
   const allowed = allowedCount(data, role.code);
   return (
     <div className="flex min-h-full flex-col">
       <PhoneBack system={data.system} />
-      <RoleHeader role={role} data={data} allowed={allowed} total={total} />
+      <RoleHeader role={role} data={data} allowed={allowed} total={total} reset={reset} />
       {data.supportsCustomRoles ? (
         <Tabs defaultValue="permissions" className="flex-1 gap-0">
           <div className="border-b border-border bg-card px-4 sm:px-6 lg:px-9">
@@ -73,11 +83,13 @@ function RoleHeader({
   data,
   allowed,
   total,
+  reset,
 }: {
   role: RoleSummary;
   data: RolesData;
   allowed: number;
   total: number;
+  reset?: { disabled: boolean; onReset: () => void };
 }) {
   return (
     <div className="flex flex-col gap-5 border-b border-border bg-card px-4 pt-6 pb-6 sm:px-6 lg:px-9 lg:pt-7">
@@ -91,6 +103,7 @@ function RoleHeader({
           {role.description && <p className="text-body break-words text-foreground">{role.description}</p>}
           <p className="text-small text-muted-foreground">{roleHelp(role, data)}</p>
         </div>
+        {reset && <RoleActions reset={reset} />}
       </div>
       <dl className="grid gap-px overflow-hidden rounded-xl border border-divider bg-divider sm:grid-cols-3">
         <Fact label="People">
@@ -114,6 +127,28 @@ function RoleHeader({
         </Fact>
       </dl>
     </div>
+  );
+}
+
+/** AC-3: the ⋮ "More role actions" menu; child 0002 adds Duplicate, Rename, Edit description and Delete. */
+function RoleActions({ reset }: { reset: { disabled: boolean; onReset: () => void } }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="More role actions" className="shrink-0">
+          <EllipsisVertical aria-hidden="true" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-60">
+        <DropdownMenuItem disabled={reset.disabled} onSelect={reset.onReset} className="items-start">
+          <RotateCcw aria-hidden="true" className="mt-0.5" />
+          <span className="flex flex-col">
+            <span>Reset to defaults</span>
+            {reset.disabled && <span className="text-caption text-muted-foreground">Already on the defaults</span>}
+          </span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
