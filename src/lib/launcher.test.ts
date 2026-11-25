@@ -2,7 +2,18 @@ import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('./api', () => ({ API_BASE_URL: 'http://localhost:3000' }));
 
-import { firstName, greetingFor, initialsOf, pictureUrl, roleTag, signedInSystems, signOutLine } from './launcher';
+import {
+  firstName,
+  greetingFor,
+  initialsOf,
+  orderedSystems,
+  pictureUrl,
+  roleTag,
+  signedInSystems,
+  signOutLine,
+  suiteEntryFor,
+  todayLabel,
+} from './launcher';
 
 // covers: spec 0007 AC-15 (greeting, first name), AC-17 (picture, initials)
 describe('launcher display rules', () => {
@@ -78,5 +89,45 @@ describe('roleTag', () => {
 
   it('names the real roles for everyone else', () => {
     expect(roleTag(system([{ code: 'CHIEF_MECHANIC', name: 'Chief Mechanic' }]))).toBe('Chief Mechanic');
+  });
+});
+
+// covers: suite spec 0019 AC-2 (the order), AC-3 (which Suite management entry, and where it points)
+describe('launcher order and Suite management', () => {
+  const sys = (system: string, codes: string[] = ['MECHANIC']) => ({
+    system,
+    name: system,
+    description: '',
+    url: '',
+    roles: codes.map((code) => ({ code, name: code })),
+  });
+
+  it('orders BMS, VMMS, VRMS whatever welinc-auth sends', () => {
+    expect(orderedSystems([sys('VRMS'), sys('BMS'), sys('VMMS')]).map((s) => s.system)).toEqual(['BMS', 'VMMS', 'VRMS']);
+  });
+
+  it('writes today as weekday, month and day', () => {
+    expect(todayLabel(new Date(2026, 10, 24, 9))).toMatch(/Tuesday.*November.*24/);
+  });
+
+  it('picks no entry, a strip or the large card', () => {
+    expect(suiteEntryFor({ systems: [sys('VRMS')] })).toEqual({ kind: 'none' });
+    expect(suiteEntryFor({ systems: [], suiteAdmin: true })).toMatchObject({ kind: 'card', system: null });
+    expect(suiteEntryFor({ systems: [sys('VRMS')], suiteAdmin: true })).toEqual({
+      kind: 'strip',
+      suiteAdmin: true,
+      system: null,
+      line: 'Users and permissions in every system',
+    });
+  });
+
+  it("points a system admin's links at the first system they administer, in order", () => {
+    const entry = suiteEntryFor({ systems: [sys('VRMS', ['ADMIN']), sys('VMMS', ['ADMIN']), sys('BMS')] });
+    expect(entry).toEqual({
+      kind: 'strip',
+      suiteAdmin: false,
+      system: 'VMMS',
+      line: 'Users and permissions in VMMS, VRMS',
+    });
   });
 });

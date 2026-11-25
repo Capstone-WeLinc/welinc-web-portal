@@ -73,3 +73,50 @@ export function roleTag(system: LauncherAnswer['systems'][number]): string {
   if (administers(system)) return 'Admin';
   return system.roles.map((role) => role.name).join(', ');
 }
+
+/** Suite spec 0019, AC-2: systems always show in this order, whatever order welinc-auth answers. */
+export const SYSTEM_ORDER = ['BMS', 'VMMS', 'VRMS'] as const;
+
+const rank = (system: string) => {
+  const i = (SYSTEM_ORDER as readonly string[]).indexOf(system);
+  return i === -1 ? SYSTEM_ORDER.length : i;
+};
+
+/** The systems in BMS, VMMS, VRMS order; an unknown code goes last, keeping welinc-auth's order. */
+export function orderedSystems<T extends { system: string }>(systems: readonly T[]): T[] {
+  return [...systems].sort((a, b) => rank(a.system) - rank(b.system));
+}
+
+/** Today on the launcher band, "Tuesday, November 24", in the browser's locale and time zone. */
+export function todayLabel(now: Date): string {
+  return now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+/**
+ * Suite spec 0019, AC-3: how Suite management shows on the launcher. Nothing for someone who
+ * administers nothing; a large card for a suite admin with no system; else the strip. `system` is
+ * where a system admin's links point (the first they administer, in BMS, VMMS, VRMS order).
+ */
+export type SuiteEntry =
+  | { kind: 'none' }
+  | { kind: 'card' | 'strip'; suiteAdmin: boolean; system: string | null; line: string };
+
+export function suiteEntryFor(answer: Pick<LauncherAnswer, 'systems' | 'suiteAdmin'>): SuiteEntry {
+  const suiteAdmin = answer.suiteAdmin === true;
+  const adminOf = orderedSystems(answer.systems.filter(administers)).map((s) => s.system);
+  if (!suiteAdmin && adminOf.length === 0) return { kind: 'none' };
+  if (suiteAdmin && answer.systems.length === 0) {
+    return {
+      kind: 'card',
+      suiteAdmin,
+      system: null,
+      line: `Users and permissions across ${SYSTEM_ORDER.slice(0, -1).join(', ')} and ${SYSTEM_ORDER.at(-1)}. You have no role in a system yet.`,
+    };
+  }
+  return {
+    kind: 'strip',
+    suiteAdmin,
+    system: suiteAdmin ? null : adminOf[0],
+    line: suiteAdmin ? 'Users and permissions in every system' : `Users and permissions in ${adminOf.join(', ')}`,
+  };
+}

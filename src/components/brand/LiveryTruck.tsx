@@ -44,3 +44,58 @@ function LogoMarkShapes() {
     </g>
   );
 }
+
+/** Two wheels, tyre and hub, at the given centres on the line y = 44. */
+function Wheels({ at }: { at: number[] }) {
+  return at.map((cx) => (
+    <g key={cx}>
+      <circle cx={cx} cy="44" r="7" fill="var(--livery-tyre)" />
+      <circle cx={cx} cy="44" r="3" fill="var(--livery-hub)" />
+    </g>
+  ));
+}
+
+/**
+ * Suite spec 0019, AC-1 (board `R37LineArt`): the 10 ft closed van in the livery, facing right,
+ * about 102 by 51 units with the wheels. Decoration only, inside an `aria-hidden` SVG.
+ */
+export function LiveryVan() {
+  return (
+    <g>
+      <rect x="0" y="0" width="70" height="38" rx="2.5" fill="var(--livery-body)" stroke="var(--livery-edge)" strokeWidth="1" />
+      <path d="M0.5 25 C21 19 46 31 69.5 15 V22 C46 34 21 24 0.5 30 Z" fill="var(--livery-orange)" />
+      <path d="M0.5 30 C21 24 46 34 69.5 22 V36 a2 2 0 0 1 -2 2 H2.5 a2 2 0 0 1 -2 -2 Z" fill="var(--livery-blue)" />
+      <g transform="translate(6 6) scale(0.0541)">
+        <LogoMarkShapes />
+      </g>
+      <text x="26" y="15" fontSize="11" fontWeight="800" fontStyle="italic" fill="var(--sidebar)">
+        WeLinc
+      </text>
+      <path d="M73 10h16l13 13v15H73z" fill="var(--livery-cab)" stroke="var(--livery-cab-edge)" strokeWidth="1" />
+      <path d="M77 14h10l8 8h-18z" fill="var(--livery-glass)" />
+      <rect x="73" y="30" width="29" height="3" fill="var(--livery-cab-edge)" />
+      <rect x="64" y="36" width="38" height="5" fill="var(--livery-bumper)" />
+      <Wheels at={[16, 88]} />
+    </g>
+  );
+}
+
+/** The L300 van in the livery (board `R37LineArt`), facing right, about 80 by 51 units. */
+export function LiveryL300() {
+  return (
+    <g>
+      <path d="M0 12 Q0 8 5 8 H60 L76 22 V38 H0 Z" fill="var(--livery-body)" stroke="var(--livery-edge)" strokeWidth="1" />
+      <path d="M60 11 L72 22 H60 Z" fill="var(--livery-glass)" />
+      <rect x="34" y="12" width="20" height="9" rx="1.5" fill="var(--livery-glass)" />
+      <rect x="8" y="12" width="22" height="9" rx="1.5" fill="var(--livery-glass)" />
+      <g transform="translate(8 26) scale(0.0378)">
+        <LogoMarkShapes />
+      </g>
+      <text x="23" y="32.5" fontSize="8" fontWeight="800" fontStyle="italic" fill="var(--sidebar)">
+        WeLinc
+      </text>
+      <rect x="-2" y="35" width="80" height="4" fill="var(--livery-bumper)" />
+      <Wheels at={[14, 62]} />
+    </g>
+  );
+}

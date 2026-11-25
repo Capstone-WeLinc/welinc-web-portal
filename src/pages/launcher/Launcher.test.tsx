@@ -1,94 +1,114 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import type { AdminMe } from "@/lib/admin";
+import { api } from "@/lib/api";
+import { forgetSummary } from "@/lib/adminSummary";
+import type { LauncherAnswer } from "@/lib/auth";
 import Launcher from "./Launcher";
 
 vi.mock("../../lib/api", () => ({
   API_BASE_URL: "http://localhost:3000",
   api: { post: vi.fn(), get: vi.fn() },
 }));
-const adminMe = vi.hoisted(() => ({ current: null as AdminMe | null }));
-vi.mock("../admin/useAdminMe", () => ({ useAdminMe: () => adminMe.current }));
+const get = vi.mocked(api.get);
 
-// covers: the launcher's Admin card (Manage section) and the suite admin state (suite spec 0013, AC-5, AC-22)
+// covers: suite spec 0019 AC-1 (the band), AC-2 (the cards), AC-3 (Suite management, its tiles and counts)
 
-const USER = { id: "u1", name: "Leonora Castillo", email: "admin@welinc.com", picture: null };
-// Suite spec 0016, AC-12a: every launcher answer carries the session's cutoffs
+const USER = { id: "u1", name: "Carla Santos", email: "carla@welinc.com", picture: null };
 const CUTOFFS = {
   sessionExpiresAt: "2026-11-23T10:30:00.000Z",
   sessionAbsoluteExpiresAt: "2026-11-23T22:00:00.000Z",
   serverTime: "2026-11-23T10:00:00.000Z",
 };
 
-const VRMS = {
-  system: "VRMS",
-  name: "Vehicle Repair Management System",
-  description: "Repairs",
-  url: "http://vrms.test",
-  roles: [{ code: "ADMIN", name: "Admin" }],
-};
-const me = (over: Partial<AdminMe>): AdminMe => ({
-  user: USER,
-  suiteAdmin: false,
-  adminOf: [],
-  codeRequired: false,
-  codePassed: true,
-  ...over,
+const sys = (system: string, name: string, roles: [string, string][]) => ({
+  system,
+  name,
+  description: "",
+  url: `http://${system.toLowerCase()}.test`,
+  roles: roles.map(([code, roleName]) => ({ code, name: roleName })),
 });
+const VRMS_ADMIN = sys("VRMS", "Vehicle Repair Management System", [["ADMIN", "Admin"]]);
+const VRMS_MECHANIC = sys("VRMS", "Vehicle Repair Management System", [["MECHANIC", "Mechanic"]]);
+const VMMS_ADMIN = sys("VMMS", "Vehicle Maintenance Management System", [["ADMIN", "Admin"]]);
+const BMS_OPS = sys("BMS", "Booking Management System", [["OPERATIONS", "Operations"]]);
 
-function renderLauncher(systems: (typeof VRMS)[]) {
+function renderLauncher(over: Partial<LauncherAnswer>) {
   return render(
     <MemoryRouter>
-      <Launcher answer={{ user: USER, systems, ...CUTOFFS }} params={new URLSearchParams()} banner={null} />
+      <Launcher answer={{ user: USER, systems: [], ...CUTOFFS, ...over }} params={new URLSearchParams()} banner={null} />
     </MemoryRouter>,
   );
 }
 
-const manage = () => screen.queryByRole("region", { name: "Manage" });
-const hrefs = (region: HTMLElement) =>
-  within(region)
+const suite = () => screen.queryByRole("region", { name: "Suite management" });
+const tileHrefs = () =>
+  within(suite()!)
     .getAllByRole("link")
-    // The wide card adds a hint after each label, so match on the label only
-    .map((link) => [link.querySelector("span > span")?.textContent ?? link.textContent, link.getAttribute("href")]);
+    .map((link) => [link.getAttribute("aria-label"), link.getAttribute("href")]);
 
-describe("launcher Admin card", () => {
-  beforeEach(() => {
-    adminMe.current = null;
+beforeEach(() => {
+  forgetSummary();
+  get.mockReset();
+  get.mockResolvedValue({ data: { needsAttention: 3, deletionRequests: 0, temporaryGrants: 2 } });
+});
+
+describe("launcher", () => {
+  it("greets with the first name and orders the cards BMS, VMMS, VRMS, with one role chip each", () => {
+    renderLauncher({ systems: [VRMS_MECHANIC, BMS_OPS, VMMS_ADMIN] });
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/, Carla$/);
+    expect(screen.getByText("WeLinc Logistics · Since 2018")).toBeInTheDocument();
+    const cards = within(screen.getByRole("region", { name: "Your systems" })).getAllByRole("link");
+    expect(cards.map((card) => card.getAttribute("href"))).toEqual(["http://bms.test", "http://vmms.test", "http://vrms.test"]);
+    expect(within(cards[0]).getByText("Operations")).toBeInTheDocument();
+    expect(within(cards[1]).getByText("Admin")).toBeInTheDocument();
+    expect(within(cards[2]).getByText("Mechanic")).toBeInTheDocument();
+    expect(within(cards[2]).getByText("Open VRMS")).toBeInTheDocument();
+    expect(screen.queryByText(/Signed in until/)).toBeNull();
   });
 
-  it("gives a suite admin with no systems an admin home, not a dead end", () => {
-    renderLauncher([]);
-    expect(screen.getByText("You manage accounts and roles across the suite.")).toBeInTheDocument();
-    expect(screen.queryByText(/hold no role in any system/)).not.toBeInTheDocument();
-    expect(hrefs(manage()!)).toEqual([
-      ["Admin", "/admin"],
-      ["Overview", "/admin/overview"],
-      ["People", "/admin/people"],
-      ["Deletion requests", "/admin/deletion-requests"],
-      ["Temporary access", "/admin/temporary-access"],
+  it("shows no Suite management and asks for no counts when someone administers nothing", () => {
+    renderLauncher({ systems: [VRMS_MECHANIC, BMS_OPS] });
+    expect(suite()).toBeNull();
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it("gives a system admin the strip with Audit log, every link scoped to their first system", async () => {
+    renderLauncher({ systems: [VRMS_ADMIN, VMMS_ADMIN] });
+    await waitFor(() => expect(within(suite()!).getByRole("link", { name: "Users need a look: 3" })).toBeInTheDocument());
+    expect(get).toHaveBeenCalledWith("/auth/admin/summary", expect.anything());
+    expect(tileHrefs()).toEqual([
+      ["Open Suite management", "/admin"],
+      ["Users need a look: 3", "/admin/people?system=VMMS"],
+      ["Deletion requests: 0", "/admin/deletion-requests?system=VMMS"],
+      ["Audit log", "/admin/activity?system=VMMS"],
+      ["Open Suite management", "/admin"],
     ]);
   });
 
-  it("adds a compact card beside the systems for a system admin, one link to Admin", () => {
-    adminMe.current = me({ adminOf: ["VRMS"] });
-    renderLauncher([VRMS]);
-    expect(screen.getByText("Pick where you want to work today.")).toBeInTheDocument();
-    expect(screen.getByText("Accounts and roles in VRMS.")).toBeInTheDocument();
-    expect(within(manage()!).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual(["/admin"]);
+  it("gives a suite admin with one system Temporary access instead of Audit log", async () => {
+    renderLauncher({ systems: [VRMS_MECHANIC], suiteAdmin: true });
+    await waitFor(() => expect(within(suite()!).getByRole("link", { name: "Temporary access: 2" })).toBeInTheDocument());
+    expect(within(suite()!).getByRole("link", { name: "Temporary access: 2" }).getAttribute("href")).toBe(
+      "/admin/temporary-access",
+    );
+    expect(within(suite()!).queryByRole("link", { name: "Audit log" })).toBeNull();
   });
 
-  it("shows no Manage section to someone who administers nothing, or before the check answers", () => {
-    renderLauncher([VRMS]);
-    expect(manage()).toBeNull();
-    adminMe.current = me({});
-    renderLauncher([VRMS]);
-    expect(manage()).toBeNull();
+  it("gives a suite admin with no system the large card and no system cards", async () => {
+    renderLauncher({ systems: [], suiteAdmin: true });
+    expect(screen.queryByRole("region", { name: "Your systems" })).toBeNull();
+    expect(within(suite()!).getByText(/You have no role in a system yet/)).toBeInTheDocument();
+    expect(within(suite()!).getByRole("link", { name: /Open Suite management/ }).getAttribute("href")).toBe("/admin");
+    await waitFor(() => expect(within(suite()!).getByRole("link", { name: "Users need a look: 3" })).toBeInTheDocument());
   });
 
-  it("drops the top bar Admin entry on the launcher, since the card replaces it", () => {
-    adminMe.current = me({ suiteAdmin: true });
-    renderLauncher([VRMS]);
-    expect(within(screen.getByRole("banner")).queryByRole("link", { name: "Admin" })).toBeNull();
+  it("shows the tiles with a dash and never blocks when the summary fails", async () => {
+    get.mockRejectedValue(new Error("down"));
+    renderLauncher({ systems: [VRMS_ADMIN] });
+    await waitFor(() =>
+      expect(within(suite()!).getByRole("link", { name: "Users need a look: not available" })).toBeInTheDocument(),
+    );
+    expect(screen.getByRole("link", { name: /Open VRMS/ })).toBeInTheDocument();
   });
 });

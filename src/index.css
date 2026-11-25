@@ -78,8 +78,6 @@
   --duration-bar-out: 130ms;
   --duration-sheet-out: 150ms;
 
-  /* The portal's navy launcher band (design.md, Brand surfaces) */
-  --hero: #0d1240;
 
   /*
     Suite spec 0019: the drawn brand scenes (the launcher band, the 404 road, sign in). The trucks
@@ -94,6 +92,8 @@
   --scene-land: #070a2e;
   --scene-coast: #8ca0f0;
   --scene-sea: #a0aff0;
+  /* The odometer windows on the Suite management strip (Round 23) */
+  --odometer: #232a78;
   --livery-body: #f7f8fb;
   --livery-edge: #c9d0de;
   --livery-orange: #f29a1f;
@@ -238,7 +238,7 @@
   --color-sidebar-line: var(--sidebar-line);
   --color-sidebar-count: var(--sidebar-count);
 
-  --color-hero: var(--hero);
+  --color-odometer: var(--odometer);
 }
 
 /*
@@ -374,6 +374,30 @@
     transition: none;
   }
 }
+
+/*
+  Suite spec 0019, AC-3 (the odometer kept from Round 23): one digit window's reel of 0 to 9,
+  rolled up to the digit in `--n`. Still under reduced motion: the digit just shows.
+*/
+@utility odometer-reel {
+  transform: translateY(calc(var(--n) * -100% / 10));
+  animation: odometer-roll 1.3s var(--ease-enter) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes odometer-roll {
+  from {
+    transform: translateY(0);
+  }
+}
+
+/*
+  Suite spec 0019, AC-4: the launcher fits a 1280 by 720 or 1024 by 768 projector with no page
+  scroll, so its band is shorter on screens under 820px tall.
+*/
+@custom-variant short (@media (max-height: 820px));
 
 /* A scrolling strip whose cut off last item already says it scrolls (the Admin tabs on phones) */
 @utility no-scrollbar {

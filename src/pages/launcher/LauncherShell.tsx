@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LogOut, UserRound } from 'lucide-react';
+import { ChevronDown, LogOut, UserRound } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -14,7 +14,7 @@ import {
 import type { LauncherAnswer } from '@/lib/auth';
 import { initialsOf, pictureUrl } from '@/lib/launcher';
 import { PROFILE_PATH } from '@/lib/routes';
-import { LogoMark } from '@/components/LogoMark';
+import { BrandLockup } from '@/components/brand/BrandLockup';
 import { CrashBoundary } from '@/components/monitoring/CrashBoundary';
 import { cn } from '@/lib/utils';
 import { AdminEntry } from '../admin/AdminEntry';
@@ -54,19 +54,37 @@ export function UserAvatar({
  * the launcher and in Suite management alike. It holds Your profile (once S23 builds the page,
  * `PROFILE_PATH`) and Sign out, nothing else. `onDark` for the navy band.
  */
-export function AccountMenu({ user, onDark = true, systems }: { user: User; onDark?: boolean; systems?: readonly string[] }) {
+export function AccountMenu({
+  user,
+  onDark = true,
+  systems,
+  showName = false,
+}: {
+  user: User;
+  onDark?: boolean;
+  systems?: readonly string[];
+  /** The launcher band shows the name and a chevron beside the avatar from 768px up (board `R37LineArt`). */
+  showName?: boolean;
+}) {
   const [signingOut, setSigningOut] = useState(false);
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger
           className={cn(
-            'flex size-10 items-center justify-center rounded-full outline-none focus-visible:ring-2 max-sm:size-11',
+            'flex items-center justify-center outline-none focus-visible:ring-2 max-sm:size-11',
+            showName ? 'h-11 gap-2.5 rounded-xl px-2 hover:bg-white/8 max-md:rounded-full max-md:px-0' : 'size-10 rounded-full',
             onDark ? 'focus-visible:ring-ring-on-dark' : 'focus-visible:ring-ring',
           )}
           aria-label={`Account menu for ${user.name}`}
         >
-          <UserAvatar user={user} onDark={onDark} className="size-10" />
+          <UserAvatar user={user} onDark={onDark} className={showName ? 'size-8.5' : 'size-10'} />
+          {showName && (
+            <>
+              <span className="max-w-48 truncate text-body font-medium text-white max-md:hidden">{user.name}</span>
+              <ChevronDown className="size-4 text-white/70 max-md:hidden" aria-hidden="true" />
+            </>
+          )}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
           <DropdownMenuLabel className="flex items-center gap-3 font-normal">
@@ -95,15 +113,6 @@ export function AccountMenu({ user, onDark = true, systems }: { user: User; onDa
       </DropdownMenu>
       <SignOutDialog open={signingOut} onOpenChange={setSigningOut} systems={systems} />
     </>
-  );
-}
-
-export function Brand() {
-  return (
-    <div className="flex items-center gap-2.5">
-      <LogoMark className="h-5 text-highlight" />
-      <span className="text-subheading font-semibold tracking-tight text-white">WeLinc</span>
-    </div>
   );
 }
 
@@ -140,19 +149,19 @@ export function LauncherShell({
   const { pathname } = useLocation();
   return (
     <div className="min-h-screen bg-background">
-      <div className="relative overflow-hidden bg-hero text-white">
+      <div className="relative overflow-hidden bg-sidebar text-white">
         <div aria-hidden="true" className="brand-grid pointer-events-none absolute inset-0" />
         <header className="relative mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           {homeLink ? (
             <Link
               to="/"
               aria-label="WeLinc home"
-              className="rounded-lg focus-visible:ring-2 focus-visible:ring-highlight focus-visible:ring-offset-2 focus-visible:ring-offset-hero focus-visible:outline-hidden"
+              className="rounded-lg focus-visible:ring-2 focus-visible:ring-highlight focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-hidden"
             >
-              <Brand />
+              <BrandLockup />
             </Link>
           ) : (
-            <Brand />
+            <BrandLockup />
           )}
           <div className="flex items-center gap-2">
             {signedIn && adminEntry && <AdminEntry />}
