@@ -659,11 +659,13 @@
 */
 @utility signin-stage {
   position: absolute;
-  left: 50%;
-  top: 50%;
+  /* Centred by default; from 1024px `SignInMap` pins it top left like the copy column (`stagePlacement`) */
+  left: var(--stage-at, 50%);
+  top: var(--stage-at, 50%);
   width: 1440px;
   height: 900px;
-  transform: translate(-50%, -50%) scale(var(--stage-scale, 1));
+  transform-origin: var(--stage-origin, 50% 50%);
+  transform: translate(var(--stage-shift, -50%), calc(var(--stage-shift, -50%) + var(--stage-drop, 0px))) scale(var(--stage-scale, 1));
 }
 /* The board's own placement of the tilted map on the stage */
 @utility signin-map-tilt {
@@ -717,4 +719,15 @@
   --error: #fda29b;
   --error-bg: rgb(240 68 56 / 0.16);
   --info-bg: rgb(255 255 255 / 0.1);
+
+  /* Browser autofill paints a pale field with dark text, which hides the eye button on the glass.
+     Its background can't be overridden, only held off by a transition that never ends, so the
+     glass shows through; the text stays light. Autofill itself stays on for password managers. */
+  & input:-webkit-autofill,
+  & input:-webkit-autofill:hover,
+  & input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--foreground);
+    caret-color: var(--foreground);
+    transition: background-color 600000s 0s, color 600000s 0s;
+  }
 }

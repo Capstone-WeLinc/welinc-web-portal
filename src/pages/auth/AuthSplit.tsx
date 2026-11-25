@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode, type RefObject } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
 import { SignInMap } from '@/components/brand/SignInMap';
@@ -28,11 +28,11 @@ export const splitCodeSlot =
   'h-14.5 w-11 rounded-lg font-sans text-heading font-bold tabular-nums first:rounded-lg first:border last:rounded-lg sm:w-13 md:h-14.5 md:w-13 data-[active=true]:ring-4 data-[active=true]:ring-primary/15';
 
 /** The copy beside the panel, on large screens (AC-13). */
-function CopySide() {
+function CopySide({ copyRef }: { copyRef: RefObject<HTMLDivElement | null> }) {
   return (
     <div className="relative z-10 hidden min-w-0 flex-1 flex-col px-16 pt-11 lg:flex">
       <BrandLockup />
-      <div className="mt-15">
+      <div ref={copyRef} className="mt-15">
         <p className="font-mono text-small font-semibold tracking-widest text-highlight">#HASSLEFREE TRANSPORT SOLUTION</p>
         <h1 className="mt-4 text-hero">
           WeLinc Logistics
@@ -41,8 +41,8 @@ function CopySide() {
           <br />
           Workspace
         </h1>
-        <p className="mt-4.5 max-w-105 text-subheading leading-relaxed font-normal text-white/66">
-          Bookings, maintenance and repairs for the whole fleet, in one place.
+        <p className="mt-4.5 max-w-120 text-subheading leading-relaxed font-normal text-white/66">
+          Centralized platform for managing logistics operations, vehicle monitoring, maintenance schedules and repairs.
         </p>
       </div>
     </div>
@@ -55,10 +55,11 @@ function CopySide() {
  * box sonner's fixed list is placed in.
  */
 export function AuthSplit({ children, toaster }: { children: ReactNode; toaster?: ReactNode }) {
+  const copyRef = useRef<HTMLDivElement>(null);
   return (
     <div className="relative flex min-h-dvh flex-col overflow-hidden bg-sidebar text-white lg:flex-row">
-      <SignInMap />
-      <CopySide />
+      <SignInMap clearOf={copyRef} />
+      <CopySide copyRef={copyRef} />
       <div className="relative z-10 px-6 py-5 lg:hidden">
         <BrandLockup />
       </div>
@@ -74,7 +75,7 @@ export function AuthSplit({ children, toaster }: { children: ReactNode; toaster?
             rel="noreferrer"
             className="rounded-sm hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-ring-on-dark focus-visible:outline-hidden"
           >
-            © OpenStreetMap contributors
+            © OpenStreetMap
           </a>
         </p>
       </div>

@@ -98,7 +98,7 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
         <EmailCodeStep step={step} onSignedIn={onSignedIn} onBack={backToPassword} />
       ) : (
         <>
-          <SplitHeading title="Sign in">Use your WeLinc work email.</SplitHeading>
+          <SplitHeading title="Sign in">Enter your credentials to access the workspace</SplitHeading>
 
           {notice?.tone === 'error' && !error && (
             <SplitNotice tone="error">
@@ -121,14 +121,14 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4.5">
             <div>
-              <SplitLabel htmlFor="login-email">Work email</SplitLabel>
+              <SplitLabel htmlFor="login-email">Email</SplitLabel>
               <Input
                 ref={emailRef}
                 id="login-email"
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@welinc.com"
+                placeholder="you@example.com"
                 required
                 autoComplete="username"
                 className={splitInput}
@@ -140,7 +140,7 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
                 <SplitLabel htmlFor="login-password">Password</SplitLabel>
                 <Link
                   to="/forgot-password"
-                  className="rounded-md text-body font-semibold text-primary underline underline-offset-3 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+                  className="rounded-md text-body font-semibold text-primary underline-offset-3 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
                 >
                   Forgot password?
                 </Link>

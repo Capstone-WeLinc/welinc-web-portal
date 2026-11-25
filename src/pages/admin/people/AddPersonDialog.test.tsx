@@ -56,7 +56,7 @@ function renderDialog(start: AddStart, viewer: AdminMe = me()) {
 }
 
 const dialog = () => screen.getByRole('dialog');
-const email = () => within(dialog()).getByLabelText('Work email');
+const email = () => within(dialog()).getByLabelText('Email');
 const pick = (name: RegExp | string) => userEvent.click(within(dialog()).getByRole('radio', { name }));
 const submit = (name: string) => userEvent.click(within(dialog()).getByRole('button', { name }));
 /** Pastes in one event: typing letter by letter is slow on a busy machine. */
@@ -134,7 +134,7 @@ describe('Add a user (AC-22, AC-23)', () => {
   it('shows the red mark for something that is not an email yet, and never checks it', async () => {
     renderDialog({});
     await fill(email(), 'cristina.delacruz@welinc');
-    expect(await within(dialog()).findByText('Enter the whole email, like name@welinc.com.')).toBeInTheDocument();
+    expect(await within(dialog()).findByText('Enter the whole email, like name@example.com.')).toBeInTheDocument();
     expect(email()).toHaveAttribute('aria-invalid', 'true');
     expect(api.checkEmail).not.toHaveBeenCalled();
   });

@@ -54,7 +54,7 @@ async function toCodeStep() {
       <ForgotPassword />
     </MemoryRouter>,
   );
-  await user.type(screen.getByLabelText(/^Work email/), ' Pedro@WeLinc.com ');
+  await user.type(screen.getByLabelText(/^Email/), ' Pedro@WeLinc.com ');
   await user.click(screen.getByRole('button', { name: 'Send code' }));
   await screen.findByRole('heading', { name: 'Check your email' });
   return { user, field: screen.getByLabelText(/^Reset code/) as HTMLInputElement };
@@ -124,7 +124,7 @@ describe('ForgotPassword', () => {
         <ForgotPassword />
       </MemoryRouter>,
     );
-    await user.type(screen.getByLabelText(/^Work email/), 'pedro@welinc.com');
+    await user.type(screen.getByLabelText(/^Email/), 'pedro@welinc.com');
     await user.click(screen.getByRole('button', { name: 'Send code' }));
     expect(await screen.findByText(/Too many tries from this network/)).toBeTruthy();
   });

@@ -76,7 +76,7 @@ export function LauncherFrame({
           {user && <AccountMenu user={user} systems={systems} showName />}
         </header>
       </div>
-      <main className={`relative z-10 flex flex-col gap-5 pt-6 pb-6 md:pt-9 ${LAUNCHER_COLUMN}`}>
+      <main className={`relative z-10 flex flex-col gap-5 pt-6 pb-6 md:pt-9 md:short:pt-6 ${LAUNCHER_COLUMN}`}>
         {/* VRMS spec 0025, AC-7: a crash here keeps the band */}
         <CrashBoundary variant="page">{children}</CrashBoundary>
       </main>

@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
   row: the icon at the left, the code, the full name and the role beside it, no key cap.
 */
 const TILE =
-  'group relative flex gap-4 rounded-3xl bg-card p-4 text-left ring-1 ring-border transition duration-200 ease-enter hover:shadow-lift focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-ring md:h-53 md:flex-col md:gap-0 md:p-5.5 md:hover:-translate-y-0.75 motion-reduce:transition-none motion-reduce:md:hover:translate-y-0';
+  'group relative flex gap-4 rounded-3xl bg-card p-4 text-left ring-1 ring-border transition duration-200 ease-enter hover:shadow-lift focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-ring md:h-53 md:short:h-48 md:flex-col md:gap-0 md:p-5.5 md:hover:-translate-y-0.75 motion-reduce:transition-none motion-reduce:md:hover:translate-y-0';
 
 /** The tile's text: the code (or "Suite management"), the mono label, and the bottom line. */
 function TileText({ code, label, bottom }: { code: string; label: string; bottom: ReactNode }) {
@@ -19,7 +19,7 @@ function TileText({ code, label, bottom }: { code: string; label: string; bottom
     <span className="flex min-w-0 flex-1 flex-col md:contents">
       <span className="text-heading font-extrabold tracking-tight text-sidebar md:mt-4.5 md:text-tile-code">{code}</span>
       <span className="mt-1.5 font-mono text-tile-name text-muted-foreground uppercase md:mt-2.5 xl:truncate">{label}</span>
-      <span className="mt-2 text-small md:mt-auto">{bottom}</span>
+      <span className="mt-2 text-small md:mt-auto md:pt-2">{bottom}</span>
     </span>
   );
 }

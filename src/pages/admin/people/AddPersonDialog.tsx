@@ -127,7 +127,7 @@ function AddUserForm({
 
   const validate = (): Errors => {
     const found: Errors = {};
-    if (!valid) found.email = 'Enter the whole email, like name@welinc.com.';
+    if (!valid) found.email = 'Enter the whole email, like name@example.com.';
     if (!known && !name.trim()) found.name = 'Enter their full name.';
     if (!known && contact.trim().length > CONTACT_MAX) found.contact = `Keep it to ${CONTACT_MAX} characters.`;
     if (!role) found.role = 'Pick a role.';
@@ -206,7 +206,7 @@ function AddUserForm({
         className="flex flex-col gap-4.5 px-6 pt-1 pb-5.5"
       >
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="add-email">Work email</Label>
+          <Label htmlFor="add-email">Email</Label>
           <div className="relative">
             <Input
               id="add-email"
@@ -228,7 +228,7 @@ function AddUserForm({
             </span>
           </div>
           <p id="add-email-state" className="text-small text-error" aria-live="polite">
-            {errors.email ?? (!typing && typed && !valid ? 'Enter the whole email, like name@welinc.com.' : '')}
+            {errors.email ?? (!typing && typed && !valid ? 'Enter the whole email, like name@example.com.' : '')}
           </p>
           {known && result && (
             <KnownCard result={result} system={system} onOpen={status === 'in-system' ? () => void openExisting() : undefined} />

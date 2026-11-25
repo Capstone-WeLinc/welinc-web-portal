@@ -27,3 +27,31 @@ export function coverScale(width: number, height: number): number {
   if (width <= 0 || height <= 0) return 1;
   return Math.max(width / STAGE.width, height / STAGE.height);
 }
+
+/** From this width the copy column sits over the map, pinned top left at the board's sizes. */
+export const PIN_FROM = 1024;
+
+/**
+ * Where the stage goes. From `PIN_FROM` up it is pinned top left like the copy and never shrinks,
+ * so the labels keep the board's distance from the copy (a centred cover moved Pulilan onto the
+ * copy line at 1280 by 720); a smaller window crops the map's bottom and right instead. Phones,
+ * with no copy column beside the map, keep the centred cover.
+ */
+export function stagePlacement(width: number, height: number): { scale: number; pinned: boolean } {
+  const cover = coverScale(width, height);
+  return width >= PIN_FROM ? { scale: Math.max(1, cover), pinned: true } : { scale: cover, pinned: false };
+}
+
+/** On board `R47Quiet` the copy ends 10px above the top of the highest label under it (Pulilan). */
+export const LABELS_TOP = 415;
+export const COPY_GAP = 10;
+
+/**
+ * How far to push the pinned stage down so its labels stay clear of the copy, whose bottom is
+ * `copyBottom` px from the page top: nothing while the copy ends where the board's does; more when
+ * it runs longer (a narrow column wraps the title and the copy onto more lines).
+ */
+export function stageDrop(copyBottom: number | null, scale: number): number {
+  if (copyBottom === null) return 0;
+  return Math.max(0, Math.round(copyBottom + COPY_GAP - LABELS_TOP * scale));
+}

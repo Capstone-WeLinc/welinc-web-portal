@@ -334,7 +334,7 @@ function EditDetailsDialog({
             )}
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="edit-details-email">Work email</Label>
+            <Label htmlFor="edit-details-email">Email</Label>
             <Input
               id="edit-details-email"
               type="email"

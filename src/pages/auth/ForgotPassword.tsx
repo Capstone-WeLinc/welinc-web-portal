@@ -204,17 +204,17 @@ export default function ForgotPassword() {
         <>
           <BackAction to="/login">Back to sign in</BackAction>
           <StepLabel step={1} />
-          <SplitHeading title="Reset your password">Enter your work email. We'll send you a 6 digit code.</SplitHeading>
+          <SplitHeading title="Reset your password">Enter your email. We'll send you a 6 digit code.</SplitHeading>
           {notices}
           <form onSubmit={handleRequestCode} className="flex flex-col gap-4.5">
             <div>
-              <SplitLabel htmlFor="forgot-email">Work email</SplitLabel>
+              <SplitLabel htmlFor="forgot-email">Email</SplitLabel>
               <Input
                 id="forgot-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@welinc.com"
+                placeholder="you@example.com"
                 required
                 autoComplete="email"
                 className={splitInput}

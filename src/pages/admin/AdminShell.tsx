@@ -342,14 +342,14 @@ function BottomBar({ views, current, search }: { views: AdminView[]; current: Ad
               <NavLink
                 to={viewHref(view.path, search)}
                 aria-current={active ? 'page' : undefined}
-                aria-label={view.label}
                 className={cn(
                   'flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-caption focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden focus-visible:ring-inset',
                   active ? 'font-medium text-primary' : 'text-muted-foreground',
                 )}
               >
                 <Icon className="size-5 shrink-0" aria-hidden="true" />
-                <span className="max-w-full truncate" aria-hidden="true">
+                {/* The visible short text is the name (WCAG 2.5.3), so voice control can say what it sees. */}
+                <span className="max-w-full truncate">
                   {view.short}
                 </span>
               </NavLink>

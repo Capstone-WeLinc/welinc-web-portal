@@ -85,7 +85,7 @@ async function alertWith(text: string) {
 
 async function submit(email: string, password = "pw") {
   const user = userEvent.setup();
-  await user.type(await screen.findByPlaceholderText(/you@welinc.com/), email);
+  await user.type(await screen.findByPlaceholderText(/you@example.com/), email);
   await user.type(screen.getByPlaceholderText("Enter password"), password);
   await user.click(screen.getByRole("button", { name: "Sign in" }));
 }
@@ -150,13 +150,13 @@ describe("Portal", () => {
   it("names the whole workspace in the sign in tab and credits OpenStreetMap (suite spec 0019 AC-13)", async () => {
     get.mockRejectedValue(httpError(401));
     renderPortal();
-    await screen.findByPlaceholderText(/you@welinc.com/);
+    await screen.findByPlaceholderText(/you@example.com/);
     expect(document.title).toBe("Sign in · WeLinc Logistics Operations Workspace");
-    expect(screen.getByRole("link", { name: "© OpenStreetMap contributors" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "© OpenStreetMap" })).toHaveAttribute(
       "href",
       "https://www.openstreetmap.org/copyright",
     );
-    expect(screen.getByText(/Bookings, maintenance and repairs for the whole fleet/)).toBeInTheDocument();
+    expect(screen.getByText(/Centralized platform for managing logistics operations/)).toBeInTheDocument();
   });
 
   it("continues a login request after signing in, never showing the launcher", async () => {
