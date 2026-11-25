@@ -6,8 +6,22 @@ import { appLine, firstName, greetingFor, signedInSystems } from '@/lib/launcher
 import { CARD_GRID } from './Launcher';
 import { LauncherShell } from './LauncherShell';
 import { SignOutDialog } from './SignOutDialog';
-import { RolePills } from './SystemCard';
+import { RoleChip } from '@/components/ui/role-chip';
 import { SYSTEM_ICONS } from './systemIcons';
+
+/** The person's roles in a system as neutral RoleChips (suite spec 0016 AC-15); nothing when there are none. */
+function RolePills({ roles }: { roles: { code: string; name: string }[] }) {
+  if (roles.length === 0) return null;
+  return (
+    <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Your roles">
+      {roles.map((role) => (
+        <li key={role.code}>
+          <RoleChip>{role.name}</RoleChip>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /** One phone only system: what it is and the person's roles, with no link (AC-7). */
 function PhoneCard({ system }: { system: MobileSystem }) {

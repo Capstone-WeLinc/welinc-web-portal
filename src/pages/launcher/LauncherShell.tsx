@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { LauncherAnswer } from '@/lib/auth';
-import { initialsOf, pictureUrl } from '@/lib/launcher';
+import { accountInitials, pictureUrl } from '@/lib/launcher';
 import { PROFILE_PATH } from '@/lib/routes';
 import { BrandLockup } from '@/components/brand/BrandLockup';
 import { CrashBoundary } from '@/components/monitoring/CrashBoundary';
@@ -27,23 +27,30 @@ export function UserAvatar({
   user,
   className,
   onDark = false,
+  white = false,
 }: {
   user: User;
   className?: string;
   /** Quiet white initials on a translucent chip for the navy band, where navy ones would vanish (gold stays for the logo). */
   onDark?: boolean;
+  /** Suite spec 0019, AC-1: the launcher band's white circle with navy initials and a soft ring. */
+  white?: boolean;
 }) {
   const src = pictureUrl(user.picture);
   return (
-    <Avatar className={className}>
+    <Avatar aria-hidden="true" className={cn(white && 'ring-3 ring-white/14', className)}>
       {src && <AvatarImage src={src} alt="" />}
       <AvatarFallback
         className={cn(
           'text-caption font-semibold',
-          onDark ? 'bg-white/12 text-white ring-1 ring-white/20 ring-inset' : 'bg-primary text-primary-foreground',
+          white
+            ? 'bg-white font-bold text-sidebar'
+            : onDark
+              ? 'bg-white/12 text-white ring-1 ring-white/20 ring-inset'
+              : 'bg-primary text-primary-foreground',
         )}
       >
-        {initialsOf(user.name)}
+        {accountInitials(user)}
       </AvatarFallback>
     </Avatar>
   );
@@ -73,15 +80,20 @@ export function AccountMenu({
         <DropdownMenuTrigger
           className={cn(
             'flex items-center justify-center outline-none focus-visible:ring-2 max-sm:size-11',
-            showName ? 'h-11 gap-2.5 rounded-xl px-2 hover:bg-white/8 max-md:rounded-full max-md:px-0' : 'size-10 rounded-full',
+            showName
+              ? 'h-11 gap-2.5 rounded-xl pr-2.5 pl-1.5 hover:bg-white/8 max-md:rounded-full max-md:px-0'
+              : 'size-10 rounded-full',
             onDark ? 'focus-visible:ring-ring-on-dark' : 'focus-visible:ring-ring',
           )}
-          aria-label={`Account menu for ${user.name}`}
         >
-          <UserAvatar user={user} onDark={onDark} className={showName ? 'size-8.5' : 'size-10'} />
+          {/* The spoken name holds the visible one (axe label-content-name-mismatch): no aria-label */}
+          <UserAvatar user={user} onDark={onDark} white={showName} className={showName ? 'size-8' : 'size-10'} />
+          <span className="sr-only">Account menu for {user.name || user.email}</span>
           {showName && (
             <>
-              <span className="max-w-48 truncate text-body font-medium text-white max-md:hidden">{user.name}</span>
+              <span aria-hidden="true" className="max-w-48 truncate text-body font-medium text-white max-md:hidden">
+                {user.name || user.email}
+              </span>
               <ChevronDown className="size-4 text-white/70 max-md:hidden" aria-hidden="true" />
             </>
           )}

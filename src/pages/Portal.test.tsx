@@ -165,16 +165,14 @@ describe("Portal", () => {
     get.mockResolvedValue({ data: TWO });
     renderPortal("/?from=VRMS");
     expect(await screen.findByText("You're here")).toBeTruthy();
-    expect(screen.getByText("Pick where you want to work today.")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Your systems" })).toBeTruthy();
   });
 
   // covers: AC-16 (a `from` that is not a held system code tags nothing, and cards link only to registry addresses)
   it("tags no card for a foreign from address, and every card links to its registry address", async () => {
     get.mockResolvedValue({ data: TWO });
     renderPortal("/?from=https://evil.test");
-    expect(
-      await screen.findByText("Pick where you want to work today."),
-    ).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Your systems" })).toBeTruthy();
     expect(screen.queryByText("You're here")).toBeNull();
     const hrefs = screen
       .getAllByRole("link")
@@ -332,15 +330,12 @@ describe("Portal", () => {
     expect(post).toHaveBeenLastCalledWith("/auth/logout", {});
   });
 
-  it("shows the greeting, the account details and the role pills", async () => {
+  // covers: suite spec 0019 AC-1 (no greeting; the account circle), AC-2 (the role on each tile)
+  it("shows no greeting, the account initials and the role on each tile", async () => {
     get.mockResolvedValue({ data: TWO });
     renderPortal("/");
-    expect(
-      await screen.findByRole("heading", {
-        level: 1,
-        name: /^Good (morning|afternoon|evening), Pedro$/,
-      }),
-    ).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Your systems" })).toBeTruthy();
+    expect(screen.queryByText(/^Good (morning|afternoon|evening)/)).toBeNull();
     expect(screen.getAllByText("Mechanic")).toHaveLength(2);
     expect(screen.getAllByText("PC").length).toBeGreaterThan(0);
   });

@@ -108,10 +108,11 @@ describe('portal routing rules', () => {
   });
 
   // covers: suite spec 0019 AC-5 (no systems: No access, unless a suite admin)
-  it('shows No access for no systems, and the launcher for a suite admin with none', () => {
+  // covers: suite spec 0019 AC-5 (a suite admin with no system skips the launcher)
+  it('shows No access for no systems, and sends a suite admin with none to Suite management', () => {
     expect(screenForAnswer(params(''), answer)).toEqual({ kind: 'no-access', email: 'p@welinc.com' });
     const suiteOnly = { ...answer, suiteAdmin: true };
-    expect(screenForAnswer(params(''), suiteOnly)).toEqual({ kind: 'launcher', answer: suiteOnly });
+    expect(screenForAnswer(params(''), suiteOnly)).toEqual({ kind: 'admin' });
   });
 
   // covers: suite spec 0013 AC-14 (an admin whose session ended signs in and lands back on the page)

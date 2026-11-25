@@ -140,6 +140,8 @@ export type Screen =
   | { kind: 'checking' }
   | { kind: 'form' }
   | { kind: 'go'; url: string }
+  /** Suite spec 0019, AC-5: a suite admin with no system role goes straight to Suite management. */
+  | { kind: 'admin' }
   /**
    * `arrive` (suite spec 0019, AC-8): set only right after a sign in through the portal's own form
    * in this tab, so the launcher plays Arrival 2 once. Memory only, never stored or in the address.
@@ -167,10 +169,10 @@ export function screenForAnswer(params: URLSearchParams, answer: LauncherAnswer)
   // Suite spec 0013, AC-14: back to the admin page whose session ended
   const back = returnPath(params);
   if (back) return { kind: 'go', url: back };
-  // Suite spec 0019, AC-5: no system and not a suite admin has nothing to open; a suite admin with
-  // no system still reaches the launcher and its Suite management card
-  if (answer.systems.length === 0 && !isSuiteAdmin(answer)) {
-    return { kind: 'no-access', email: answer.user.email };
+  // Suite spec 0019, AC-5: no system and a suite admin goes straight to Suite management (the only
+  // place they can work); no system and not a suite admin has nothing to open
+  if (answer.systems.length === 0) {
+    return isSuiteAdmin(answer) ? { kind: 'admin' } : { kind: 'no-access', email: answer.user.email };
   }
   // One system and no error: straight in, unless they administer it or are a suite admin. An admin
   // lands on the launcher so they can reach Suite management from its strip; a one system admin,

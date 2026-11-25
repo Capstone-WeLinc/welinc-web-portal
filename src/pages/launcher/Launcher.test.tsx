@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { api } from "@/lib/api";
-import { forgetSummary } from "@/lib/adminSummary";
 import type { LauncherAnswer } from "@/lib/auth";
 import Launcher from "./Launcher";
 
@@ -12,9 +11,9 @@ vi.mock("../../lib/api", () => ({
 }));
 const get = vi.mocked(api.get);
 
-// covers: suite spec 0019 AC-1 (the band), AC-2 (the cards), AC-3 (Suite management, its tiles and counts)
+// covers: suite spec 0019 AC-1 (the band and footer), AC-2 (tiles, labels, number keys), AC-3 (Suite management), AC-7 (no admin call)
 
-const USER = { id: "u1", name: "Carla Santos", email: "carla@welinc.com", picture: null };
+const USER = { id: "u1", name: "Armando Cruz", email: "armando@welinc.com", picture: null };
 const CUTOFFS = {
   sessionExpiresAt: "2026-11-23T10:30:00.000Z",
   sessionAbsoluteExpiresAt: "2026-11-23T22:00:00.000Z",
@@ -29,84 +28,110 @@ const sys = (system: string, name: string, roles: [string, string][]) => ({
   roles: roles.map(([code, roleName]) => ({ code, name: roleName })),
 });
 const VRMS_ADMIN = sys("VRMS", "Vehicle Repair Management System", [["ADMIN", "Admin"]]);
-const VRMS_MECHANIC = sys("VRMS", "Vehicle Repair Management System", [["MECHANIC", "Mechanic"]]);
+const VRMS_CHIEF = sys("VRMS", "Vehicle Repair Management System", [["CHIEF_MECHANIC", "Chief Mechanic"]]);
+const VMMS_OPS = sys("VMMS", "Vehicle Maintenance Management System", [["OPERATIONS", "Operations"]]);
 const VMMS_ADMIN = sys("VMMS", "Vehicle Maintenance Management System", [["ADMIN", "Admin"]]);
-const BMS_OPS = sys("BMS", "Booking Management System", [["OPERATIONS", "Operations"]]);
+const BMS_ADMIN = sys("BMS", "Booking Management System", [["ADMIN", "Admin"]]);
 
-function renderLauncher(over: Partial<LauncherAnswer>) {
-  return render(
+function renderLauncher(over: Partial<LauncherAnswer>, onLaunch = vi.fn()) {
+  render(
     <MemoryRouter>
-      <Launcher answer={{ user: USER, systems: [], ...CUTOFFS, ...over }} params={new URLSearchParams()} banner={null} />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <Launcher
+              answer={{ user: USER, systems: [], ...CUTOFFS, ...over }}
+              params={new URLSearchParams()}
+              banner={null}
+              onLaunch={onLaunch}
+            />
+          }
+        />
+        <Route path="/admin" element={<p>Suite management page</p>} />
+      </Routes>
     </MemoryRouter>,
   );
+  return onLaunch;
 }
 
-const suite = () => screen.queryByRole("region", { name: "Suite management" });
-const tileHrefs = () =>
-  within(suite()!)
-    .getAllByRole("link")
-    .map((link) => [link.getAttribute("aria-label"), link.getAttribute("href")]);
+const tiles = () => within(screen.getByRole("region", { name: "Your systems" })).getAllByRole("link");
 
 beforeEach(() => {
-  forgetSummary();
   get.mockReset();
-  get.mockResolvedValue({ data: { needsAttention: 3, deletionRequests: 0, temporaryGrants: 2 } });
 });
 
 describe("launcher", () => {
-  it("greets with the first name and orders the cards BMS, VMMS, VRMS, with one role chip each", () => {
-    renderLauncher({ systems: [VRMS_MECHANIC, BMS_OPS, VMMS_ADMIN] });
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/, Carla$/);
-    expect(screen.getByText("WeLinc Logistics · Since 2018")).toBeInTheDocument();
-    const cards = within(screen.getByRole("region", { name: "Your systems" })).getAllByRole("link");
-    expect(cards.map((card) => card.getAttribute("href"))).toEqual(["http://bms.test", "http://vmms.test", "http://vrms.test"]);
-    expect(within(cards[0]).getByText("Operations")).toBeInTheDocument();
-    expect(within(cards[1]).getByText("Admin")).toBeInTheDocument();
-    expect(within(cards[2]).getByText("Mechanic")).toBeInTheDocument();
-    expect(within(cards[2]).getByText("Open VRMS")).toBeInTheDocument();
-    expect(screen.queryByText(/Signed in until/)).toBeNull();
+  it("shows Armando's three systems in order, then Suite management, with keys 1 to 4 and the labels", () => {
+    renderLauncher({ systems: [VRMS_CHIEF, BMS_ADMIN, VMMS_OPS] });
+    const links = tiles();
+    expect(links.map((l) => l.getAttribute("href"))).toEqual(["http://bms.test", "http://vmms.test", "http://vrms.test", "/admin"]);
+    expect(links.map((l) => l.getAttribute("aria-keyshortcuts"))).toEqual(["1", "2", "3", "4"]);
+    expect(within(links[0]).getByText("Admin")).toBeInTheDocument();
+    expect(within(links[1]).getByText("Operations")).toBeInTheDocument();
+    expect(within(links[2]).getByText("Chief Mechanic")).toBeInTheDocument();
+    expect(within(links[2]).getByText("Vehicle Repair Management System")).toBeInTheDocument();
+    expect(within(links[3]).getByText("For BMS")).toBeInTheDocument();
+    expect(within(links[3]).getByText("People, roles and access")).toBeInTheDocument();
+    expect(screen.getByText("Systems")).toBeInTheDocument();
+    expect(screen.getByText("Admin", { selector: "p" })).toBeInTheDocument();
+    // The count beside "Your systems" counts system tiles only
+    expect(screen.getByText("3", { selector: "span" })).toBeInTheDocument();
+    expect(screen.queryByText(/Open VRMS|Your role:|Good (morning|afternoon|evening)|Signed in until/)).toBeNull();
+    expect(screen.getByText("EST. 2018")).toBeInTheDocument();
+    expect(screen.getByText("Operations Workspace")).toBeInTheDocument();
   });
 
-  it("shows no Suite management and asks for no counts when someone administers nothing", () => {
-    renderLauncher({ systems: [VRMS_MECHANIC, BMS_OPS] });
-    expect(suite()).toBeNull();
+  it("shows no labels and no Suite management tile when someone administers nothing", () => {
+    renderLauncher({ systems: [VRMS_CHIEF, VMMS_OPS] });
+    expect(tiles()).toHaveLength(2);
+    expect(screen.queryByText("Systems")).toBeNull();
+    expect(screen.queryByText("Suite management")).toBeNull();
+  });
+
+  it("names only the systems you administer on the Suite management tile", () => {
+    renderLauncher({ systems: [VRMS_ADMIN, VMMS_ADMIN] });
+    expect(within(tiles()[2]).getByText("For VMMS and VRMS")).toBeInTheDocument();
+  });
+
+  it("covers every system for a suite admin with one temporary role", () => {
+    renderLauncher({ systems: [VRMS_CHIEF], suiteAdmin: true });
+    expect(within(tiles()[1]).getByText("For BMS, VMMS and VRMS")).toBeInTheDocument();
+  });
+
+  it("calls nothing under /auth/admin", () => {
+    renderLauncher({ systems: [VRMS_ADMIN], suiteAdmin: true });
     expect(get).not.toHaveBeenCalled();
   });
 
-  it("gives a system admin the strip with Audit log, every link scoped to their first system", async () => {
-    renderLauncher({ systems: [VRMS_ADMIN, VMMS_ADMIN] });
-    await waitFor(() => expect(within(suite()!).getByRole("link", { name: "Users need a look: 3" })).toBeInTheDocument());
-    expect(get).toHaveBeenCalledWith("/auth/admin/summary", expect.anything());
-    expect(tileHrefs()).toEqual([
-      ["Open Suite management", "/admin"],
-      ["Users need a look: 3", "/admin/people?system=VMMS"],
-      ["Deletion requests: 0", "/admin/deletion-requests?system=VMMS"],
-      ["Audit log", "/admin/activity?system=VMMS"],
-      ["Open Suite management", "/admin"],
-    ]);
+  it("opens a system by its number key, the same as a click", () => {
+    const onLaunch = renderLauncher({ systems: [VMMS_OPS, VRMS_CHIEF] });
+    fireEvent.keyDown(window, { key: "2" });
+    expect(onLaunch).toHaveBeenCalledWith(expect.objectContaining({ system: "VRMS" }));
   });
 
-  it("gives a suite admin the Audit log tile, not Temporary access", async () => {
-    renderLauncher({ systems: [VRMS_MECHANIC], suiteAdmin: true });
-    await waitFor(() => expect(within(suite()!).getByRole("link", { name: "Users need a look: 3" })).toBeInTheDocument());
-    expect(within(suite()!).getByRole("link", { name: "Audit log" }).getAttribute("href")).toBe("/admin/activity");
-    expect(within(suite()!).queryByRole("link", { name: /Temporary access/ })).toBeNull();
+  it("ignores a digit with no tile, a repeat, a modifier, and typing in a field", () => {
+    const onLaunch = renderLauncher({ systems: [VMMS_OPS, VRMS_CHIEF] });
+    fireEvent.keyDown(window, { key: "9" });
+    fireEvent.keyDown(window, { key: "1", repeat: true });
+    fireEvent.keyDown(window, { key: "1", metaKey: true });
+    const field = document.createElement("input");
+    document.body.appendChild(field);
+    fireEvent.keyDown(field, { key: "1" });
+    field.remove();
+    expect(onLaunch).not.toHaveBeenCalled();
   });
 
-  it("gives a suite admin with no system the large card and no system cards", async () => {
-    renderLauncher({ systems: [], suiteAdmin: true });
-    expect(screen.queryByRole("region", { name: "Your systems" })).toBeNull();
-    expect(within(suite()!).getByText(/You have no role in a system yet/)).toBeInTheDocument();
-    expect(within(suite()!).getByRole("link", { name: /Open Suite management/ }).getAttribute("href")).toBe("/admin");
-    await waitFor(() => expect(within(suite()!).getByRole("link", { name: "Users need a look: 3" })).toBeInTheDocument());
+  it("opens Suite management by its key with no launch", () => {
+    const onLaunch = renderLauncher({ systems: [VRMS_ADMIN] });
+    fireEvent.keyDown(window, { key: "2" });
+    expect(screen.getByText("Suite management page")).toBeInTheDocument();
+    expect(onLaunch).not.toHaveBeenCalled();
   });
 
-  it("shows the tiles with a dash and never blocks when the summary fails", async () => {
-    get.mockRejectedValue(new Error("down"));
-    renderLauncher({ systems: [VRMS_ADMIN] });
-    await waitFor(() =>
-      expect(within(suite()!).getByRole("link", { name: "Users need a look: not available" })).toBeInTheDocument(),
-    );
-    expect(screen.getByRole("link", { name: /Open VRMS/ })).toBeInTheDocument();
+  it("plays no launch on a modifier click, so a new tab opens normally", () => {
+    const onLaunch = renderLauncher({ systems: [VRMS_CHIEF] });
+    fireEvent.click(tiles()[0], { metaKey: true });
+    expect(onLaunch).not.toHaveBeenCalled();
   });
 });

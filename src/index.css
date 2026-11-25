@@ -96,8 +96,6 @@
   --scene-garage: #2a3290;
   --scene-garage-roof: #3b43a3;
   --scene-garage-door: #060828;
-  /* The odometer windows on the Suite management strip (Round 23) */
-  --odometer: #232a78;
   --livery-body: #f7f8fb;
   --livery-edge: #c9d0de;
   --livery-orange: #f29a1f;
@@ -149,6 +147,15 @@
   --text-caption--font-weight: 500;
   --text-base-input: 1rem;
   --text-base-input--line-height: 1.5;
+  /* Suite spec 0019, AC-2 (the Round 69 tiles): the system code and the uppercase mono full name */
+  --text-tile-code: 1.625rem;
+  --text-tile-code--line-height: 1;
+  --text-tile-code--font-weight: 800;
+  --text-tile-code--letter-spacing: -0.03em;
+  --text-tile-name: 0.71875rem;
+  --text-tile-name--line-height: 1.35;
+  --text-tile-name--font-weight: 600;
+  --text-tile-name--letter-spacing: 0.02em;
 
   /* Shadows (design.md, Shape and surfaces) */
   --shadow-card: 0 0 0 1px rgba(15, 20, 69, 0.07), 0 1px 3px rgba(15, 20, 69, 0.06);
@@ -159,6 +166,9 @@
   --shadow-segment: 0 0 0 1px rgba(15, 20, 69, 0.12), 0 1px 2px rgba(15, 20, 69, 0.1);
   /* A list pane beside its detail, lifted off it (suite spec 0018, board Roles9) */
   --shadow-pane: 4px 0 16px rgba(15, 20, 69, 0.04);
+  /* Suite spec 0019, AC-2: a tile's number key cap, and a tile lifting on hover (Round 69) */
+  --shadow-key: inset 0 0 0 1px var(--border), inset 0 -2px 0 var(--border);
+  --shadow-lift: 0 14px 30px rgba(15, 23, 42, 0.1);
 
   /* The time left bar in a success or info toast (suite spec 0016 AC-11); its length comes from the toast */
   --animate-toast-bar: toast-bar linear forwards;
@@ -244,7 +254,6 @@
   --color-sidebar-line: var(--sidebar-line);
   --color-sidebar-count: var(--sidebar-count);
 
-  --color-odometer: var(--odometer);
 }
 
 /*
@@ -366,26 +375,6 @@
 }
 
 /*
-  Suite spec 0019, AC-9 (board `R37LineArt`): a loop truck rocks 1 unit on its springs. Paused with
-  the loop (`data-paused` on the scene), still under reduced motion.
-*/
-@utility scene-bob {
-  animation: scene-bob 0.5s ease-in-out infinite alternate;
-  [data-paused] & {
-    animation-play-state: paused;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-}
-
-@keyframes scene-bob {
-  to {
-    transform: translateY(-1px);
-  }
-}
-
-/*
   Arrival 1, faster (Round 30, the launcher map): each branch pops in, then its routes and trucks
   fade in; set `animation-delay` per part. Still under reduced motion.
 */
@@ -461,24 +450,6 @@
 }
 
 /*
-  Suite spec 0019, AC-3 (the odometer kept from Round 23): one digit window's reel of 0 to 9,
-  rolled up to the digit in `--n`. Still under reduced motion: the digit just shows.
-*/
-@utility odometer-reel {
-  transform: translateY(calc(var(--n) * -100% / 10));
-  animation: odometer-roll 1.3s var(--ease-enter) both;
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-}
-
-@keyframes odometer-roll {
-  from {
-    transform: translateY(0);
-  }
-}
-
-/*
   Suite spec 0019, AC-4: the launcher fits a 1280 by 720 or 1024 by 768 projector with no page
   scroll, so its band is shorter on screens under 820px tall.
 */
@@ -532,4 +503,36 @@
 /* The phone bottom bar clears the iPhone home indicator */
 @utility pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/*
+  Suite spec 0019, AC-1 (Q1 and M1, boards `R69Victor` to `R69Armando`): the launcher's 88px navy
+  band, a soft light up at its right and a thin gold fade along its bottom edge.
+*/
+@utility launcher-band {
+  background:
+    radial-gradient(720px 260px at 82% 0%, var(--primary) 0%, transparent 70%),
+    var(--sidebar);
+  &::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--highlight) 35%, transparent) 50%,
+      transparent
+    );
+  }
+}
+
+/* M1: the ///L mark drawn oversized (h-75) and faint at the band's right, its edge 720px right of centre */
+@utility launcher-mark {
+  position: absolute;
+  top: -110px;
+  right: max(0px, calc(50% - 720px));
+  color: color-mix(in oklab, var(--white) 5%, transparent);
+  pointer-events: none;
 }

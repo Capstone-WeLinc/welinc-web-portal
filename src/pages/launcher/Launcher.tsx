@@ -1,136 +1,121 @@
-import { Fragment, useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { currentSystem, mobileSystemsOf, type LauncherAnswer, type LauncherSystem, type Notice } from '@/lib/auth';
-import { useMediaQuery, useReducedMotion } from '@/hooks/useMediaQuery';
-import { firstName, greetingFor, orderedSystems, signedInSystems, suiteEntryFor, todayLabel } from '@/lib/launcher';
-import { cn } from '@/lib/utils';
-import { BAND_SCENE, Greeting, LauncherFrame, SCENE_PLACE } from './LauncherFrame';
-import { LAUNCH_GIVE_UP_MS } from './motion/constants';
-import { useLauncherMotion } from './motion/load';
-import type { EnterPart } from './motion/LauncherMotion';
-import { SuiteEntry } from './SuiteEntry';
-import { SystemCard } from './SystemCard';
+import { keyTarget, orderedSystems, signedInSystems, suiteTileFor } from '@/lib/launcher';
+import { LauncherFrame } from './LauncherFrame';
+import { SuiteTile, SystemTile, TileLabel } from './LauncherTiles';
 
 type LauncherProps = {
   answer: LauncherAnswer;
   params: URLSearchParams;
-  /** The `error` notice from the address, shown above the cards (AC-13). */
+  /** The `error` notice from the address, shown above the tiles (AC-13). */
   banner: Notice | null;
   /** Suite spec 0019, AC-8: this tab just signed in through the portal's own form. */
   arrive?: boolean;
+  /** AC-10: a system tile was opened by a plain click or its key. */
+  onLaunch?: (system: LauncherSystem) => void;
 };
 
-/** One column on phones, two from 640px, three from 1024px (the phone only and loading states use it too). */
+/** One column on phones, two from 640px, three from 1024px (the phone only state uses it). */
 export const CARD_GRID = 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3';
 
-/** Suite spec 0019, AC-2: three or two systems sit in one row; one system is one wide card. */
-const ROW: Record<number, string> = {
-  2: 'grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6',
-  3: 'grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-3',
-};
+/*
+  Suite spec 0019, AC-2, AC-3: where each part sits from 768px up, by how many systems there are.
+  "Systems" spans the system tiles and "Admin" sits over the next column; with three systems the
+  "Admin" label and its tile wrap to their own rows. Phones take the parts in page order.
+*/
+const PLACE = {
+  systemsLabel: { 1: 'md:col-span-1', 2: 'md:col-span-2', 3: 'md:col-span-3' },
+  adminLabel: { 1: 'md:col-start-2 md:row-start-1', 2: 'md:col-start-3 md:row-start-1', 3: 'md:col-span-3 md:row-start-3 md:mt-3' },
+  suite: { 0: '', 1: 'md:row-start-2', 2: 'md:row-start-2', 3: 'md:col-start-1 md:row-start-4' },
+} as const;
+
+/** A key press is not for the launcher while focus is in a text field or a menu or dialog is open. */
+function keyIsBusy(event: KeyboardEvent): boolean {
+  const target = event.target instanceof Element ? event.target : null;
+  if (target?.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]')) return true;
+  return document.querySelector('[role="menu"], [role="dialog"], [role="alertdialog"]') !== null;
+}
 
 /**
- * The launcher (spec 0007, AC-15, AC-16; suite spec 0019, AC-1 to AC-4): the navy band with the
- * greeting, a card per system in BMS, VMMS, VRMS order, then Suite management for anyone who
- * administers something. Every address comes from welinc-auth's answer; nothing in the query
- * string decides where a card goes.
+ * The launcher (spec 0007, AC-15, AC-16; suite spec 0019, AC-1 to AC-4): a tile per system in BMS,
+ * VMMS, VRMS order, then Suite management for anyone who administers something, each with its
+ * number key. Every address comes from welinc-auth's answer; nothing in the query string decides
+ * where a tile goes.
  */
-export default function Launcher({ answer, params, banner, arrive = false }: LauncherProps) {
+export default function Launcher({ answer, params, banner, onLaunch }: LauncherProps) {
   const here = currentSystem(params, answer);
-  const name = firstName(answer.user.name);
   const systems = orderedSystems(answer.systems);
   const phoneOnly = mobileSystemsOf(answer);
-  const entry = suiteEntryFor(answer);
-  const now = new Date();
+  const suite = suiteTileFor(answer);
+  const labelled = suite !== null && systems.length > 0;
+  const count = (Math.min(systems.length, 3) || 0) as 0 | 1 | 2 | 3;
+  const tiles = useRef<(HTMLAnchorElement | null)[]>([]);
+  const total = systems.length + (suite ? 1 : 0);
 
-  // Suite spec 0019, AC-11: reduced motion and phones get the parked scene and fades only
-  const reduced = useReducedMotion();
-  const wide = useMediaQuery('(min-width: 768px)');
-  const moving = wide && !reduced;
-  const motion = useLauncherMotion(moving || arrive);
-  // AC-8: the arrival is decided once, as the launcher shows, and only when the motion is already
-  // here (the sign in form fetched it); otherwise the cards are simply in place
-  const [arriving] = useState(() => arrive && motion !== null);
-  const still = !moving;
-  const [launching, setLaunching] = useState<LauncherSystem | null>(null);
-
-  // AC-10: Back from the system can restore this page from the browser's cache with the cover up;
-  // a load someone stopped gives the launcher back after a while
+  // AC-2 (P5): a digit opens its tile exactly as a click would, by clicking it
   useEffect(() => {
-    if (!launching) return;
-    const reset = (event: PageTransitionEvent) => {
-      if (event.persisted) setLaunching(null);
+    const onKey = (event: KeyboardEvent) => {
+      const index = keyTarget(event, total);
+      if (index === null || keyIsBusy(event)) return;
+      event.preventDefault();
+      tiles.current[index]?.click();
     };
-    window.addEventListener('pageshow', reset);
-    const timer = window.setTimeout(() => setLaunching(null), LAUNCH_GIVE_UP_MS);
-    return () => {
-      window.removeEventListener('pageshow', reset);
-      window.clearTimeout(timer);
-    };
-  }, [launching]);
-
-  const enter = (part: EnterPart, node: ReactNode, as: 'div' | 'li' = 'div', className?: string) => {
-    if (!arriving || !motion)
-      return as === 'li' ? <li className={className}>{node}</li> : <div className={className}>{node}</div>;
-    return (
-      <motion.Enter as={as} part={part} still={still} className={className}>
-        {node}
-      </motion.Enter>
-    );
-  };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [total]);
 
   return (
-    <LauncherFrame
-      user={answer.user}
-      systems={signedInSystems(answer)}
-      parked={!(moving && motion)}
-      trucks={BAND_SCENE === 'road' && moving && motion ? <motion.RoadTrucks className={SCENE_PLACE} /> : null}
-      arrive={arriving && moving}
-      greeting={enter(
-        { kind: 'greeting' },
-        <Greeting
-          date={todayLabel(now)}
-          title={`${greetingFor(now.getHours())}${name ? `, ${name}` : ''}`}
-          line={systems.length === 0 ? 'You manage people and access across the suite.' : 'Pick where you want to work today.'}
-        />,
-      )}
-    >
+    <LauncherFrame user={answer.user} systems={signedInSystems(answer)}>
+      {/* The band holds no heading, so the page's one h1 is for screen readers */}
+      <h1 className="sr-only">Home</h1>
       {banner && (
         <div role="alert" className="flex items-start gap-3 rounded-xl bg-card p-4 text-body text-foreground shadow-card">
           <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden="true" />
           <p>{banner.message}</p>
         </div>
       )}
-      {systems.length > 0 && (
+      {total > 0 && (
         <section aria-labelledby="launcher-systems">
-          <h2 id="launcher-systems" className="sr-only">
-            Your systems
-          </h2>
-          <ul className={cn(ROW[systems.length] ?? 'grid')}>
-            {systems.map((system, index) => (
-              <Fragment key={system.system}>
-                {enter(
-                  { kind: 'card', index },
-                  <SystemCard
-                    system={system}
-                    here={here === system.system}
-                    wide={systems.length === 1}
-                    onLaunch={motion ? setLaunching : undefined}
-                  />,
-                  'li',
-                  'flex',
-                )}
-              </Fragment>
+          <div className="mb-4 flex items-baseline gap-3">
+            <h2 id="launcher-systems" className="text-group font-bold text-foreground">
+              Your systems
+            </h2>
+            <span className="font-mono text-caption font-semibold text-muted-foreground">{systems.length}</span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-6">
+            {labelled && <TileLabel className={PLACE.systemsLabel[count as 1 | 2 | 3]}>Systems</TileLabel>}
+            {systems.map((system, i) => (
+              <SystemTile
+                key={system.system}
+                ref={(node) => {
+                  tiles.current[i] = node;
+                }}
+                system={system}
+                n={i + 1}
+                here={here === system.system}
+                onLaunch={onLaunch}
+                className={labelled ? 'md:row-start-2' : undefined}
+              />
             ))}
-          </ul>
+            {labelled && <TileLabel className={PLACE.adminLabel[count as 1 | 2 | 3]}>Admin</TileLabel>}
+            {suite && (
+              <SuiteTile
+                ref={(node) => {
+                  tiles.current[systems.length] = node;
+                }}
+                covers={suite.covers}
+                n={systems.length + 1}
+                className={labelled ? PLACE.suite[count] : undefined}
+              />
+            )}
+          </div>
         </section>
       )}
       {phoneOnly.length > 0 && (
         // Suite spec 0014, AC-7: the systems held only on a phone, named quietly
         <p className="text-body text-muted-foreground">On the mobile app: {phoneOnly.map((s) => s.system).join(', ')}</p>
       )}
-      {entry.kind !== 'none' && enter({ kind: 'strip', cards: systems.length }, <SuiteEntry entry={entry} />)}
-      {launching && motion && <motion.LaunchCover system={launching} still={still} />}
     </LauncherFrame>
   );
 }

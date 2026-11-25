@@ -1,91 +1,89 @@
 import type { ReactNode } from 'react';
 import { BrandLockup } from '@/components/brand/BrandLockup';
-import { BranchMap } from '@/components/brand/BranchMap';
-import { DepotScene } from '@/components/brand/DepotScene';
+import { LogoMark } from '@/components/LogoMark';
 import { CrashBoundary } from '@/components/monitoring/CrashBoundary';
 import type { LauncherAnswer } from '@/lib/auth';
 import { AccountMenu } from './LauncherShell';
 
-/**
- * The launcher's page (suite spec 0019, AC-1, AC-4; boards `R30Launcher`, `R37LineArt`): a navy
- * band with logo A, the account menu, the greeting and the line drawing over a road, then the
- * cards, then the footer. The band ends at the road's bottom edge (your call, 2026-11-25: it reads
- * as a header, so the cards no longer overlap it). It is 440px tall, 360px on screens under 820px
- * tall (the `short` variant, so 1280 by 720 fits with no page scroll) and 408px on phones, where
- * the page may scroll.
- */
-/**
- * What the band shows (your call, 2026-11-25: trying Round 30's map again). `map`: the branch map
- * on the right with Arrival 1; `road`: the line drawing with the road loop (`R37LineArt`). Switch
- * back with this one word.
- */
-export const BAND_SCENE: 'map' | 'road' = 'map';
+/** The launcher's column: 1200px of tiles (three of 384px, 24px apart) inside 40px sides. */
+export const LAUNCHER_COLUMN = 'mx-auto w-full max-w-320 px-6 md:px-10';
 
-/** Where the band's drawing sits; the moving trucks' layer uses the same box so they ride its road. */
-export const SCENE_PLACE =
-  'pointer-events-none absolute bottom-0 left-1/2 h-95 w-360 max-w-none -translate-x-1/2 md:short:h-76 md:short:w-288';
+/**
+ * K3a (Round 63, as drawn on `R69Corazon`): six line drawn cartons stacked at the bottom right, light navy ink with soft gold
+ * tape, no labels. Decoration only.
+ */
+function Cartons({ className }: { className?: string }) {
+  const boxes: [number, number, number, number][] = [
+    [0, 250, 170, 128],
+    [176, 250, 170, 128],
+    [352, 274, 130, 104],
+    [70, 136, 150, 112],
+    [226, 150, 136, 98],
+    [140, 50, 120, 84],
+  ];
+  return (
+    <svg viewBox="-2 48 488 332" fill="none" strokeWidth="2" strokeLinejoin="round" aria-hidden="true" className={className}>
+      {boxes.map(([x, y, w, h]) => (
+        <g key={`${x}-${y}`}>
+          <rect x={x} y={y} width={w} height={h} rx="3" className="stroke-sidebar/12" />
+          {/* The picked board draws the tape 88 units long down each carton's face */}
+          <rect x={x + w * 0.4} y={y} width={w * 0.2} height={88} className="fill-highlight/16 stroke-highlight/30" />
+          <path d={`M${x} ${y + 8}H${x + w}`} className="stroke-sidebar/12" />
+        </g>
+      ))}
+    </svg>
+  );
+}
 
+/**
+ * The launcher's page (suite spec 0019, AC-1, AC-4; boards `R69Victor` to `R69Armando`). Q1: one
+ * 88px navy band that is the whole navbar (logo A with "Operations Workspace", the account button),
+ * with M1, the mark drawn large and faint at its right. Then the tiles. At the bottom the cartons
+ * stand on a still hairline over "WeLinc Logistics" and "EST. 2018". No greeting, no date, no
+ * vehicles, no help button. On phones (AC-4) the band is 64px, "Operations Workspace" hides, the
+ * cartons shrink and keep their own room, and the page may scroll.
+ */
 export function LauncherFrame({
   user,
   systems,
-  greeting,
-  parked = true,
-  trucks,
-  arrive = false,
   children,
 }: {
   user?: LauncherAnswer['user'];
   /** The person's own systems, named in the Sign out dialog. */
   systems?: readonly string[];
-  greeting: ReactNode;
-  /** Two trucks stand on the road (reduced motion, phones, before the motion loads). */
-  parked?: boolean;
-  /** The moving trucks (suite spec 0019, AC-9), drawn over the road at `SCENE_PLACE`. */
-  trucks?: ReactNode;
-  /** Arrival 1 on the map (only right after a sign in through the form). */
-  arrive?: boolean;
   children: ReactNode;
 }) {
   return (
     <div className="flex min-h-dvh flex-col bg-background">
-      <div className="relative h-102 shrink-0 overflow-hidden bg-sidebar text-white md:h-110 md:short:h-90">
-        <header className="relative z-10 mx-auto flex h-16 max-w-300 items-center gap-3 px-6 md:px-10">
+      <div className="launcher-band relative h-16 shrink-0 overflow-hidden text-white md:h-22">
+        <LogoMark className="launcher-mark h-75 max-md:hidden" />
+        <header className={`relative z-10 flex h-full items-center gap-4 ${LAUNCHER_COLUMN}`}>
           {/* You are already Home here, so the logo is not a link */}
-          <BrandLockup />
+          <span className="flex min-w-0 items-center gap-2.5">
+            <BrandLockup />
+            <span className="ml-0.5 border-l border-white/18 pl-3 text-body font-medium whitespace-nowrap text-white/60 max-sm:hidden">
+              Operations Workspace
+            </span>
+          </span>
           <span className="flex-1" />
           {user && <AccountMenu user={user} systems={systems} showName />}
         </header>
-        <div className="relative z-10 mx-auto max-w-300 px-6 pt-8 md:px-10 md:pt-12 md:short:pt-8">{greeting}</div>
-        {BAND_SCENE === 'map' ? (
-          // The map needs the room beside the greeting, so it shows from 1280px up
-          <div className="pointer-events-none absolute inset-x-0 top-16 bottom-0 mx-auto max-w-300 max-xl:hidden">
-            <BranchMap arrive={arrive} className="absolute top-0 right-0 h-94 w-auto md:short:h-74" />
-          </div>
-        ) : (
-          <>
-            <DepotScene parked={parked} className={SCENE_PLACE} />
-            {trucks}
-          </>
-        )}
       </div>
-      <main className="relative z-10 mx-auto mt-6 flex w-full max-w-300 flex-col gap-5 px-6 md:px-10">
+      <main className={`relative z-10 flex flex-col gap-5 pt-6 pb-6 md:pt-9 ${LAUNCHER_COLUMN}`}>
         {/* VRMS spec 0025, AC-7: a crash here keeps the band */}
         <CrashBoundary variant="page">{children}</CrashBoundary>
       </main>
-      <footer className="mx-auto mt-auto flex w-full max-w-300 px-6 pt-8 pb-5.5 text-small text-muted-foreground md:px-10">
-        WeLinc Logistics · Since 2018
+      <footer className="relative mt-auto">
+        <div className={`relative h-24 md:h-0 ${LAUNCHER_COLUMN}`}>
+          <Cartons className="absolute right-6 bottom-0 h-20 w-auto md:right-10 md:h-50" />
+        </div>
+        <div className="border-t border-border">
+          <div className={`flex h-14 items-center justify-between text-small ${LAUNCHER_COLUMN}`}>
+            <span className="font-bold text-foreground">WeLinc Logistics</span>
+            <span className="font-mono text-label tracking-widest text-muted-foreground">EST. 2018</span>
+          </div>
+        </div>
       </footer>
     </div>
-  );
-}
-
-/** The greeting block on the band: today's date in gold, the greeting, one line under it. */
-export function Greeting({ date, title, line }: { date: string; title: string; line: string }) {
-  return (
-    <>
-      <p className="text-small font-semibold text-highlight">{date}</p>
-      <h1 className="mt-2.5 text-display font-extrabold tracking-tight md:text-5xl md:leading-none">{title}</h1>
-      <p className="mt-3 max-w-110 text-group leading-normal font-normal text-white/70">{line}</p>
-    </>
   );
 }

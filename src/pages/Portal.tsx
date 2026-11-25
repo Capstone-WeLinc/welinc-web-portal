@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Login from './auth/Login';
 import { LoginLoading } from './auth/AuthSplit';
 import Launcher from './launcher/Launcher';
@@ -8,6 +8,7 @@ import PhoneOnly from './launcher/PhoneOnly';
 import AppNotAllowed from './launcher/AppNotAllowed';
 import { LauncherError, LauncherLoading } from './launcher/LauncherStates';
 import {
+  isSuiteAdmin,
   mobileSystemsOf,
   noticeFor,
   resumeAddress,
@@ -50,12 +51,20 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
     start.kind === 'form' ? { kind: 'form' } : { kind: 'checking' },
   );
   const [ended, setEnded] = useState(false);
+  const navigate = useNavigate();
 
-  const show = useCallback((next: Screen) => {
-    // One system and no error: straight in, with no launcher drawn and no history entry
-    if (next.kind === 'go') window.location.replace(next.url);
-    else setScreen(next);
-  }, []);
+  const show = useCallback(
+    (next: Screen) => {
+      // One system and no error: straight in, with no launcher drawn and no history entry
+      if (next.kind === 'go') window.location.replace(next.url);
+      // Suite spec 0019, AC-5: a suite admin with no system, into Suite management on People (not
+      // spec 0013's Overview landing, which the Suite management tile keeps) with no history entry;
+      // the screen, and with it any arrival flag, goes away
+      else if (next.kind === 'admin') navigate('/admin/people', { replace: true });
+      else setScreen(next);
+    },
+    [navigate],
+  );
 
   // A `reason` (`/login?reason=logout`) forces the form without asking /auth/sso (AC-11). Once
   // someone signs in from it, rewrite this history entry to `/` without the reason, so Back from a
@@ -118,9 +127,11 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
         if (cancelled) return;
         if (result.kind === 'live') {
           const { answer } = result;
-          // A role change may leave only phone apps (suite spec 0014, AC-5)
+          // A role change may leave only phone apps (suite spec 0014, AC-5), or a suite admin with
+          // no system left (suite spec 0019, AC-5)
           const phoneOnly = answer.systems.length === 0 && mobileSystemsOf(answer).length > 0;
-          setScreen({ kind: phoneOnly ? 'phone-only' : 'launcher', answer });
+          if (!phoneOnly && answer.systems.length === 0 && isSuiteAdmin(answer)) show({ kind: 'admin' });
+          else setScreen({ kind: phoneOnly ? 'phone-only' : 'launcher', answer });
         }
         else if (result.kind === 'ended') {
           setEnded(true);
@@ -136,7 +147,7 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
       window.removeEventListener('focus', recheck);
       document.removeEventListener('visibilitychange', recheck);
     };
-  }, [onLauncher]);
+  }, [onLauncher, show]);
 
   useDocumentTitle(titleFor(screen.kind, start.kind === 'request'));
 
@@ -176,6 +187,7 @@ function titleFor(kind: Screen['kind'], appLogin: boolean): string {
     case 'error':
     case 'checking':
     case 'go':
+    case 'admin':
       return appLogin ? pageTitle('Sign in') : pageTitle();
     default:
       return pageTitle('Home');

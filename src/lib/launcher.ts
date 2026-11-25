@@ -66,12 +66,13 @@ export function signOutLine(systems?: readonly string[]): string {
 }
 
 /**
- * Suite spec 0019, AC-2, AC-20: the role chip on a system's card. An admin of the system sees
- * Admin only; anyone else their real role names there (Operations, Chief Mechanic, Mechanic).
+ * Suite spec 0019, AC-2, AC-20: the role on a system's tile and switcher card. `Admin` when any role
+ * there is `ADMIN` (a temporary one included), else the first role's name in catalog order (the
+ * answer already lists them that way), temporary roles shown by name like any other.
  */
 export function roleTag(system: LauncherAnswer['systems'][number]): string {
   if (administers(system)) return 'Admin';
-  return system.roles.map((role) => role.name).join(', ');
+  return system.roles[0]?.name ?? '';
 }
 
 /** Suite spec 0019, AC-2: systems always show in this order, whatever order welinc-auth answers. */
@@ -87,36 +88,41 @@ export function orderedSystems<T extends { system: string }>(systems: readonly T
   return [...systems].sort((a, b) => rank(a.system) - rank(b.system));
 }
 
-/** Today on the launcher band, "Tuesday, November 24", in the browser's locale and time zone. */
-export function todayLabel(now: Date): string {
-  return now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+/** "For VRMS", "For VMMS and VRMS", "For BMS, VMMS and VRMS" (suite spec 0019, AC-3). */
+export function coversLine(systems: readonly string[]): string {
+  if (systems.length <= 1) return `For ${systems[0] ?? ''}`;
+  return `For ${systems.slice(0, -1).join(', ')} and ${systems[systems.length - 1]}`;
 }
 
 /**
- * Suite spec 0019, AC-3: how Suite management shows on the launcher. Nothing for someone who
- * administers nothing; a large card for a suite admin with no system; else the strip. `system` is
- * where a system admin's links point (the first they administer, in BMS, VMMS, VRMS order).
+ * Suite spec 0019, AC-3: the Suite management tile, for anyone who administers something. It covers
+ * every system for a suite admin, else only the systems where they hold `ADMIN`, in BMS, VMMS, VRMS
+ * order; never one where they hold another role only.
  */
-export type SuiteEntry =
-  | { kind: 'none' }
-  | { kind: 'card' | 'strip'; suiteAdmin: boolean; system: string | null; line: string };
+export function suiteTileFor(answer: Pick<LauncherAnswer, 'systems' | 'suiteAdmin'>): { covers: string[] } | null {
+  if (answer.suiteAdmin === true) return { covers: [...SYSTEM_ORDER] };
+  const covers = orderedSystems(answer.systems.filter(administers)).map((s) => s.system);
+  return covers.length > 0 ? { covers } : null;
+}
 
-export function suiteEntryFor(answer: Pick<LauncherAnswer, 'systems' | 'suiteAdmin'>): SuiteEntry {
-  const suiteAdmin = answer.suiteAdmin === true;
-  const adminOf = orderedSystems(answer.systems.filter(administers)).map((s) => s.system);
-  if (!suiteAdmin && adminOf.length === 0) return { kind: 'none' };
-  if (suiteAdmin && answer.systems.length === 0) {
-    return {
-      kind: 'card',
-      suiteAdmin,
-      system: null,
-      line: `Users and permissions across ${SYSTEM_ORDER.slice(0, -1).join(', ')} and ${SYSTEM_ORDER.at(-1)}. You have no role in a system yet.`,
-    };
-  }
-  return {
-    kind: 'strip',
-    suiteAdmin,
-    system: suiteAdmin ? null : adminOf[0],
-    line: suiteAdmin ? 'Users and permissions in every system' : `Users and permissions in ${adminOf.join(', ')}`,
-  };
+/** AC-1: the band's account circle, the initials, or the email's first letter when there is no name. */
+export function accountInitials(user: Pick<LauncherAnswer['user'], 'name' | 'email'>): string {
+  if (user.name.trim()) return initialsOf(user.name);
+  return (user.email.trim()[0] ?? '?').toUpperCase();
+}
+
+/**
+ * Suite spec 0019, AC-2 (P5): the tile a key press opens, as its index in the shown order, or null.
+ * Only a plain digit 1 to 9 that isn't repeating counts; a press while typing in a field, with a
+ * modifier held, or while a menu or dialog is open does nothing (the caller checks those last two
+ * against the page). A digit with no tile is null too.
+ */
+export function keyTarget(
+  event: Pick<KeyboardEvent, 'key' | 'repeat' | 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey'>,
+  tiles: number,
+): number | null {
+  if (event.repeat || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return null;
+  if (!/^[1-9]$/.test(event.key)) return null;
+  const index = Number(event.key) - 1;
+  return index < tiles ? index : null;
 }

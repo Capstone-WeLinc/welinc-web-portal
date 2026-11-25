@@ -83,8 +83,10 @@ export function AdminShell({ me, views, current, banner, status, flush, children
   const currentView = views.find((v) => v.path === current);
   const answer = useHeldAnswer();
   const systems = answer?.systems ?? [];
-  // AC-20: a suite admin with no system roles has no switcher; the logo and account menu go Home
-  const switcher = !(me.suiteAdmin && answer !== null && systems.length === 0);
+  // Suite spec 0019, AC-20: the switcher and Home show only when the held answer has a web system
+  // (never decided by suiteAdmin). With none there is no launcher, so the logo goes to /admin.
+  const switcher = systems.length > 0;
+  const home = switcher ? '/' : '/admin';
 
   // design.md, Feedback: the banner sits top center of the content area (BannerHost reads this).
   useEffect(() => {
@@ -104,7 +106,7 @@ export function AdminShell({ me, views, current, banner, status, flush, children
             collapsed ? 'md:w-16' : 'md:w-60',
           )}
         >
-          <SidebarBody me={me} views={views} current={current} search={search} collapsed={collapsed}>
+          <SidebarBody me={me} views={views} current={current} search={search} collapsed={collapsed} home={home}>
             <CollapsedTooltip label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} collapsed={collapsed}>
               <button
                 type="button"
@@ -123,8 +125,8 @@ export function AdminShell({ me, views, current, banner, status, flush, children
           <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-2 border-b border-border bg-card px-4 sm:px-6 lg:px-8">
             {bottomBar ? (
               <Link
-                to="/"
-                aria-label="Home"
+                to={home}
+                aria-label={switcher ? 'Home' : SUITE_MANAGEMENT}
                 className="flex size-11 items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden md:hidden"
               >
                 <LogoBadge />
@@ -179,6 +181,7 @@ export function AdminShell({ me, views, current, banner, status, flush, children
                 views={views}
                 current={current}
                 search={search}
+                home={home}
                 onNavigate={() => setMenuOpen(false)}
               />
             </SheetContent>
@@ -207,6 +210,7 @@ function SidebarBody({
   current,
   search,
   collapsed = false,
+  home = '/',
   onNavigate,
   children,
 }: {
@@ -215,6 +219,8 @@ function SidebarBody({
   current: AdminViewPath;
   search: string;
   collapsed?: boolean;
+  /** Where the logo goes: Home, or `/admin` when there is no launcher (suite spec 0019, AC-20). */
+  home?: string;
   onNavigate?: () => void;
   /** The footer strip's button (the collapse toggle; desktop only). */
   children?: ReactNode;
@@ -223,16 +229,18 @@ function SidebarBody({
   return (
     <>
       <div className={cn('shrink-0 pt-3', pad)}>
-        <CollapsedTooltip label="Home" collapsed={collapsed}>
+        <CollapsedTooltip label={home === '/' ? 'Home' : SUITE_MANAGEMENT} collapsed={collapsed}>
           <Link
-            to="/"
+            to={home}
             onClick={onNavigate}
-            aria-label={`Home. ${SUITE_MANAGEMENT}, ${standing(me)}`}
+            aria-label={collapsed ? `${home === '/' ? 'Home. ' : ''}${SUITE_MANAGEMENT}, ${standing(me)}` : undefined}
             className={cn(ROW, 'px-1 py-1.5 hover:bg-sidebar-hover', collapsed && 'justify-center px-0')}
           >
             {/* Logo B: the mark alone on its gold square (suite spec 0019, AC-28) */}
             <LogoBadge />
-            <span aria-hidden="true" className={cn('flex min-w-0 flex-1 flex-col', collapsed && 'hidden')}>
+            {/* Expanded, the spoken name is the visible text (axe label-content-name-mismatch) */}
+            <span className={cn('flex min-w-0 flex-1 flex-col', collapsed && 'hidden')}>
+              {home === '/' && <span className="sr-only">Home. </span>}
               <span className="truncate text-group font-bold">{SUITE_MANAGEMENT}</span>
               {/* AC-17: your role in plain muted white, never gold */}
               <span className="truncate text-caption font-normal text-sidebar-idle">{standing(me)}</span>

@@ -3,6 +3,8 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('./api', () => ({ API_BASE_URL: 'http://localhost:3000' }));
 
 import {
+  accountInitials,
+  coversLine,
   firstName,
   greetingFor,
   initialsOf,
@@ -10,9 +12,9 @@ import {
   pictureUrl,
   roleTag,
   signedInSystems,
+  keyTarget,
   signOutLine,
-  suiteEntryFor,
-  todayLabel,
+  suiteTileFor,
 } from './launcher';
 
 // covers: spec 0007 AC-15 (greeting, first name), AC-17 (picture, initials)
@@ -87,8 +89,11 @@ describe('roleTag', () => {
     expect(roleTag(system([{ code: 'ADMIN', name: 'Admin' }, { code: 'MECHANIC', name: 'Mechanic' }]))).toBe('Admin');
   });
 
-  it('names the real roles for everyone else', () => {
+  it('names the first real role, in catalog order, for everyone else', () => {
     expect(roleTag(system([{ code: 'CHIEF_MECHANIC', name: 'Chief Mechanic' }]))).toBe('Chief Mechanic');
+    expect(roleTag(system([{ code: 'CHIEF_MECHANIC', name: 'Chief Mechanic' }, { code: 'MECHANIC', name: 'Mechanic' }]))).toBe(
+      'Chief Mechanic',
+    );
   });
 });
 
@@ -106,28 +111,58 @@ describe('launcher order and Suite management', () => {
     expect(orderedSystems([sys('VRMS'), sys('BMS'), sys('VMMS')]).map((s) => s.system)).toEqual(['BMS', 'VMMS', 'VRMS']);
   });
 
-  it('writes today as weekday, month and day', () => {
-    expect(todayLabel(new Date(2026, 10, 24, 9))).toMatch(/Tuesday.*November.*24/);
+  it('gives no Suite management tile to someone who administers nothing', () => {
+    expect(suiteTileFor({ systems: [sys('VRMS')] })).toBeNull();
   });
 
-  it('picks no entry, a strip or the large card', () => {
-    expect(suiteEntryFor({ systems: [sys('VRMS')] })).toEqual({ kind: 'none' });
-    expect(suiteEntryFor({ systems: [], suiteAdmin: true })).toMatchObject({ kind: 'card', system: null });
-    expect(suiteEntryFor({ systems: [sys('VRMS')], suiteAdmin: true })).toEqual({
-      kind: 'strip',
-      suiteAdmin: true,
-      system: null,
-      line: 'Users and permissions in every system',
+  it('covers every system for a suite admin, even one with a single other role', () => {
+    expect(suiteTileFor({ systems: [], suiteAdmin: true })).toEqual({ covers: ['BMS', 'VMMS', 'VRMS'] });
+    expect(suiteTileFor({ systems: [sys('VRMS')], suiteAdmin: true })).toEqual({ covers: ['BMS', 'VMMS', 'VRMS'] });
+  });
+
+  it('covers only the systems a system admin administers, in order', () => {
+    expect(suiteTileFor({ systems: [sys('VRMS', ['ADMIN']), sys('VMMS', ['ADMIN']), sys('BMS')] })).toEqual({
+      covers: ['VMMS', 'VRMS'],
     });
   });
 
-  it("points a system admin's links at the first system they administer, in order", () => {
-    const entry = suiteEntryFor({ systems: [sys('VRMS', ['ADMIN']), sys('VMMS', ['ADMIN']), sys('BMS')] });
-    expect(entry).toEqual({
-      kind: 'strip',
-      suiteAdmin: false,
-      system: 'VMMS',
-      line: 'Users and permissions in VMMS, VRMS',
-    });
+  it('writes the For line', () => {
+    expect(coversLine(['VRMS'])).toBe('For VRMS');
+    expect(coversLine(['VMMS', 'VRMS'])).toBe('For VMMS and VRMS');
+    expect(coversLine(['BMS', 'VMMS', 'VRMS'])).toBe('For BMS, VMMS and VRMS');
+  });
+});
+
+// covers: suite spec 0019 AC-1 (the account circle), AC-2 (P5 number keys)
+describe('account initials and number keys', () => {
+  it('uses the initials, or the email letter when there is no name', () => {
+    expect(accountInitials({ name: 'Armando Cruz', email: 'a@welinc.com' })).toBe('AC');
+    expect(accountInitials({ name: '  ', email: 'pedro@welinc.com' })).toBe('P');
+  });
+
+  const key = (k: string, over: Partial<KeyboardEvent> = {}) => ({
+    key: k,
+    repeat: false,
+    metaKey: false,
+    ctrlKey: false,
+    altKey: false,
+    shiftKey: false,
+    ...over,
+  });
+
+  it('maps a plain digit to its tile', () => {
+    expect(keyTarget(key('1'), 4)).toBe(0);
+    expect(keyTarget(key('4'), 4)).toBe(3);
+  });
+
+  it('ignores a digit with no tile, other keys, repeats and modifiers', () => {
+    expect(keyTarget(key('9'), 4)).toBeNull();
+    expect(keyTarget(key('0'), 4)).toBeNull();
+    expect(keyTarget(key('a'), 4)).toBeNull();
+    expect(keyTarget(key('2', { repeat: true }), 4)).toBeNull();
+    expect(keyTarget(key('2', { metaKey: true }), 4)).toBeNull();
+    expect(keyTarget(key('2', { ctrlKey: true }), 4)).toBeNull();
+    expect(keyTarget(key('2', { altKey: true }), 4)).toBeNull();
+    expect(keyTarget(key('2', { shiftKey: true }), 4)).toBeNull();
   });
 });
