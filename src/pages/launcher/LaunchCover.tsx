@@ -1,12 +1,12 @@
 import type { CSSProperties } from 'react';
 import { LiveryTruck } from '@/components/brand/LiveryTruck';
 import type { LauncherSystem } from '@/lib/auth';
-import type { LaunchScene } from './launchMotion';
+import { LAUNCH, ms, type LaunchScene } from './launchMotion';
 
 /*
   Suite spec 0019, AC-10 to AC-12: the navy cover a system tile raises while the browser fetches
   the system. Three scenes, one picked at random per launch; the keyframes are in `src/index.css`
-  (`launch-*`), cut to 900ms. Decoration only: `aria-hidden`, no live data, nothing to focus.
+  (`launch-*`), run over `--launch-time` (`LAUNCH.total`, set here). Decoration only: `aria-hidden`, no live data, nothing to focus.
 */
 
 /** Launch 2, the dock door (`R29LaunchDock`): the shutter rolls up and the truck pulls away. */
@@ -87,7 +87,7 @@ function LoadScene() {
           <rect
             key={x}
             className="launch-carton"
-            style={{ '--carton-at': `${i * 100}ms` } as CSSProperties}
+            style={{ '--carton-at': ms(i * LAUNCH.cartonStep) } as CSSProperties}
             x={x}
             y="46"
             width="34"
@@ -123,6 +123,7 @@ export function LaunchCover({ system, scene }: { system: LauncherSystem; scene: 
     <div
       aria-hidden="true"
       data-launch={scene}
+      style={{ '--launch-time': ms(LAUNCH.total) } as CSSProperties}
       className="launch-cover fixed inset-0 z-50 flex flex-col items-center justify-center gap-7 bg-sidebar px-6 text-white"
     >
       <p className="text-small font-semibold tracking-widest text-highlight uppercase">{copy.eyebrow}</p>

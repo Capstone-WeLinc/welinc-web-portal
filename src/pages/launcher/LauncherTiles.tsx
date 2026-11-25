@@ -37,10 +37,10 @@ function KeyCap({ n }: { n: number }) {
 }
 
 /**
- * One system: a real link to the system's url (spec 0007, AC-15, AC-16). A plain left click calls
- * `onLaunch` (AC-10); the link still navigates on its own, so the handler never calls
- * `preventDefault`. A click someone already handled, a modifier (new tab or window) or another
- * button keeps the launcher still.
+ * One system: a real link to the system's url (spec 0007, AC-15, AC-16). A plain left click goes to
+ * `onLaunch` (AC-10), which holds it while the launch plays and then opens the system. A click
+ * someone already handled, a modifier (Ctrl or Cmd for a new tab, Shift for a window) or another
+ * button is left to the browser, with no launch.
  */
 export const SystemTile = forwardRef<
   HTMLAnchorElement,
@@ -48,7 +48,7 @@ export const SystemTile = forwardRef<
     system: LauncherSystem;
     n: number;
     here: boolean;
-    onLaunch?: (system: LauncherSystem) => void;
+    onLaunch?: (system: LauncherSystem, event: MouseEvent<HTMLAnchorElement>) => void;
     className?: string;
     style?: CSSProperties;
   }
@@ -56,7 +56,7 @@ export const SystemTile = forwardRef<
   const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
     if (event.defaultPrevented || event.button !== 0) return;
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    onLaunch?.(system);
+    onLaunch?.(system, event);
   };
   return (
     <a ref={ref} href={system.url} onClick={onClick} aria-keyshortcuts={String(n)} className={cn(TILE, className)} style={style}>

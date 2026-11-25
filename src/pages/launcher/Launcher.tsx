@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { currentSystem, mobileSystemsOf, type LauncherAnswer, type LauncherSystem, type Notice } from '@/lib/auth';
 import { cn } from '@/lib/utils';
@@ -6,7 +6,7 @@ import { keyTarget, orderedSystems, signedInSystems, suiteTileFor } from '@/lib/
 import { LauncherFrame } from './LauncherFrame';
 import { SuiteTile, SystemTile, TileLabel } from './LauncherTiles';
 import { LaunchCover } from './LaunchCover';
-import { ARRIVAL, LAUNCH, arrivalDone, arrivalSettled, ms, nextLaunch, tileAt, type LaunchScene } from './launchMotion';
+import { ARRIVAL, arrivalDone, arrivalSettled, launchHold, ms, nextLaunch, openSystem, prefetchSystem, tileAt, type LaunchScene } from './launchMotion';
 
 type LauncherProps = {
   answer: LauncherAnswer;
@@ -80,28 +80,35 @@ export default function Launcher({ answer, params, banner, arrive = false, onLau
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // AC-10: the launch cover over a system that is opening. A 900ms timer always takes it away (a
-  // hidden tab may never report the animation's end), and Back from the system resets it
+  // AC-10: the launch cover over a system that is opening. The click is held while the scene plays
+  // and the system's page is fetched in the background, then the system opens; the cover stays up
+  // until the system's page replaces this one. Back from the system resets it.
   const [launching, setLaunching] = useState<{ system: LauncherSystem; scene: LaunchScene } | null>(null);
-  useEffect(() => {
-    if (!launching) return;
-    const timer = window.setTimeout(() => setLaunching(null), LAUNCH.total);
-    return () => window.clearTimeout(timer);
-  }, [launching]);
+  const opening = useRef<number | null>(null);
   useEffect(() => {
     const reset = (event: PageTransitionEvent) => {
-      if (event.persisted) setLaunching(null);
+      if (!event.persisted) return;
+      if (opening.current !== null) window.clearTimeout(opening.current);
+      opening.current = null;
+      setLaunching(null);
     };
     window.addEventListener('pageshow', reset);
-    return () => window.removeEventListener('pageshow', reset);
+    return () => {
+      window.removeEventListener('pageshow', reset);
+      if (opening.current !== null) window.clearTimeout(opening.current);
+    };
   }, []);
-  const launch = (system: LauncherSystem) => {
-    // The link navigates on its own; a scene that fails to pick never stops it
+  const launch = (system: LauncherSystem, event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    // One launch at a time: a second click or key while one plays does nothing
+    if (opening.current !== null) return;
+    prefetchSystem(system.url);
     try {
       setLaunching({ system, scene: nextLaunch() });
     } catch {
-      // No cover this time; the system still opens
+      // No cover this time; the system still opens after the same wait
     }
+    opening.current = window.setTimeout(() => openSystem(system.url), launchHold());
     onLaunch?.(system);
   };
 

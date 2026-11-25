@@ -570,7 +570,8 @@
 
 /*
   Suite spec 0019, AC-10 to AC-12: the launch covers. Each scene is cut from its board's 9s demo
-  loop to 900ms (`LAUNCH` in launchMotion.ts says how); the percentages below are of 900ms. Under
+  loop to `--launch-time` (2s, `LAUNCH` in launchMotion.ts, set on the cover); the percentages
+  below are of that time, so the scenes keep their order at any length. Under
   reduced motion and below 768px the cover is a 200ms fade and the scene stands still, drawn as
   it ends (the route drawn, the cartons in).
 */
@@ -591,7 +592,7 @@
 @utility launch-shutter {
   background: repeating-linear-gradient(180deg, var(--scene-shutter) 0 11px, var(--scene-shutter-slat) 11px 13px);
   box-shadow: 0 3px 0 var(--scene-shutter-edge);
-  animation: launch-shutter 900ms cubic-bezier(0.6, 0, 0.2, 1) both;
+  animation: launch-shutter var(--launch-time, 2000ms) cubic-bezier(0.6, 0, 0.2, 1) both;
 }
 @utility launch-dock-sill {
   background: var(--scene-garage);
@@ -600,7 +601,7 @@
 @utility launch-dock-truck {
   transform-box: view-box;
   transform-origin: 104px 104px;
-  animation: launch-dock-truck 900ms cubic-bezier(0.55, 0, 0.6, 1) both;
+  animation: launch-dock-truck var(--launch-time, 2000ms) cubic-bezier(0.55, 0, 0.6, 1) both;
 }
 @keyframes launch-shutter {
   0%, 7% { transform: none; }
@@ -615,10 +616,10 @@
 /* Launch 3: the route draws in gold as the truck drives from the garage to the pin (`R31LaunchRoute`) */
 @utility launch-route-line {
   stroke-dasharray: 600;
-  animation: launch-route-line 900ms cubic-bezier(0.45, 0, 0.2, 1) both;
+  animation: launch-route-line var(--launch-time, 2000ms) cubic-bezier(0.45, 0, 0.2, 1) both;
 }
 @utility launch-route-truck {
-  animation: launch-route-truck 900ms cubic-bezier(0.45, 0, 0.2, 1) both;
+  animation: launch-route-truck var(--launch-time, 2000ms) cubic-bezier(0.45, 0, 0.2, 1) both;
 }
 @keyframes launch-route-line {
   0%, 4% { stroke-dashoffset: 600; }
@@ -630,15 +631,15 @@
 }
 /* Launch 4: three cartons slide in, the doors close, the van pulls away (`L28MLoad`) */
 @utility launch-carton {
-  animation: launch-carton 900ms ease both;
+  animation: launch-carton var(--launch-time, 2000ms) ease both;
   animation-delay: var(--carton-at, 0ms);
 }
 @utility launch-door {
   transform-box: fill-box;
-  animation: launch-door 900ms var(--ease-enter) both;
+  animation: launch-door var(--launch-time, 2000ms) var(--ease-enter) both;
 }
 @utility launch-load-truck {
-  animation: launch-load-truck 900ms cubic-bezier(0.5, 0, 0.8, 0.4) both;
+  animation: launch-load-truck var(--launch-time, 2000ms) cubic-bezier(0.5, 0, 0.8, 0.4) both;
 }
 @keyframes launch-carton {
   0%, 4% { opacity: 0; transform: translateX(-90px); }

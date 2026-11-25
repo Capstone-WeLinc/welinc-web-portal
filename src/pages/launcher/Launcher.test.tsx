@@ -4,6 +4,10 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { api } from "@/lib/api";
 import type { LauncherAnswer } from "@/lib/auth";
 import Launcher from "./Launcher";
+import { openSystem } from "./launchMotion";
+
+vi.mock("./launchMotion", async (original) => ({ ...(await original<typeof import("./launchMotion")>()), openSystem: vi.fn() }));
+const opened = vi.mocked(openSystem);
 
 vi.mock("../../lib/api", () => ({
   API_BASE_URL: "http://localhost:3000",
@@ -141,21 +145,41 @@ describe("launcher", () => {
     expect(onLaunch).not.toHaveBeenCalled();
   });
 
-  it("raises a launch cover on a plain click and takes it away after 900ms", () => {
+  it("holds a plain click for the 2s launch while the system is fetched, then opens it", () => {
     vi.useFakeTimers();
+    opened.mockClear();
     renderLauncher({ systems: [VRMS_CHIEF] });
-    fireEvent.click(tiles()[0]);
+    const click = fireEvent.click(tiles()[0]);
+    expect(click).toBe(false); // the browser's own navigation is held
     const scene = cover()?.getAttribute("data-launch");
     expect(["2", "3", "4"]).toContain(scene);
     expect(cover()).toHaveAttribute("aria-hidden", "true");
     expect(cover()).toHaveTextContent("VRMS");
-    act(() => vi.advanceTimersByTime(899));
-    expect(cover()).not.toBeNull();
-    act(() => vi.advanceTimersByTime(1));
-    expect(cover()).toBeNull();
-    // The next launch is never the same scene
+    expect(document.head.querySelector(`link[rel="prefetch"][href="${VRMS_CHIEF.url}"]`)).not.toBeNull();
+    // A second click or key while it plays starts nothing new
     fireEvent.click(tiles()[0]);
-    expect(cover()?.getAttribute("data-launch")).not.toBe(scene);
+    fireEvent.keyDown(window, { key: "1" });
+    expect(cover()?.getAttribute("data-launch")).toBe(scene);
+    act(() => vi.advanceTimersByTime(1999));
+    expect(opened).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(opened).toHaveBeenCalledTimes(1);
+    expect(opened).toHaveBeenCalledWith(VRMS_CHIEF.url);
+    // The cover stays until the system's page replaces this one
+    expect(cover()).not.toBeNull();
+  });
+
+  it("opens after a 200ms still fade under reduced motion", () => {
+    vi.useFakeTimers();
+    opened.mockClear();
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.includes("prefers-reduced-motion"), media: query, addEventListener: () => {}, removeEventListener: () => {} }));
+    renderLauncher({ systems: [VRMS_CHIEF] });
+    fireEvent.click(tiles()[0]);
+    act(() => vi.advanceTimersByTime(199));
+    expect(opened).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(opened).toHaveBeenCalledWith(VRMS_CHIEF.url);
+    vi.unstubAllGlobals();
   });
 
   it("raises no cover on a modifier click and none for Suite management", () => {
@@ -174,6 +198,10 @@ describe("launcher", () => {
       window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
     });
     expect(cover()).toBeNull();
+    // and a new launch can start, never with the same scene as the last
+    const last = window.sessionStorage.getItem("welinc.portal.lastLaunch");
+    fireEvent.click(tiles()[0]);
+    expect(cover()?.getAttribute("data-launch")).not.toBe(last);
   });
 
   it("deals the tiles in after a sign in and ignores keys until the last one lands", () => {

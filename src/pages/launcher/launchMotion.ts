@@ -49,13 +49,45 @@ export function arrivalSettled(tiles: number): number {
 
 /**
  * The launches (AC-10). Each scene's keyframes are cut from its board's 9 s demo loop (the cover is
- * up from 43 % to 88 % of it, about 4 s) down to 900 ms, keeping the moment the board builds to:
+ * up from 43 % to 88 % of it, about 4 s) down to `total`, keeping the moment the board builds to:
  * Launch 2 the shutter rolls up and the truck pulls away (`R29LaunchDock`), Launch 3 the route
  * draws as the truck drives to the pin (`R31LaunchRoute`), Launch 4 three cartons go in, the doors
- * close and the van pulls away (`L28MLoad`). The cover fades in over 150 ms; under reduced motion
- * it is a 200 ms fade with the scene still (AC-11).
+ * close and the van pulls away (`L28MLoad`). The cover fades in over 150 ms.
+ *
+ * The click holds the link for `total` while the system's page is fetched in the background, then
+ * opens it, so the scene plays in full (your call, 2026-11-26: at 900 ms with no hold, a fast system
+ * answered in 0.2 to 0.3 s and cut the scene off). Under reduced motion and on phones the cover is a
+ * `reducedFade` fade with the scene still, and the link opens after it (AC-11).
  */
-export const LAUNCH = { total: 900, fadeIn: 150, reducedFade: REDUCED_FADE } as const;
+export const LAUNCH = { total: 2000, fadeIn: 150, reducedFade: REDUCED_FADE, cartonStep: 220 } as const;
+
+/** AC-11: the cover is a still fade under reduced motion and on phones (below 768px). */
+export const STILL_LAUNCH_QUERY = '(prefers-reduced-motion: reduce), (width < 48rem)';
+
+/** How long a launch holds the click before the system opens: the scene, or the still fade. */
+export function launchHold(): number {
+  return window.matchMedia?.(STILL_LAUNCH_QUERY).matches ? LAUNCH.reducedFade : LAUNCH.total;
+}
+
+/**
+ * Asks the browser to fetch the system's page while the scene plays, so it is cached when the
+ * system opens. A hint only: a browser that ignores it simply loads the page after the scene.
+ */
+export function prefetchSystem(url: string): void {
+  try {
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = url;
+    document.head.appendChild(link);
+  } catch {
+    // Never in the way of opening the system
+  }
+}
+
+/** Opens the system once its launch has played (one place, so tests can stand in for the browser). */
+export function openSystem(url: string): void {
+  window.location.assign(url);
+}
 
 export const LAUNCH_SCENES = [2, 3, 4] as const;
 export type LaunchScene = (typeof LAUNCH_SCENES)[number];
