@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { cn } from '@/lib/utils';
 import mapSvg from './signin-map.svg?raw';
-import { GROW_FROM, MAP_LABELS, stageDrop, stagePlacement } from './mapStage';
-
-/** The `signin-stage` variables that pin it top left and grow it around `GROW_FROM` (see `stagePlacement`). */
-const PINNED = { '--stage-at': '0px', '--stage-shift': '0px', '--stage-origin': `${GROW_FROM.x}px ${GROW_FROM.y}px` };
+import { MAP_LABELS, PIN_FROM, coverScale, fitStage } from './mapStage';
 
 const SIDE = { start: '-translate-y-1/2', end: '-translate-x-full -translate-y-1/2', center: '-translate-x-1/2 -translate-y-1/2' };
 
@@ -14,22 +11,27 @@ const SIDE = { start: '-translate-y-1/2', end: '-translate-x-full -translate-y-1
  * drops lit, and the trucks drive the runs on SVG `animateMotion` (the board's own timing, in
  * `signin-map.svg`). The trucks stand still under reduced motion and while the tab is hidden. Only
  * the three garages and the drop points are named; below 768px only the garages. Decoration only.
- * `clearOf` is the copy beside the map: from 1024px the stage drops below it (`stageDrop`).
+ * `clearOf` is the copy's text block: from 1024px the map's network is fitted into the free area
+ * beside it (`fitStage`); on phones the stage is centred and covers the page.
  */
 export function SignInMap({ className, clearOf }: { className?: string; clearOf?: RefObject<HTMLElement | null> }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
-  const [stage, setStage] = useState({ scale: 1, pinned: false, drop: 0 });
+  const [stage, setStage] = useState<Stage>({ scale: 1, at: null });
 
   useEffect(() => {
     const box = boxRef.current;
     if (!box) return;
     const measure = () => {
-      const { top, width, height } = box.getBoundingClientRect();
-      const place = stagePlacement(width, height);
-      const copy = clearOf?.current?.getBoundingClientRect();
-      const drop = place.pinned && copy && copy.height > 0 ? stageDrop(copy.bottom - top) : 0;
-      setStage((now) => (now.scale === place.scale && now.pinned === place.pinned && now.drop === drop ? now : { ...place, drop }));
+      const page = box.getBoundingClientRect();
+      const text = clearOf?.current?.getBoundingClientRect();
+      const column = clearOf?.current?.parentElement?.getBoundingClientRect();
+      let next: Stage = { scale: coverScale(page.width, page.height), at: null };
+      if (page.width >= PIN_FROM && text && column && text.height > 0) {
+        const fit = fitStage({ left: text.left - page.left, bottom: text.bottom - page.top, panelLeft: column.right - page.left }, page.height);
+        next = { scale: fit.scale, at: { x: fit.x, y: fit.y } };
+      }
+      setStage((now) => (now.scale === next.scale && now.at?.x === next.at?.x && now.at?.y === next.at?.y ? now : next));
     };
     measure();
     if (typeof ResizeObserver === 'undefined') return;
@@ -58,10 +60,10 @@ export function SignInMap({ className, clearOf }: { className?: string; clearOf?
 
   return (
     <div ref={boxRef} aria-hidden="true" className={cn('pointer-events-none absolute inset-0 overflow-hidden bg-sidebar', className)}>
-      <div className="signin-stage" style={{ ...(stage.pinned ? PINNED : {}), '--stage-scale': stage.scale, '--stage-drop': `${stage.drop}px` } as CSSProperties}>
+      <div className="signin-stage" style={stageStyle(stage)}>
         {/* A static drawing bundled with the app, never data from a request */}
         <div ref={mapRef} className="signin-map-tilt" dangerouslySetInnerHTML={{ __html: mapSvg }} />
-        <div className="signin-map-fade absolute inset-0" />
+        <div className="signin-map-fade absolute inset-x-0 top-0" />
         {MAP_LABELS.map((label) => (
           <span
             key={label.text}
@@ -78,4 +80,14 @@ export function SignInMap({ className, clearOf }: { className?: string; clearOf?
       </div>
     </div>
   );
+}
+
+/** The stage's scale, and its top left corner once it is fitted beside the copy (null: centred). */
+type Stage = { scale: number; at: { x: number; y: number } | null };
+
+/** The `signin-stage` variables: centred by default, or placed at `at` and scaled from its corner. */
+function stageStyle({ scale, at }: Stage): CSSProperties {
+  const vars: Record<string, string | number> = { '--stage-scale': scale };
+  if (at) Object.assign(vars, { '--stage-at': '0px', '--stage-x': `${at.x}px`, '--stage-y': `${at.y}px`, '--stage-origin': '0 0' });
+  return vars as CSSProperties;
 }

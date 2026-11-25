@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import mapSvg from './signin-map.svg?raw';
-import { MAP_LABELS, coverScale, stageDrop, stagePlacement } from './mapStage';
+import { FIT, MAP_LABELS, NETWORK, coverScale, fitStage } from './mapStage';
 
 // covers: suite spec 0019 AC-13 (the map's labels, trucks and credit source), AC-12 (trucks on animateMotion)
 
@@ -27,19 +27,28 @@ describe('sign in map', () => {
     expect(coverScale(0, 0)).toBe(1);
   });
 
-  it('pins the stage top left and never shrinks it beside the copy column, so labels stay off the copy', () => {
-    expect(stagePlacement(1440, 900)).toEqual({ scale: 1, pinned: true });
-    expect(stagePlacement(1280, 720)).toEqual({ scale: 1, pinned: true });
-    expect(stagePlacement(1024, 768)).toEqual({ scale: 1, pinned: true });
-    expect(stagePlacement(1920, 1080).scale).toBeCloseTo((1920 - 430) / (1440 - 430), 3);
-    expect(stagePlacement(1600, 1200).scale).toBeCloseTo((1200 - 415) / (900 - 415), 3);
-    expect(stagePlacement(375, 812)).toEqual({ scale: coverScale(375, 812), pinned: false });
+  it('places the network where the board does at 1440 by 900', () => {
+    // The board's copy ends at 405 and its panel starts at 840
+    const at = fitStage({ left: 64, bottom: 405, panelLeft: 840 }, 900);
+    expect(at.scale).toBeCloseTo(1, 1);
+    expect(Math.abs(at.x)).toBeLessThan(20);
+    expect(Math.abs(at.y)).toBeLessThan(20);
   });
 
-  it('drops the pinned stage only as far as the copy runs past the board\'s copy', () => {
-    expect(stageDrop(null)).toBe(0);
-    expect(stageDrop(405)).toBe(0);
-    expect(stageDrop(415)).toBe(10);
-    expect(stageDrop(560)).toBe(155);
+  it('keeps the whole network under the copy and inside the window when there is room', () => {
+    for (const [copy, height] of [[{ left: 64, bottom: 415, panelLeft: 1094 }, 908], [{ left: 64, bottom: 415, panelLeft: 1240 }, 1080]] as const) {
+      const { scale, x, y } = fitStage(copy, height);
+      const top = y + NETWORK.y * scale;
+      expect(top).toBeGreaterThanOrEqual(copy.bottom + FIT.gap - 1);
+      expect(y + (NETWORK.y + NETWORK.height) * scale).toBeLessThanOrEqual(height - FIT.bottom + 1);
+      expect(x + NETWORK.x * scale).toBeGreaterThanOrEqual(copy.left);
+    }
+  });
+
+  it('never shrinks below 0.85 or grows past 1.3; a short window crops the south, the top stays under the copy', () => {
+    const short = fitStage({ left: 64, bottom: 415, panelLeft: 680 }, 720);
+    expect(short.scale).toBe(FIT.min);
+    expect(short.y + NETWORK.y * short.scale).toBeCloseTo(415 + FIT.gap, 0);
+    expect(fitStage({ left: 64, bottom: 415, panelLeft: 2000 }, 2000).scale).toBe(FIT.max);
   });
 });

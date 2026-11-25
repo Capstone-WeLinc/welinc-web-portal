@@ -659,13 +659,13 @@
 */
 @utility signin-stage {
   position: absolute;
-  /* Centred by default; from 1024px `SignInMap` pins it top left like the copy column (`stagePlacement`) */
+  /* Centred by default; from 1024px `SignInMap` places and scales it beside the copy (`fitStage`) */
   left: var(--stage-at, 50%);
   top: var(--stage-at, 50%);
   width: 1440px;
   height: 900px;
   transform-origin: var(--stage-origin, 50% 50%);
-  transform: translate(var(--stage-shift, -50%), calc(var(--stage-shift, -50%) + var(--stage-drop, 0px))) scale(var(--stage-scale, 1));
+  transform: translate(var(--stage-x, -50%), var(--stage-y, -50%)) scale(var(--stage-scale, 1));
 }
 /* The board's own placement of the tilted map on the stage */
 @utility signin-map-tilt {
@@ -682,6 +682,32 @@
   background:
     linear-gradient(90deg, var(--sidebar) 0%, color-mix(in oklab, var(--sidebar) 80%, transparent) 22%, transparent 42%),
     linear-gradient(180deg, var(--sidebar) 0%, var(--sidebar) 34%, transparent 50%);
+  /* It runs 4000px past the stage's bottom, so the left fade carries on below the stage; the top
+     fade keeps the stage's own 900px */
+  height: calc(100% + 4000px);
+  background-size: 100% 100%, 100% 900px;
+  background-repeat: no-repeat;
+
+  /* The fades start at solid navy, so carry that navy on past the stage's left and top edges:
+     once `fitStage` moves the stage right or down, no edge of it shows */
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    background: var(--sidebar);
+  }
+  &::before {
+    top: -4000px;
+    bottom: -4000px;
+    right: 100%;
+    width: 4000px;
+  }
+  &::after {
+    bottom: 100%;
+    left: 0;
+    right: -4000px;
+    height: 4000px;
+  }
 }
 @utility signin-label-garage {
   font-weight: 800;
