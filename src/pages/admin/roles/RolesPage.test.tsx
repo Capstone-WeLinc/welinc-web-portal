@@ -1,12 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import type { AdminMe } from '@/lib/admin';
 import type { RoleSummary, RolesData } from '@/lib/adminApi';
 import { RolesPage } from './RolesPage';
 
-const api = vi.hoisted(() => ({ fetchRoles: vi.fn(), saveMatrix: vi.fn(), listPeople: vi.fn() }));
+const api = vi.hoisted(() => ({
+  fetchRoles: vi.fn(),
+  saveMatrix: vi.fn(),
+  listPeople: vi.fn(),
+  roleHistory: vi.fn(),
+  addRoleMembers: vi.fn(),
+}));
 const notify = vi.hoisted(() => ({ notifyError: vi.fn(), notifySuccess: vi.fn(), notify: vi.fn() }));
 
 vi.mock('@/lib/api', () => ({ API_BASE_URL: 'http://localhost:3000', api: {} }));
@@ -15,7 +21,8 @@ vi.mock('@/lib/notify', () => notify);
 
 // covers: suite spec 0018, child 0001 AC-1 (routes, redirects, missing role), AC-2 (list, switch,
 // search, headings), AC-3 (header), AC-4 (groups fold, switches, locks, Not saved), AC-6 (read only),
-// AC-7 to AC-12 (multi role draft, change list, review RC, conflicts, Reset to defaults, stored drafts)
+// AC-7 to AC-12 (multi role draft, change list, review RC, conflicts, Reset to defaults, stored drafts),
+// AC-5 (Find a permission), AC-13 (People tab), AC-14 (Add people), AC-15 (History), AC-16 (the menu)
 
 const me = (over: Partial<AdminMe> = {}): AdminMe => ({
   user: { id: 'me', name: 'Leonora Castillo', email: 'suite.admin@welinc.com', picture: null },
@@ -96,6 +103,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
   api.listPeople.mockResolvedValue({ items: [], next: null });
+  api.roleHistory.mockResolvedValue({ items: [], next: null });
   api.fetchRoles.mockImplementation(async (system: string) => vrms({ system: system as RolesData['system'] }));
 });
 
@@ -415,5 +423,165 @@ describe('stored drafts (AC-12)', () => {
     await screen.findByTestId('where');
     expect(localStorage.getItem('welinc:draft:me:roles:VRMS')).not.toBeNull();
     expect(localStorage.getItem('welinc:draft:me:roles:BMS')).toBeNull();
+  });
+});
+
+const holder = (id: string, name: string, roles: { system: 'VRMS'; role: string; createdAt?: string; temporaryUntil?: string | null }[]) => ({
+  id,
+  name,
+  email: `${id}@welinc.com`,
+  emailVerified: true,
+  passwordSet: true,
+  contact: null,
+  profilePicture: null,
+  isActive: true,
+  isLocked: false,
+  lockedAt: null,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+  roles,
+  otherSystems: [],
+});
+
+describe('Find a permission (AC-5)', () => {
+  it('keeps matching rows across groups, opens them, and offers Clear on no match', async () => {
+    const user = userEvent.setup();
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    const filter = await screen.findByRole('searchbox', { name: 'Find a permission' });
+    await user.type(filter, 'add and');
+    // After the 300ms wait only Admin's matching row is left, and its group is open
+    await waitFor(() => expect(screen.queryByRole('switch', { name: 'See costs' })).toBeNull());
+    expect(screen.getByRole('button', { name: /^Admin/, expanded: true })).toBeInTheDocument();
+    await user.clear(filter);
+    await user.type(filter, 'payroll');
+    expect(await screen.findByText('No permission matches “payroll”', {}, { timeout: 2000 })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Clear' }));
+    // The folds come back as they were: Tickets open, Admin closed
+    expect(await screen.findByRole('switch', { name: 'See costs' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Admin/, expanded: false })).toBeInTheDocument();
+  });
+});
+
+describe('People and History tabs (AC-13, AC-15)', () => {
+  it('lists the holders with Since and Until, each opening the person', async () => {
+    const user = userEvent.setup();
+    api.listPeople.mockResolvedValue({
+      items: [
+        holder('ramon', 'Ramon Dela Cruz', [{ system: 'VRMS', role: 'MECHANIC', createdAt: '2026-03-02T00:00:00.000Z' }]),
+        holder('alfredo', 'Alfredo Santos', [
+          { system: 'VRMS', role: 'MECHANIC', createdAt: '2026-04-02T00:00:00.000Z', temporaryUntil: '2026-12-01T00:00:00.000Z' },
+        ]),
+      ],
+      next: null,
+    });
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    await user.click(await screen.findByRole('tab', { name: /People/ }));
+    const list = await screen.findByRole('list', { name: 'People with Mechanic' });
+    expect(within(list).getByRole('link', { name: /Ramon Dela Cruz/ })).toHaveAttribute('href', '/admin/people/ramon');
+    expect(within(list).getAllByText(/Since/)).toHaveLength(2);
+    expect(within(list).getByText(/Until/)).toBeInTheDocument();
+    expect(api.listPeople).toHaveBeenCalledWith(expect.objectContaining({ system: 'VRMS', role: 'MECHANIC', sort: 'name', limit: 25 }));
+  });
+
+  it('says when no one has the role yet', async () => {
+    const user = userEvent.setup();
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    await user.click(await screen.findByRole('tab', { name: /People/ }));
+    expect(await screen.findByText('No one has this role yet')).toBeInTheDocument();
+  });
+
+  it('shows only People for a system without permissions', async () => {
+    api.fetchRoles.mockResolvedValue(vrms({ system: 'BMS', supportsCustomRoles: false }));
+    renderAt('/admin/roles/BMS/ADMIN', me({ suiteAdmin: false, adminOf: ['BMS'] }));
+    expect(await screen.findByRole('tab', { name: /People/ })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('tab', { name: /History/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'More options' })).toBeNull();
+    expect(await screen.findByRole('button', { name: 'Add people' })).toBeInTheDocument();
+  });
+
+  it('lists the history in words with the note', async () => {
+    const user = userEvent.setup();
+    api.roleHistory.mockResolvedValue({
+      items: [
+        { id: 'h1', at: '2026-11-20T03:00:00.000Z', actorName: 'Leonora Castillo', kind: 'PERMISSION', label: 'See costs', before: true, after: false, note: 'Costs moved to clerks' },
+        { id: 'h2', at: '2026-11-19T03:00:00.000Z', actorName: 'System', kind: 'PERMISSION', label: 'See tickets assigned to you', before: null, after: true },
+      ],
+      next: null,
+    });
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    await user.click(await screen.findByRole('tab', { name: 'History' }));
+    const list = await screen.findByRole('list', { name: 'History of Mechanic' });
+    expect(within(list).getByText(/removed “See costs”/)).toBeInTheDocument();
+    expect(within(list).getByText('“Costs moved to clerks”')).toBeInTheDocument();
+    expect(within(list).getByText(/added “See tickets assigned to you”/)).toBeInTheDocument();
+    expect(api.roleHistory).toHaveBeenCalledWith('VRMS', 'MECHANIC', undefined);
+  });
+
+  it('keeps the open tab when another role is picked', async () => {
+    const user = userEvent.setup();
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    await user.click(await screen.findByRole('tab', { name: 'History' }));
+    await user.click(screen.getByRole('button', { name: /Admin/ }));
+    expect(await screen.findByRole('tab', { name: 'History' })).toHaveAttribute('aria-selected', 'true');
+  });
+});
+
+describe('Add people (AC-14)', () => {
+  it('searches candidates on the server, shows the move, and moves the picked people', async () => {
+    const user = userEvent.setup();
+    api.listPeople.mockImplementation(async (params: { excludeRole?: string }) =>
+      params.excludeRole
+        ? {
+            items: [
+              holder('ramon', 'Ramon Dela Cruz', [{ system: 'VRMS', role: 'MECHANIC' }]),
+              holder('tess', 'Tess Ramos', [{ system: 'VRMS', role: 'MECHANIC', temporaryUntil: '2026-12-01T00:00:00.000Z' }]),
+            ],
+            next: null,
+          }
+        : { items: [], next: null },
+    );
+    api.addRoleMembers.mockResolvedValue({ moved: 1, skipped: 0 });
+    renderAt('/admin/roles/VRMS/CHIEF_MECHANIC');
+    await user.click(await screen.findByRole('tab', { name: /People/ }));
+    await user.click(await screen.findByRole('button', { name: 'Add people' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add people to Chief Mechanic' });
+    expect(api.listPeople).toHaveBeenCalledWith(
+      expect.objectContaining({ system: 'VRMS', excludeRole: 'CHIEF_MECHANIC', assignable: true, sort: 'name', limit: 25 }),
+    );
+    expect(within(dialog).getByRole('checkbox', { name: /Tess Ramos/ })).toBeDisabled();
+    expect(within(dialog).getByText(/temporary, can't be moved/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('checkbox', { name: /Ramon Dela Cruz/ }));
+    expect(within(dialog).getByText('Chief Mechanic', { selector: 'span' })).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Add 1 person' }));
+    expect(api.addRoleMembers).toHaveBeenCalledWith('VRMS', 'CHIEF_MECHANIC', ['ramon']);
+    expect(notify.notifySuccess).toHaveBeenCalledWith('1 person now has Chief Mechanic.');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('shows the server’s refusal inline and moves nobody', async () => {
+    const user = userEvent.setup();
+    api.listPeople.mockImplementation(async (params: { excludeRole?: string }) =>
+      params.excludeRole ? { items: [holder('ana', 'Ana Reyes', [{ system: 'VRMS', role: 'ADMIN' }])], next: null } : { items: [], next: null },
+    );
+    api.addRoleMembers.mockRejectedValue({
+      response: { status: 409, data: { code: 'LAST_ADMIN', message: 'Ana Reyes is the last active admin of VRMS. Make someone else admin first.' } },
+    });
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    await user.click(await screen.findByRole('tab', { name: /People/ }));
+    await user.click(await screen.findByRole('button', { name: 'Add people' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(await within(dialog).findByRole('checkbox', { name: /Ana Reyes/ }));
+    await user.click(within(dialog).getByRole('button', { name: 'Add 1 person' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Ana Reyes is the last active admin of VRMS.');
+    expect(notify.notifySuccess).not.toHaveBeenCalled();
+  });
+});
+
+describe('the spreadsheet menu (AC-16)', () => {
+  it('offers Download as spreadsheet in the list pane', async () => {
+    const user = userEvent.setup();
+    renderAt('/admin/roles/VRMS/MECHANIC', me({ suiteAdmin: false, adminOf: ['VRMS'] }));
+    await user.click(await screen.findByRole('button', { name: 'More options' }));
+    expect(await screen.findByRole('menuitem', { name: 'Download as spreadsheet' })).toBeInTheDocument();
   });
 });

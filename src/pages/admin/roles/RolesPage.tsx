@@ -12,7 +12,9 @@ import { cn } from '@/lib/utils';
 import { NoSystemScope, ViewError } from '../AdminStates';
 import { pendingChanges, toggle, type MatrixDraft } from '../permissions/matrixDraft';
 import { useAsync } from '../useAsync';
-import { RoleDetail, RoleSkeleton } from './RoleDetail';
+import { AddPeopleDialog } from './AddPeopleDialog';
+import { downloadRolesCsv } from './downloadRolesCsv';
+import { RoleDetail, RoleSkeleton, type RoleTab } from './RoleDetail';
 import { RoleList } from './RoleList';
 import { RoleReviewDialog, type SaveConflict } from './RoleReviewDialog';
 import {
@@ -76,6 +78,9 @@ function SystemRoles({
   const [draft, setDraft] = useState<MatrixDraft>({});
   const [reviewing, setReviewing] = useState(false);
   const [holders, setHolders] = useState<Record<string, string[]>>({});
+  const [tab, setTab] = useState<RoleTab>('permissions');
+  const [adding, setAdding] = useState(false);
+  const [peopleVersion, setPeopleVersion] = useState(0);
   const asked = useRef(new Set<string>());
   const { state, replace } = useAsync<RolesData>(`${system}|${attempt}`, () => fetchRoles(system));
   const data = state.kind === 'ready' ? state.value : null;
@@ -116,6 +121,26 @@ function SystemRoles({
     [system],
   );
   const touchedHeld = touched.filter((r) => r.peopleCount > 0).map((r) => r.code);
+
+  /**
+   * AC-14: after Add people, read the counts again in place (no loading state) and check the
+   * draft as every read does (AC-11). The faces lines are read again on the next open.
+   */
+  const afterMove = async () => {
+    setAdding(false);
+    setPeopleVersion((n) => n + 1);
+    asked.current.clear();
+    setHolders({});
+    try {
+      const next = await fetchRoles(system);
+      replace(() => next);
+      const check = checkDraft(next, draft);
+      setDraft(check.kept);
+      if (deletedCount(check) > 0) notify(rolesCopy.deleted(deletedCount(check)), 'warning');
+    } catch {
+      setAttempt((n) => n + 1);
+    }
+  };
 
   /** AC-11: read the role data again after a save or a refused save, then check the draft. */
   const reread = async (cause: 'saved' | SaveConflict, count = 0) => {
@@ -205,6 +230,7 @@ function SystemRoles({
           draft={draft}
           onSystem={(next) => navigate(rolesHref(next), { replace: true })}
           onSelect={(code) => navigate(rolesHref(system, code), { replace: true })}
+          onDownload={data?.supportsCustomRoles ? () => downloadRolesCsv(data) : undefined}
         />
       </div>
       <div
@@ -232,6 +258,10 @@ function SystemRoles({
               draft={draft}
               onToggle={(key) => flip(role.code, key)}
               reset={reset}
+              tab={tab}
+              onTab={setTab}
+              peopleVersion={peopleVersion}
+              onAddPeople={() => setAdding(true)}
             />
           </div>
         )}
@@ -255,6 +285,15 @@ function SystemRoles({
           />
         )}
       </div>
+      {data && role && (
+        <AddPeopleDialog
+          open={adding}
+          data={data}
+          role={role}
+          onClose={() => setAdding(false)}
+          onMoved={() => void afterMove()}
+        />
+      )}
       {data?.canEdit && (
         <RoleReviewDialog
           open={reviewing}

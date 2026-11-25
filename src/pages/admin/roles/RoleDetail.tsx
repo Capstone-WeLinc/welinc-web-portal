@@ -17,13 +17,18 @@ import type { PermissionMatrix, RoleSummary, RolesData } from '@/lib/adminApi';
 import { formatDate } from '@/lib/format';
 import type { MatrixDraft } from '../permissions/matrixDraft';
 import { PermissionGroups } from './PermissionGroups';
+import { RoleHistory } from './RoleHistory';
+import { RolePeople } from './RolePeople';
 import { allowedCount, permissionTotal, roleHelp, rolesHref } from './rolesRules';
+
+export type RoleTab = 'permissions' | 'people' | 'history';
 
 /**
  * Suite spec 0018, child 0001 AC-3 and AC-4 (board Roles9): one role. The header (tile, name,
  * Built in or Custom chip, description, one help line, the facts), then the tabs. A system without
- * permissions has no Permissions tab; its People tab lands with the People milestone. `reset` is
- * set only for a suite admin on a built in role of a system with permissions (AC-10).
+ * permissions shows only People (AC-3). The open tab belongs to the page, so it stays when you
+ * pick another role. `reset` is set only for a suite admin on a built in role of a system with
+ * permissions (AC-10).
  */
 export function RoleDetail({
   data,
@@ -32,6 +37,10 @@ export function RoleDetail({
   draft,
   onToggle,
   reset,
+  tab,
+  onTab,
+  peopleVersion,
+  onAddPeople,
 }: {
   data: RolesData;
   matrix: PermissionMatrix;
@@ -40,26 +49,41 @@ export function RoleDetail({
   onToggle: (key: string) => void;
   /** Reset to defaults; `disabled` when the role already shows its defaults. */
   reset?: { disabled: boolean; onReset: () => void };
+  tab: RoleTab;
+  onTab: (tab: RoleTab) => void;
+  /** Raised after Add people, so the People tab reads its list again. */
+  peopleVersion: number;
+  /** Opens Add people (AC-13). */
+  onAddPeople?: () => void;
 }) {
   const total = permissionTotal(data);
   const allowed = allowedCount(data, role.code);
+  const withPermissions = data.supportsCustomRoles;
+  const shown: RoleTab = withPermissions ? tab : 'people';
   return (
     <div className="flex min-h-full flex-col">
       <PhoneBack system={data.system} />
       <RoleHeader role={role} data={data} allowed={allowed} total={total} reset={reset} />
-      {data.supportsCustomRoles ? (
-        <Tabs defaultValue="permissions" className="flex-1 gap-0">
-          <div className="border-b border-border bg-card px-4 sm:px-6 lg:px-9">
-            <TabsList aria-label="Role sections" className="-mb-px h-11 gap-5">
+      <Tabs value={shown} onValueChange={(next) => onTab(next as RoleTab)} className="flex-1 gap-0">
+        <div className="border-b border-border bg-card px-4 sm:px-6 lg:px-9">
+          <TabsList aria-label="Role sections" className="-mb-px h-11 gap-5">
+            {withPermissions && (
               <TabsTrigger value="permissions">
                 Permissions
                 <span className="font-mono text-caption text-muted-foreground">
                   {allowed}/{total}
                 </span>
               </TabsTrigger>
-            </TabsList>
-          </div>
-          <div className="flex-1 px-4 py-6 sm:px-6 lg:px-9">
+            )}
+            <TabsTrigger value="people">
+              People
+              <span className="font-mono text-caption text-muted-foreground">{role.peopleCount}</span>
+            </TabsTrigger>
+            {withPermissions && <TabsTrigger value="history">History</TabsTrigger>}
+          </TabsList>
+        </div>
+        <div className="flex-1 px-4 py-6 sm:px-6 lg:px-9">
+          {withPermissions && (
             <TabsContent value="permissions">
               {/* Remounted per role, so each role opens with its first group open (AC-4) */}
               <PermissionGroups
@@ -71,9 +95,17 @@ export function RoleDetail({
                 onToggle={onToggle}
               />
             </TabsContent>
-          </div>
-        </Tabs>
-      ) : null}
+          )}
+          <TabsContent value="people">
+            <RolePeople data={data} role={role} version={peopleVersion} onAdd={onAddPeople} />
+          </TabsContent>
+          {withPermissions && (
+            <TabsContent value="history">
+              <RoleHistory system={data.system} role={role} version={`${data.version}|${role.lastChanged?.at ?? ''}`} />
+            </TabsContent>
+          )}
+        </div>
+      </Tabs>
     </div>
   );
 }

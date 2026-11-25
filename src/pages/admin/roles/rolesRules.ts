@@ -1,5 +1,5 @@
 import type { AdminMe, SystemCode } from '@/lib/admin';
-import type { PermissionMatrix, RoleSummary, RolesData } from '@/lib/adminApi';
+import type { ManagedPerson, PermissionMatrix, RoleHistoryItem, RoleSummary, RolesData } from '@/lib/adminApi';
 import type { DraftChange } from '@/lib/drafts/drafts';
 import { cellId, shownValue, type MatrixDraft } from '../permissions/matrixDraft';
 
@@ -265,3 +265,106 @@ export const rolesCopy = {
   draftName: (touched: RoleSummary[], system: SystemCode) =>
     touched.length === 1 ? touched[0].name : `${system} roles`,
 };
+
+// ---- the permission filter (AC-5) -------------------------------------------------------------
+
+type Group = RolesData['groups'][number];
+
+/** AC-5: the groups and rows whose label or description holds the text, ignoring case. */
+export function filterGroups(groups: Group[], q: string): Group[] {
+  const needle = q.trim().toLowerCase();
+  if (!needle) return groups;
+  return groups
+    .map((g) => ({
+      ...g,
+      permissions: g.permissions.filter(
+        (p) => p.label.toLowerCase().includes(needle) || p.description.toLowerCase().includes(needle),
+      ),
+    }))
+    .filter((g) => g.permissions.length > 0);
+}
+
+// ---- People and Add people (AC-13, AC-14) -----------------------------------------------------
+
+/** The person's role row in this system with this code: "Since" and "Until" read from it. */
+export function heldRole(person: ManagedPerson, system: SystemCode, code: string) {
+  return person.roles.find((r) => r.system === system && r.role === code) ?? null;
+}
+
+/** AC-14: a candidate's role in the system now, and whether it is temporary (can't be moved). */
+export function candidateRole(
+  person: ManagedPerson,
+  system: SystemCode,
+  roles: RoleSummary[],
+): { name: string; temporaryUntil: string | null } {
+  const own = person.roles.filter((r) => r.system === system);
+  const temporary = own.find((r) => r.temporaryUntil);
+  const names = own.map((r) => roles.find((x) => x.code === r.role)?.name ?? titleCase(r.role));
+  return { name: joinNames(names), temporaryUntil: temporary?.temporaryUntil ?? null };
+}
+
+/** "CHIEF_MECHANIC" as "Chief mechanic", for a code the page has no name for. */
+export function titleCase(code: string): string {
+  const words = code.toLowerCase().split('_').filter(Boolean).join(' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** AC-14: "3 people now have Chief mechanic.", "1 person now has Chief mechanic." */
+export function movedWords(n: number, role: string): string {
+  return n === 1 ? `1 person now has ${role}.` : `${n} people now have ${role}.`;
+}
+
+// ---- History (AC-15) --------------------------------------------------------------------------
+
+/** AC-15: what happened, in words after the actor's name. */
+export function historyWords(item: RoleHistoryItem): string {
+  switch (item.kind) {
+    case 'PERMISSION': {
+      const label = `“${item.label ?? item.key ?? ''}”`;
+      if (item.after === true) return `added ${label}`;
+      if (item.before === true) return `removed ${label}`;
+      return `listed ${label} as off`;
+    }
+    case 'CREATED':
+      return item.fromValue ? `created the role from ${item.fromValue}` : 'created the role';
+    case 'RENAMED':
+      return `renamed it from ${item.fromValue ?? ''} to ${item.toValue ?? ''}`;
+    case 'DESCRIBED':
+      return 'changed the description';
+    case 'DELETED':
+      return 'deleted the role';
+  }
+}
+
+// ---- the spreadsheet (AC-16) ------------------------------------------------------------------
+
+/** One CSV cell: always quoted; a leading `=`, `+`, `-` or `@` gets a `'` so it stays text. */
+export function csvCell(value: string): string {
+  const safe = /^[=+\-@]/.test(value) ? `'${value}` : value;
+  return `"${safe.replace(/"/g, '""')}"`;
+}
+
+/**
+ * AC-16: every role by every permission from the saved data (never the draft). Columns Group,
+ * Permission, Description, then one per live role in list order; a last row "People".
+ */
+export function rolesCsv(data: RolesData): string {
+  const header = ['Group', 'Permission', 'Description', ...data.roles.map((r) => (r.builtIn ? r.name : `${r.name} (custom)`))];
+  const rows = data.groups.flatMap((g) =>
+    g.permissions.map((p) => [
+      g.name,
+      p.label,
+      p.description,
+      ...data.roles.map((r) => (data.cells[r.code]?.includes(p.key) ? 'Yes' : 'No')),
+    ]),
+  );
+  const people = ['People', '', '', ...data.roles.map((r) => String(r.peopleCount))];
+  return [header, ...rows, people].map((row) => row.map(csvCell).join(',')).join('\r\n');
+}
+
+/** AC-16: `welinc-vrms-roles-2026-11-25.csv`, on the viewer's local date. */
+export function csvFileName(system: SystemCode, now: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const day = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  return `welinc-${system.toLowerCase()}-roles-${day}.csv`;
+}

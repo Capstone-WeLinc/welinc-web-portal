@@ -1,6 +1,12 @@
 import { useState } from 'react';
-import { Search, SearchX } from 'lucide-react';
+import { EllipsisVertical, FileSpreadsheet, Search, SearchX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { InitialsTile } from '@/components/ui/initials-tile';
 import { SegmentedControl, SegmentedControlItem } from '@/components/ui/segmented-control';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,7 +20,8 @@ import { draftCount, matchRoles, peopleWords, roleCountWords } from './rolesRule
  * Suite spec 0018, child 0001 AC-2 (board Roles9): the list pane. The title with the count, the
  * system switch (only with two or more systems), a search over names and descriptions, and the
  * sticky Built in and Custom headings. Each row: a square initials tile, the name, the people in
- * words, and the gold draft bubble when the row holds unsaved changes (AC-7).
+ * words, and the gold draft bubble when the row holds unsaved changes (AC-7). The ⋮ "More options"
+ * holds the spreadsheet download (AC-16), for systems with permissions only.
  */
 export function RoleList({
   systems,
@@ -24,6 +31,7 @@ export function RoleList({
   draft,
   onSystem,
   onSelect,
+  onDownload,
 }: {
   systems: SystemCode[];
   system: SystemCode;
@@ -33,6 +41,8 @@ export function RoleList({
   draft: MatrixDraft;
   onSystem: (next: SystemCode) => void;
   onSelect: (code: string) => void;
+  /** Download as spreadsheet; absent for a system without permissions. */
+  onDownload?: () => void;
 }) {
   const [q, setQ] = useState('');
   const roles = data ? matchRoles(data.roles, q) : [];
@@ -50,6 +60,21 @@ export function RoleList({
           <span className="text-small text-muted-foreground" aria-live="polite">
             {data ? roleCountWords(data.roles.length) : <span className="sr-only">Loading roles</span>}
           </span>
+          {onDownload && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="More options" className="ml-auto self-center">
+                  <EllipsisVertical aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuItem onSelect={onDownload}>
+                  <FileSpreadsheet aria-hidden="true" />
+                  Download as spreadsheet
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
         {systems.length > 1 && (
           <SegmentedControl
