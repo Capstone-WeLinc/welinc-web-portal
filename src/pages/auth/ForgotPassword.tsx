@@ -1,35 +1,32 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, ArrowLeft, CheckCircle, Truck, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
 import { isAxiosError } from 'axios';
-import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { cn } from '@/lib/utils';
 import { api } from '../../lib/api';
 import { RATE_LIMITED_MESSAGE } from '../../lib/auth';
+import { passwordChecks, passwordStrength } from '../../lib/password';
 import { pageTitle, useDocumentTitle } from '../../lib/title';
-import { HeroCard, HeroLabel, HeroNotice, heroButton, heroCodeGroup, heroCodeSlot, heroInput } from './AuthHero';
-
-/** A show or hide password button inside a hero input, 44px square. */
-function RevealButton({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-label={shown ? 'Hide password' : 'Show password'}
-      aria-pressed={shown}
-      className="absolute top-0 right-0 flex size-11 cursor-pointer items-center justify-center rounded-xl text-white/40 transition-colors hover:text-white/70 focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
-    >
-      {shown ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-    </button>
-  );
-}
+import {
+  AuthSplit,
+  BackAction,
+  SplitHeading,
+  SplitHint,
+  SplitLabel,
+  SplitNotice,
+  SplitResult,
+  StepLabel,
+  Strong,
+  splitButton,
+  splitInput,
+} from './AuthSplit';
+import { CODE_LENGTH, CodeField, ResendHint } from './CodeField';
+import { PasswordInput } from './PasswordInput';
 
 type Step = 'email' | 'code' | 'newPassword' | 'done';
 
-const CODE_LENGTH = 6;
 /** welinc-auth sends at most one code a minute (spec 0009); a resend inside it sends nothing. */
 const RESEND_SECONDS = 60;
 
@@ -46,8 +43,6 @@ export default function ForgotPassword() {
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState('');
   const [loading, setLoading] = useState(false);
@@ -137,25 +132,9 @@ export default function ForgotPassword() {
       setError('The two passwords are different.');
       return;
     }
-    const trimmed = newPassword.trim();
-    if (trimmed.length < 8) {
-      setError('Use at least 8 characters.');
-      return;
-    }
-    if (!/[A-Z]/.test(trimmed)) {
-      setError('Add at least one uppercase letter.');
-      return;
-    }
-    if (!/[a-z]/.test(trimmed)) {
-      setError('Add at least one lowercase letter.');
-      return;
-    }
-    if (!/\d/.test(trimmed)) {
-      setError('Add at least one number.');
-      return;
-    }
-    if (!/[^A-Za-z0-9]/.test(trimmed)) {
-      setError('Add at least one special character.');
+    const unmet = passwordChecks(newPassword.trim()).find((check) => !check.met);
+    if (unmet) {
+      setError(unmet.fix);
       return;
     }
 
@@ -182,201 +161,213 @@ export default function ForgotPassword() {
   const notices = (
     <>
       {error && (
-        <HeroNotice tone="error">
+        <SplitNotice tone="error">
           <p>{error}</p>
-        </HeroNotice>
+        </SplitNotice>
       )}
       {sent && !error && (
-        <HeroNotice tone="success">
+        <SplitNotice tone="success">
           <p>{sent}</p>
-        </HeroNotice>
+        </SplitNotice>
       )}
     </>
   );
 
+  const differentEmail = () => {
+    setStep('email');
+    setError('');
+    setSent('');
+    setCode('');
+  };
+
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-hero-deep p-6">
-      <div className="absolute top-0 right-0 size-96 rounded-full bg-primary/20 blur-3xl" />
-      <div className="absolute bottom-0 left-0 size-96 rounded-full bg-highlight/10 blur-3xl" />
-
-      <main className="relative z-10 w-full max-w-md">
-        <div className="mb-6">
-          <Link
-            to="/login"
-            className="inline-flex min-h-11 items-center gap-2 rounded-md text-body text-white/50 transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
-          >
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            Back to sign in
-          </Link>
-        </div>
-
-        <HeroCard>
-          <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-highlight shadow-lg shadow-highlight/20">
-            <Truck size={22} className="text-primary" strokeWidth={2.5} aria-hidden="true" />
-          </div>
-
-          {step === 'done' ? (
-            <div className="text-center" role="status">
-              <CheckCircle className="mx-auto mb-4 size-12 text-hero-success" aria-hidden="true" />
-              <h2 className="mb-2 text-title font-black text-white">Password changed</h2>
-              <p className="mb-6 text-white/60">Sign in with your new password.</p>
-              <Button asChild className={heroButton}>
-                <Link to="/login">Sign in</Link>
+    <AuthSplit>
+      {step === 'done' ? (
+        <div role="status">
+          <SplitResult
+            tone="success"
+            icon={<Check className="size-7.5" strokeWidth={2.6} />}
+            title="Password changed"
+            actions={
+              <Button asChild className={splitButton}>
+                <Link to="/login">
+                  Sign in
+                  <ArrowRight className="size-4.5" aria-hidden="true" />
+                </Link>
               </Button>
+            }
+          >
+            You can sign in with your new password now. We also signed you out on your other devices.
+          </SplitResult>
+        </div>
+      ) : step === 'email' ? (
+        <>
+          <BackAction to="/login">Back to sign in</BackAction>
+          <StepLabel step={1} />
+          <SplitHeading title="Reset your password">Enter your work email. We'll send you a 6 digit code.</SplitHeading>
+          {notices}
+          <form onSubmit={handleRequestCode} className="flex flex-col gap-4.5">
+            <div>
+              <SplitLabel htmlFor="forgot-email">Work email</SplitLabel>
+              <Input
+                id="forgot-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@welinc.com"
+                required
+                autoComplete="email"
+                className={splitInput}
+              />
             </div>
-          ) : step === 'email' ? (
-            <>
-              <h2 className="mb-1 text-title font-black text-white">Reset your password</h2>
-              <p className="mb-8 text-body text-white/50">Enter your email and we'll send you a 6 digit code.</p>
-              {notices}
-              <form onSubmit={handleRequestCode} className="flex flex-col gap-5">
-                <div>
-                  <HeroLabel htmlFor="forgot-email">Email</HeroLabel>
-                  <div className="relative">
-                    <Mail className="absolute top-1/2 left-4 size-4 -translate-y-1/2 text-white/30" aria-hidden="true" />
-                    <Input
-                      id="forgot-email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@welinc.com"
-                      required
-                      autoComplete="email"
-                      className={cn(heroInput, 'pl-11')}
-                    />
-                  </div>
-                </div>
-                <Button id="forgot-submit" type="submit" loading={loading} className={heroButton}>
-                  {loading ? 'Sending code' : 'Send code'}
-                </Button>
-              </form>
-            </>
-          ) : step === 'code' ? (
-            <>
-              <h2 className="mb-1 text-title font-black text-white">Check your email</h2>
-              <p className="mb-6 text-body break-words text-white/50">
-                If <span className="font-semibold text-white/80">{cleanEmail}</span> has a WeLinc account, we sent
-                it a 6 digit code.
-              </p>
-              {notices}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void verifyCode(code);
-                }}
-                className="flex flex-col gap-5"
-              >
-                <div>
-                  <HeroLabel htmlFor="forgot-code">Code</HeroLabel>
-                  <InputOTP
-                    ref={codeRef}
-                    id="forgot-code"
-                    maxLength={CODE_LENGTH}
-                    pattern={REGEXP_ONLY_DIGITS}
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    autoFocus
-                    value={code}
-                    onChange={setCode}
-                    onComplete={(value: string) => void verifyCode(value)}
-                    disabled={loading}
-                    aria-invalid={error ? true : undefined}
-                    containerClassName="justify-center"
-                  >
-                    <InputOTPGroup className={heroCodeGroup}>
-                      {Array.from({ length: CODE_LENGTH }, (_, i) => (
-                        <InputOTPSlot key={i} index={i} className={heroCodeSlot} />
-                      ))}
-                    </InputOTPGroup>
-                  </InputOTP>
-                </div>
-                <Button
-                  id="forgot-verify-submit"
-                  type="submit"
-                  loading={loading}
-                  disabled={code.length !== CODE_LENGTH}
-                  className={heroButton}
-                >
-                  {loading ? 'Verifying' : 'Verify'}
-                </Button>
-              </form>
-              <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-body">
-                <button
-                  type="button"
-                  onClick={() => void resend()}
-                  disabled={wait > 0 || resending}
-                  className="min-h-11 cursor-pointer rounded-md font-semibold text-highlight tabular-nums hover:text-commit-hover focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-white/40"
-                >
-                  {wait > 0 ? `Resend code in ${wait} s` : resending ? 'Sending' : 'Resend code'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep('email');
-                    setError('');
-                    setSent('');
-                    setCode('');
-                  }}
-                  className="min-h-11 cursor-pointer rounded-md text-white/60 hover:text-white focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
-                >
-                  Use a different email
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <h2 className="mb-1 text-title font-black text-white">Set a new password</h2>
-              <p className="mb-6 text-body break-words text-white/50">
-                For <span className="text-highlight">{cleanEmail}</span>.
-              </p>
-              {notices}
-              <form onSubmit={handleReset} className="flex flex-col gap-5">
-                <div>
-                  <HeroLabel htmlFor="forgot-new-password">New password</HeroLabel>
-                  <div className="relative">
-                    <Input
-                      id="forgot-new-password"
-                      type={showNewPassword ? 'text' : 'password'}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="At least 8 characters"
-                      required
-                      minLength={8}
-                      autoComplete="new-password"
-                      aria-describedby="forgot-password-rules"
-                      className={cn(heroInput, 'pr-12')}
-                    />
-                    <RevealButton shown={showNewPassword} onToggle={() => setShowNewPassword((v) => !v)} />
-                  </div>
-                  <p id="forgot-password-rules" className="mt-1.5 text-caption font-normal leading-normal text-white/50">
-                    At least 8 characters, with an uppercase letter, a lowercase letter, a number and a special
-                    character.
-                  </p>
-                </div>
-                <div>
-                  <HeroLabel htmlFor="forgot-confirm-password">Confirm password</HeroLabel>
-                  <div className="relative">
-                    <Input
-                      id="forgot-confirm-password"
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Type it again"
-                      required
-                      autoComplete="new-password"
-                      className={cn(heroInput, 'pr-12')}
-                    />
-                    <RevealButton shown={showConfirmPassword} onToggle={() => setShowConfirmPassword((v) => !v)} />
-                  </div>
-                </div>
-                <Button id="forgot-reset-submit" type="submit" loading={loading} className={heroButton}>
-                  {loading ? 'Saving' : 'Set password'}
-                </Button>
-              </form>
-            </>
-          )}
-        </HeroCard>
-      </main>
+            <Button id="forgot-submit" type="submit" loading={loading} className={splitButton}>
+              {loading ? (
+                'Sending code'
+              ) : (
+                <>
+                  Send code
+                  <ArrowRight className="size-4.5" aria-hidden="true" />
+                </>
+              )}
+            </Button>
+          </form>
+          <SplitHint>
+            <p>Still nothing after a few minutes? Check your spam folder, or ask your admin for help.</p>
+          </SplitHint>
+        </>
+      ) : step === 'code' ? (
+        <>
+          <BackAction onClick={differentEmail}>Use a different email</BackAction>
+          <StepLabel step={2} />
+          {/* Spec 0009, AC-13: the same words whether or not the email has an account */}
+          <SplitHeading title="Check your email">
+            If <Strong>{cleanEmail}</Strong> has a WeLinc account, we sent it a 6 digit code. It works for 10 minutes.
+          </SplitHeading>
+          {notices}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void verifyCode(code);
+            }}
+            className="flex flex-col gap-4.5"
+          >
+            <CodeField
+              id="forgot-code"
+              label="Reset code"
+              value={code}
+              onChange={setCode}
+              onComplete={(value) => void verifyCode(value)}
+              disabled={loading}
+              invalid={Boolean(error)}
+              inputRef={codeRef}
+            />
+            <Button
+              id="forgot-verify-submit"
+              type="submit"
+              loading={loading}
+              disabled={code.length !== CODE_LENGTH}
+              className={splitButton}
+            >
+              {loading ? (
+                'Checking'
+              ) : (
+                <>
+                  Continue
+                  <ArrowRight className="size-4.5" aria-hidden="true" />
+                </>
+              )}
+            </Button>
+          </form>
+          <ResendHint wait={wait} resending={resending} onResend={() => void resend()} />
+        </>
+      ) : (
+        <>
+          <StepLabel step={3} />
+          <SplitHeading title="Set a new password">
+            For <Strong>{cleanEmail}</Strong>. Use one you don't use anywhere else.
+          </SplitHeading>
+          {notices}
+          <form onSubmit={handleReset} className="flex flex-col gap-4">
+            <div>
+              <SplitLabel htmlFor="forgot-new-password">New password</SplitLabel>
+              <PasswordInput
+                id="forgot-new-password"
+                value={newPassword}
+                onChange={setNewPassword}
+                autoComplete="new-password"
+                describedBy="forgot-password-rules"
+              />
+            </div>
+            <PasswordRules id="forgot-password-rules" password={newPassword.trim()} />
+            <div>
+              <SplitLabel htmlFor="forgot-confirm-password">Confirm new password</SplitLabel>
+              <PasswordInput
+                id="forgot-confirm-password"
+                value={confirmPassword}
+                onChange={setConfirmPassword}
+                autoComplete="new-password"
+                describedBy="forgot-password-match"
+              />
+              <MatchLine id="forgot-password-match" password={newPassword} confirm={confirmPassword} />
+            </div>
+            <Button id="forgot-reset-submit" type="submit" loading={loading} className={splitButton}>
+              {loading ? 'Saving' : 'Save password'}
+            </Button>
+          </form>
+        </>
+      )}
+    </AuthSplit>
+  );
+}
+
+/** Board `R32Forgot3`: the strength, a four part meter, and welinc-auth's four rules ticked as they are met. */
+function PasswordRules({ id, password }: { id: string; password: string }) {
+  const checks = passwordChecks(password);
+  const strength = passwordStrength(password);
+  const met = checks.filter((check) => check.met).length;
+  return (
+    <div id={id} className="flex flex-col gap-3 rounded-xl bg-table-head px-4 py-3.5 inset-ring inset-ring-divider">
+      <p className="flex items-center justify-between text-small font-semibold text-foreground">
+        Password strength
+        <span className={met === checks.length ? 'text-success' : 'text-muted-strong'}>{strength}</span>
+      </p>
+      <span aria-hidden="true" className="grid grid-cols-4 gap-1.5">
+        {checks.map((check, i) => (
+          <span
+            key={check.label}
+            className={cn('h-1.5 rounded-full', i < met ? (met === checks.length ? 'bg-success' : 'bg-primary') : 'bg-border')}
+          />
+        ))}
+      </span>
+      <ul className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2">
+        {checks.map((check) => (
+          <li key={check.label} className="flex items-center gap-2 text-small text-muted-strong">
+            <span
+              aria-hidden="true"
+              className={cn(
+                'flex size-4.5 shrink-0 items-center justify-center rounded-full',
+                check.met ? 'bg-success-bg text-success' : 'bg-muted text-muted-foreground',
+              )}
+            >
+              {check.met ? <Check className="size-3" strokeWidth={3} /> : <span className="size-1 rounded-full bg-current" />}
+            </span>
+            {check.label}
+            <span className="sr-only">{check.met ? ', done' : ', not yet'}</span>
+          </li>
+        ))}
+      </ul>
     </div>
+  );
+}
+
+/** "Passwords match" under the confirm field once both are typed, or that they differ. */
+function MatchLine({ id, password, confirm }: { id: string; password: string; confirm: string }) {
+  if (!confirm) return <span id={id} />;
+  const same = password === confirm;
+  return (
+    <p id={id} className={cn('mt-1.5 flex items-center gap-1.5 text-small font-semibold', same ? 'text-success' : 'text-muted-strong')}>
+      {same && <Check className="size-3.5" strokeWidth={2.6} aria-hidden="true" />}
+      {same ? 'Passwords match' : "Passwords don't match yet"}
+    </p>
   );
 }

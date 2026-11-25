@@ -107,6 +107,13 @@ describe('portal routing rules', () => {
     expect(screenForAnswer(params(''), older)).toEqual({ kind: 'go', url: 'http://vrms.test' });
   });
 
+  // covers: suite spec 0019 AC-5 (no systems: No access, unless a suite admin)
+  it('shows No access for no systems, and the launcher for a suite admin with none', () => {
+    expect(screenForAnswer(params(''), answer)).toEqual({ kind: 'no-access', email: 'p@welinc.com' });
+    const suiteOnly = { ...answer, suiteAdmin: true };
+    expect(screenForAnswer(params(''), suiteOnly)).toEqual({ kind: 'launcher', answer: suiteOnly });
+  });
+
   // covers: suite spec 0013 AC-14 (an admin whose session ended signs in and lands back on the page)
   it('says the session ended and returns an admin to the page they were on', () => {
     expect(noticeFor(params('reason=ended'))?.message).toBe('Your session ended. Sign in again.');

@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Eye, EyeOff, Truck } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SignInToaster } from '@/components/ui/sonner';
 import { notifySignIn } from '@/lib/notify';
-import { cn } from '@/lib/utils';
 import { api } from '../../lib/api';
 import {
   isEmailStep,
@@ -17,16 +16,8 @@ import {
   type Notice,
 } from '../../lib/auth';
 import EmailCodeStep from './EmailCodeStep';
-import {
-  HeroBackdrop,
-  HeroCard,
-  HeroLabel,
-  HeroLogo,
-  HeroNotice,
-  HeroPane,
-  heroButton,
-  heroInput,
-} from './AuthHero';
+import { AuthSplit, SplitHeading, SplitHint, SplitLabel, SplitNotice, splitButton, splitInput } from './AuthSplit';
+import { PasswordInput } from './PasswordInput';
 
 type LoginProps = {
   /** Called with the login answer; the portal decides where to go next (spec 0007, AC-14). */
@@ -55,7 +46,6 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   // Suite spec 0009, AC-25: the code step's ticket lives here only, never in the URL or storage
@@ -103,112 +93,84 @@ export default function Login({ onSignedIn, notice: noticeOverride }: LoginProps
   };
 
   return (
-    <div className="flex min-h-screen bg-hero">
-      <HeroPane />
+    <AuthSplit toaster={<SignInToaster />}>
+      {step ? (
+        <EmailCodeStep step={step} onSignedIn={onSignedIn} onBack={backToPassword} />
+      ) : (
+        <>
+          <SplitHeading title="Sign in">Use your WeLinc work email.</SplitHeading>
 
-      {/* transform-gpu makes this column the box sonner's fixed list sits in (AC-15) */}
-      <div className="relative flex min-w-0 flex-1 transform-gpu items-center justify-center p-6 lg:p-12">
-        <SignInToaster />
-        <HeroBackdrop />
+          {notice?.tone === 'error' && !error && (
+            <SplitNotice tone="error">
+              <p>{notice.message}</p>
+              <button
+                type="button"
+                onClick={signInAgain}
+                className="mt-1 min-h-11 cursor-pointer rounded-md font-semibold underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+              >
+                Sign in again
+              </button>
+            </SplitNotice>
+          )}
 
-        <main className="relative z-10 w-full max-w-md">
-          <div className="mb-8 flex items-center justify-center gap-3 lg:hidden">
-            <HeroLogo size="sm" />
-            <span className="text-subheading font-black text-white">WeLinc Logistics</span>
-          </div>
+          {error && (
+            <SplitNotice tone="error">
+              <p>{error}</p>
+            </SplitNotice>
+          )}
 
-          <HeroCard>
-            {step ? (
-              <EmailCodeStep step={step} onSignedIn={onSignedIn} onBack={backToPassword} />
-            ) : (
-              <>
-                <div className="mb-8">
-                  <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-highlight shadow-lg shadow-highlight/20">
-                    <Truck size={22} className="text-primary" strokeWidth={2.5} aria-hidden="true" />
-                  </div>
-                  <h2 className="mb-1 text-title font-black text-white">Sign in</h2>
-                  <p className="text-body text-white/50">Enter your credentials to access your workspace</p>
-                </div>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4.5">
+            <div>
+              <SplitLabel htmlFor="login-email">Work email</SplitLabel>
+              <Input
+                ref={emailRef}
+                id="login-email"
+                type="text"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@welinc.com"
+                required
+                autoComplete="username"
+                className={splitInput}
+              />
+            </div>
 
-                {notice?.tone === 'error' && !error && (
-                  <HeroNotice tone={notice.tone}>
-                    <p>{notice.message}</p>
-                    {notice.tone === 'error' && (
-                      <button
-                        type="button"
-                        onClick={signInAgain}
-                        className="mt-2 min-h-11 cursor-pointer rounded-md text-body font-semibold text-highlight hover:text-commit-hover focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
-                      >
-                        Sign in again
-                      </button>
-                    )}
-                  </HeroNotice>
-                )}
+            <div>
+              <div className="flex items-start justify-between gap-3">
+                <SplitLabel htmlFor="login-password">Password</SplitLabel>
+                <Link
+                  to="/forgot-password"
+                  className="rounded-md text-body font-semibold text-primary underline underline-offset-3 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+              <PasswordInput
+                id="login-password"
+                value={password}
+                onChange={setPassword}
+                placeholder="Enter password"
+                autoComplete="current-password"
+              />
+            </div>
 
-                {error && (
-                  <HeroNotice tone="error">
-                    <p>{error}</p>
-                  </HeroNotice>
-                )}
+            <Button id="login-submit" type="submit" loading={loading} className={splitButton}>
+              {loading ? (
+                'Signing in'
+              ) : (
+                <>
+                  Sign in
+                  <ArrowRight className="size-4.5" aria-hidden="true" />
+                </>
+              )}
+            </Button>
+          </form>
 
-                <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate={false}>
-                  <div>
-                    <HeroLabel htmlFor="login-email">Email or username</HeroLabel>
-                    <Input
-                      ref={emailRef}
-                      id="login-email"
-                      type="text"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@welinc.com or username"
-                      required
-                      autoComplete="username"
-                      className={heroInput}
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <HeroLabel htmlFor="login-password">Password</HeroLabel>
-                      <Link
-                        to="/forgot-password"
-                        className="mb-2 rounded-md text-caption font-normal text-highlight/80 transition-colors hover:text-highlight focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
-                      >
-                        Forgot password?
-                      </Link>
-                    </div>
-                    <div className="relative">
-                      <Input
-                        id="login-password"
-                        type={showPassword ? 'text' : 'password'}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Enter password"
-                        required
-                        autoComplete="current-password"
-                        className={cn(heroInput, 'pr-12')}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((v) => !v)}
-                        aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        aria-pressed={showPassword}
-                        className="absolute top-0 right-0 flex size-11 cursor-pointer items-center justify-center rounded-xl text-white/40 transition-colors hover:text-white/70 focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
-                      >
-                        {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <Button id="login-submit" type="submit" loading={loading} className={heroButton}>
-                    {loading ? 'Signing in' : 'Sign in'}
-                  </Button>
-                </form>
-              </>
-            )}
-          </HeroCard>
-        </main>
-      </div>
-    </div>
+          <SplitHint>
+            <p>No account yet? Ask your admin to add you. You'll get an email to set your password.</p>
+          </SplitHint>
+        </>
+      )}
+    </AuthSplit>
   );
 }

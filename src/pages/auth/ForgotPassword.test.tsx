@@ -54,10 +54,10 @@ async function toCodeStep() {
       <ForgotPassword />
     </MemoryRouter>,
   );
-  await user.type(screen.getByLabelText(/^Email/), ' Pedro@WeLinc.com ');
+  await user.type(screen.getByLabelText(/^Work email/), ' Pedro@WeLinc.com ');
   await user.click(screen.getByRole('button', { name: 'Send code' }));
   await screen.findByRole('heading', { name: 'Check your email' });
-  return { user, field: screen.getByLabelText(/^Code/) as HTMLInputElement };
+  return { user, field: screen.getByLabelText(/^Reset code/) as HTMLInputElement };
 }
 
 describe('ForgotPassword', () => {
@@ -75,6 +75,32 @@ describe('ForgotPassword', () => {
     expect(post).toHaveBeenLastCalledWith('/auth/verify-otp', { email: 'pedro@welinc.com', otp: '123456' });
   });
 
+  // covers: suite spec 0019 AC-14 (the strength box, Confirm new password, and step 4)
+  it('ticks the four rules as they are met, says when the passwords match, then confirms', async () => {
+    const { user, field } = await toCodeStep();
+    await user.type(field, '123456');
+    await screen.findByRole('heading', { name: 'Set a new password' });
+    expect(screen.getByText('Not set yet')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('New password'), 'marikina');
+    expect(screen.getByText('Weak')).toBeInTheDocument();
+    expect(screen.getByText('8 or more characters').textContent).toContain('done');
+    expect(screen.getByText('A symbol, like ! or #').textContent).toContain('not yet');
+    await user.type(screen.getByLabelText('New password'), '2026!M');
+    expect(screen.getByText('Strong')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Confirm new password'), 'marikina2026!');
+    expect(screen.getByText("Passwords don't match yet")).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Confirm new password'), 'M');
+    expect(screen.getByText('Passwords match')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save password' }));
+    expect(post).toHaveBeenLastCalledWith('/auth/reset-password', {
+      email: 'pedro@welinc.com',
+      otp: '123456',
+      newPassword: 'marikina2026!M',
+    });
+    expect(await screen.findByRole('heading', { name: 'Password changed' })).toBeInTheDocument();
+    expect(screen.getByText(/signed you out on your other devices/)).toBeInTheDocument();
+  });
+
   it('clears a wrong code and says so', async () => {
     const { user, field } = await toCodeStep();
     post.mockRejectedValueOnce(failure(400));
@@ -85,8 +111,9 @@ describe('ForgotPassword', () => {
 
   it('holds Resend for a minute after a code is sent', async () => {
     await toCodeStep();
-    const resend = screen.getByRole('button', { name: /Resend code in \d+ s/ }) as HTMLButtonElement;
-    expect(resend.disabled).toBe(true);
+    // Board `R32Forgot2`: the wait shows as a clock, and the send button only once it ends
+    expect(screen.getByText(/^[01]:\d\d$/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Send a new code' })).toBeNull();
   });
 
   it('names the network limit', async () => {
@@ -97,7 +124,7 @@ describe('ForgotPassword', () => {
         <ForgotPassword />
       </MemoryRouter>,
     );
-    await user.type(screen.getByLabelText(/^Email/), 'pedro@welinc.com');
+    await user.type(screen.getByLabelText(/^Work email/), 'pedro@welinc.com');
     await user.click(screen.getByRole('button', { name: 'Send code' }));
     expect(await screen.findByText(/Too many tries from this network/)).toBeTruthy();
   });

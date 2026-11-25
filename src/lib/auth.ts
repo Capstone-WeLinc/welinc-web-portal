@@ -163,6 +163,11 @@ export function screenForAnswer(params: URLSearchParams, answer: LauncherAnswer)
   // Suite spec 0013, AC-14: back to the admin page whose session ended
   const back = returnPath(params);
   if (back) return { kind: 'go', url: back };
+  // Suite spec 0019, AC-5: no system and not a suite admin has nothing to open; a suite admin with
+  // no system still reaches the launcher and its Suite management card
+  if (answer.systems.length === 0 && !isSuiteAdmin(answer)) {
+    return { kind: 'no-access', email: answer.user.email };
+  }
   // One system and no error: straight in, unless they administer it or are a suite admin. An admin
   // lands on the launcher so they can reach Suite management from its strip; a one system admin,
   // or a suite admin whose only role is temporary (suite spec 0019, AC-5), would otherwise never

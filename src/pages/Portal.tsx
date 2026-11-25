@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Login from './auth/Login';
-import { LoginLoading } from './auth/AuthHero';
+import { LoginLoading } from './auth/AuthSplit';
 import Launcher from './launcher/Launcher';
 import NoAccess from './launcher/NoAccess';
 import PhoneOnly from './launcher/PhoneOnly';
@@ -154,7 +154,7 @@ function PortalScreen({ params, onRetry }: { params: URLSearchParams; onRetry: (
     case 'app-not-allowed':
       return <AppNotAllowed answer={screen.answer} system={screen.system} />;
     case 'no-access':
-      return <NoAccess email={screen.email} />;
+      return <NoAccess email={screen.email} onRetry={onRetry} />;
     case 'error':
       return <LauncherError onRetry={onRetry} />;
     default:

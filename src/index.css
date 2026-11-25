@@ -78,15 +78,8 @@
   --duration-bar-out: 130ms;
   --duration-sheet-out: 150ms;
 
-  /*
-    The login hero (spec 0007, AC-22): the split layout keeps today's dark navy, gradient
-    and gold glows, a deliberate exception to design.md's ban. `hero` is also the portal's navy
-    brand band (design.md, Brand surfaces); nothing else uses these.
-  */
+  /* The portal's navy launcher band (design.md, Brand surfaces) */
   --hero: #0d1240;
-  --hero-deep: #0a0e35;
-  --hero-danger: #fca5a5;
-  --hero-success: #34d399;
 
   /*
     Suite spec 0019: the drawn brand scenes (the launcher band, the 404 road, sign in). The trucks
@@ -96,6 +89,11 @@
   --scene-hills: #141a55;
   --scene-road: #0a0d36;
   --scene-post: #cbd2ea;
+  /* The branch map on the sign in side (`R37SignIn`): water, land, and the pale blue of coasts and sea names */
+  --scene-water: #1a2263;
+  --scene-land: #070a2e;
+  --scene-coast: #8ca0f0;
+  --scene-sea: #a0aff0;
   --livery-body: #f7f8fb;
   --livery-edge: #c9d0de;
   --livery-orange: #f29a1f;
@@ -241,9 +239,6 @@
   --color-sidebar-count: var(--sidebar-count);
 
   --color-hero: var(--hero);
-  --color-hero-deep: var(--hero-deep);
-  --color-hero-danger: var(--hero-danger);
-  --color-hero-success: var(--hero-success);
 }
 
 /*

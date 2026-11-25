@@ -256,9 +256,14 @@ describe("Portal", () => {
     );
     const view = renderPortal("/");
     expect(
-      await screen.findByText(/no access to any WeLinc system/),
+      await screen.findByText(/doesn't have a role yet/),
     ).toBeTruthy();
     expect(screen.getByText(/pedro@welinc.com/)).toBeTruthy();
+    // Suite spec 0019, AC-16: it names no system, and Try again asks /auth/sso once more
+    expect(screen.queryByText(/VRMS|VMMS|BMS/)).toBeNull();
+    get.mockResolvedValueOnce({ data: TWO });
+    await userEvent.setup().click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findAllByRole("link")).toHaveLength(2);
     view.unmount();
 
     get
