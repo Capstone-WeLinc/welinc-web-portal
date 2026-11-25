@@ -186,7 +186,8 @@ describe('RoleDetail (AC-3, AC-4, AC-6)', () => {
     await screen.findByRole('heading', { level: 2, name: 'Chief Mechanic' });
     expect(screen.getAllByText('Built in')).toHaveLength(2); // the list heading and the header chip
     expect(screen.getByText('Comes with VRMS. You can change its permissions, not delete it.')).toBeInTheDocument();
-    expect(screen.getByText('1 of 3')).toBeInTheDocument();
+    const permissionsFact = screen.getByText('Permissions', { selector: 'dt' }).parentElement;
+    expect(permissionsFact).toHaveTextContent('1 of 3');
     expect(screen.getByText(/by Leonora Castillo/)).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /^Permissions\s?1\/3$/ })).toBeInTheDocument();
   });
@@ -194,9 +195,9 @@ describe('RoleDetail (AC-3, AC-4, AC-6)', () => {
   it('opens the first group, folds the rest with a preview, and opens them all', async () => {
     const user = userEvent.setup();
     renderAt('/admin/roles/VRMS/ADMIN');
-    const tickets = await screen.findByRole('button', { name: /^Tickets\s?2\/2/ });
+    const tickets = await screen.findByRole('button', { name: /^Tickets\s?, 2 of 2 allowed/ });
     expect(tickets).toHaveAttribute('aria-expanded', 'true');
-    const admin = screen.getByRole('button', { name: /^Admin\s?1\/1\s?Manage the team/ });
+    const admin = screen.getByRole('button', { name: /^Admin\s?, 1 of 1 allowed\s?Manage the team/ });
     expect(admin).toHaveAttribute('aria-expanded', 'false');
     await user.click(screen.getByRole('button', { name: 'Open all' }));
     expect(admin).toHaveAttribute('aria-expanded', 'true');

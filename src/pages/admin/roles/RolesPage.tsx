@@ -221,7 +221,7 @@ function SystemRoles({
 
   return (
     <div className="md:flex md:h-below-bar">
-      <div className={cn('md:w-90 md:shrink-0 md:border-r md:border-border', roleCode && 'max-md:hidden')}>
+      <div className={cn('bg-card max-md:min-h-below-bar md:z-1 md:w-75 md:shrink-0 md:border-r md:border-border md:shadow-pane', roleCode && 'max-md:hidden')}>
         <RoleList
           systems={systems}
           system={system}

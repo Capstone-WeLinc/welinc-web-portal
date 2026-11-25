@@ -38,19 +38,26 @@ export function RoleHistory({ system, role, version }: { system: SystemCode; rol
     <div className="flex flex-col gap-3">
       <ol
         aria-label={`History of ${role.name}`}
-        className="divide-y divide-divider overflow-hidden rounded-2xl border border-transparent bg-card shadow-card"
+        className="flex flex-col rounded-2xl bg-card px-5 pt-4.5 pb-1 shadow-card"
       >
         {state.value.items.map((item) => (
-          <li key={item.id} className="flex flex-col gap-1 px-5 py-3 sm:flex-row sm:items-start sm:gap-4">
-            <div className="min-w-0 flex-1">
+          <li key={item.id} className="flex gap-3 pb-4.5">
+            <span aria-hidden="true" className="flex w-6 shrink-0 justify-center pt-1.25">
+              <span className="size-2.5 rounded-full bg-card ring-2 ring-primary" />
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <p className="text-body break-words text-foreground">
-                <span className="font-medium">{item.actorName}</span> {historyWords(item)}
+                <span className="font-semibold">{item.actorName}</span> {historyWords(item)}
               </p>
-              {item.note && <p className="text-small break-words text-muted-foreground">“{item.note}”</p>}
+              {item.note && (
+                <p className="mt-1 rounded-md bg-background px-2.5 py-1.5 text-small break-words text-muted-strong">
+                  “{item.note}”
+                </p>
+              )}
+              <time dateTime={item.at} className="font-mono text-caption text-muted-foreground">
+                {formatDateTime(item.at)}
+              </time>
             </div>
-            <time dateTime={item.at} className="shrink-0 font-mono text-caption text-muted-foreground">
-              {formatDateTime(item.at)}
-            </time>
           </li>
         ))}
       </ol>

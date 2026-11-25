@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from "react";
-import { ChevronDown, Lock, Search, SearchX } from "lucide-react";
+import { ChevronRight, Lock, Search, SearchX } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Meter } from "@/components/ui/meter";
 import { Switch } from "@/components/ui/switch";
 import type { PermissionMatrix, RolesData } from "@/lib/adminApi";
 import { cn } from "@/lib/utils";
@@ -117,7 +118,7 @@ export function PermissionGroups({
           </Button>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-transparent bg-card shadow-card">
+        <div className="flex flex-col gap-3">
           {groups.map((group) => (
             <Group
               key={group.name}
@@ -168,7 +169,7 @@ function Group({
   return (
     <section
       aria-label={name}
-      className="border-t border-divider first:border-t-0"
+      className="overflow-hidden rounded-2xl bg-card shadow-card"
     >
       <h3>
         <button
@@ -176,13 +177,23 @@ function Group({
           aria-expanded={open}
           aria-controls={bodyId}
           onClick={onFlip}
-          className="flex min-h-14 w-full items-center gap-3 px-5 py-3 text-left transition-colors outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+          className="flex min-h-14 w-full items-start gap-3 px-5 py-4 text-left transition-colors outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         >
-          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="flex items-baseline gap-2.5">
-              <span className="text-group text-foreground">{name}</span>
-              <span className="font-mono text-caption text-muted-strong">
-                {summary.allowed}/{summary.total}
+          <ChevronRight
+            aria-hidden="true"
+            className={cn(
+              "mt-0.75 size-4 shrink-0 text-muted-strong transition-transform duration-(--duration-fold) ease-enter motion-reduce:transition-none",
+              open && "rotate-90",
+            )}
+          />
+          <span className="flex min-w-0 flex-1 flex-col gap-1">
+            <span className="flex items-center gap-3">
+              <span className="min-w-0 flex-1 text-group text-foreground">{name}</span>
+              <span aria-hidden="true" className="w-32 shrink-0 max-sm:w-24">
+                <Meter value={summary.allowed} max={summary.total} label={`${name} allowed`} className="gap-2.5" />
+              </span>
+              <span className="sr-only">
+                , {summary.allowed} of {summary.total} allowed
               </span>
             </span>
             {!open && (
@@ -191,13 +202,6 @@ function Group({
               </span>
             )}
           </span>
-          <ChevronDown
-            aria-hidden="true"
-            className={cn(
-              "size-5 shrink-0 text-muted-foreground transition-transform duration-(--duration-fold) ease-enter motion-reduce:transition-none",
-              open && "rotate-180",
-            )}
-          />
         </button>
       </h3>
       <div
@@ -248,7 +252,7 @@ function Row({
   return (
     <li
       className={cn(
-        "flex items-center gap-4 px-5 py-3",
+        "flex items-center gap-5 py-2.75 pr-5 pl-12 max-sm:pl-5",
         changed && "bg-draft-row",
       )}
     >
@@ -261,7 +265,7 @@ function Row({
             {label}
           </span>
           {changed && (
-            <span className="rounded-md bg-draft-tag px-1.5 py-0.5 text-caption text-draft-tag-foreground">
+            <span className="rounded-full bg-draft-tag px-2 py-0.5 text-caption font-semibold text-draft-tag-foreground">
               Not saved
             </span>
           )}
@@ -271,8 +275,8 @@ function Row({
         </p>
       </div>
       {locked ? (
-        <span className="flex shrink-0 items-center gap-1.5 text-small text-muted-strong">
-          <Lock className="size-4" aria-hidden="true" />
+        <span className="flex shrink-0 items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-caption font-normal text-muted-strong">
+          <Lock className="size-3" aria-hidden="true" />
           {value ? "Always on" : "Always off"}
         </span>
       ) : editable ? (

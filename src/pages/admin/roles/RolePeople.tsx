@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { UserPlus, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InitialsTile } from '@/components/ui/initials-tile';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,19 +13,17 @@ import { usePaged } from './usePaged';
 /**
  * Suite spec 0018, child 0001 AC-13: the role's holders by name, 25 at a time with Load more.
  * Each row opens the person on People (spec 0017). "Since" is when the person was given the role,
- * "Until" ends a temporary holder's role. `version` reloads the list after Add people.
+ * "Until" ends a temporary holder's role. `version` reloads the list after Add people, whose
+ * button sits in the tab row (board Roles9).
  */
 export function RolePeople({
   data,
   role,
   version,
-  onAdd,
 }: {
   data: RolesData;
   role: RoleSummary;
   version: number;
-  /** Opens Add people; absent when the viewer can't change roles in this system. */
-  onAdd?: () => void;
 }) {
   const { state, busy, failed, loadMore, retry } = usePaged<ManagedPerson>(
     `${data.system}|${role.code}|${version}`,
@@ -34,14 +32,6 @@ export function RolePeople({
 
   return (
     <div className="flex flex-col gap-3">
-      {onAdd && (
-        <div className="flex justify-end">
-          <Button variant="outline" size="sm" onClick={onAdd}>
-            <UserPlus aria-hidden="true" />
-            Add people
-          </Button>
-        </div>
-      )}
       {state.kind === 'loading' && <PeopleSkeleton />}
       {state.kind === 'error' && (
         <ViewError message={errorMessage(state.error, `We couldn't load the people with ${role.name}.`)} onRetry={retry} />
@@ -96,10 +86,10 @@ function HolderRow({ person, data, role }: { person: ManagedPerson; data: RolesD
     >
       <InitialsTile name={person.name} />
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-body font-medium text-foreground">{person.name}</span>
+        <span className="truncate text-body font-semibold text-foreground">{person.name}</span>
         <span className="truncate text-small text-muted-foreground">{person.email}</span>
       </span>
-      <span className="flex shrink-0 flex-col items-end gap-1 text-small text-muted-foreground">
+      <span className="flex shrink-0 flex-col items-end gap-1 text-caption font-normal text-muted-strong">
         {held?.createdAt && (
           <span>
             Since <span className="font-mono">{formatDate(held.createdAt)}</span>
