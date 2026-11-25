@@ -11,7 +11,11 @@ import { errorCode, withStepUp, type SystemCode } from './admin';
 export type RoleAssignment = { role: string; system: SystemCode };
 
 /** Suite spec 0017, AC-21: a role on the People list and person answers, with when it ends. */
-export type PersonRole = RoleAssignment & { temporaryUntil?: string | null };
+export type PersonRole = RoleAssignment & {
+  temporaryUntil?: string | null;
+  /** When the person was given this role (People list only; suite spec 0018, AC-13). */
+  createdAt?: string;
+};
 
 export type ManagedPerson = {
   id: string;
@@ -198,15 +202,21 @@ export async function fetchEventCatalog(): Promise<EventCatalog> {
 export function listPeople(params: {
   system: Scope;
   q?: string;
+  /** Only holders of this role in `system` (suite spec 0018: faces and the People tab). */
+  role?: string;
+  /** Leaves out holders of this role in `system` (suite spec 0018: Add people candidates). */
+  excludeRole?: string;
+  /** Leaves out suite admins and the caller, who can't be moved into a role. */
+  assignable?: boolean;
   status?: PeopleStatus;
   group?: PeopleGroup;
   sort?: PeopleSort;
   limit?: number;
   cursor?: string;
 }): Promise<PeoplePage> {
-  const { system, ...rest } = params;
-  return withStepUp(
-    async () => (await api.get<PeoplePage>('/auth/admin/users', { params: { ...rest, ...scoped(system) } })).data,
+  const { system, assignable, ...rest } = params;
+  const query = { ...rest, ...(assignable ? { assignable: 'true' } : {}), ...scoped(system) };
+  return withStepUp(async () => (await api.get<PeoplePage>('/auth/admin/users', { params: query })).data,
   );
 }
 
@@ -503,30 +513,6 @@ export type PermissionMatrix = {
 
 export type MatrixCellChange = { role: string; key: string; allowed: boolean };
 
-export type MatrixHistoryItem = {
-  id: string;
-  role: string;
-  roleName: string;
-  key: string;
-  label: string;
-  /** Null: the cell was created. */
-  before: boolean | null;
-  /** Null: the cell was removed with its key or role. */
-  after: boolean | null;
-  actorName: string;
-  actorEmail: string | null;
-  note: string | null;
-  /** Copied from VRMS when the matrix moved here. */
-  imported: boolean;
-  createdAt: string;
-};
-
-export type MatrixHistoryPage = { items: MatrixHistoryItem[]; nextCursor: string | null };
-
-export function fetchMatrix(system: SystemCode): Promise<PermissionMatrix> {
-  return withStepUp(async () => (await api.get<PermissionMatrix>(`/auth/admin/permissions/${system}`)).data);
-}
-
 export function saveMatrix(
   system: SystemCode,
   input: { version: number; changes: MatrixCellChange[]; note?: string },
@@ -534,18 +520,100 @@ export function saveMatrix(
   return withStepUp(async () => (await api.patch<PermissionMatrix>(`/auth/admin/permissions/${system}`, input)).data);
 }
 
-export function matrixHistory(system: SystemCode, cursor?: string): Promise<MatrixHistoryPage> {
+// ---- roles page (suite spec 0018) -----------------------------------------------------------
+
+export type RoleSummary = {
+  code: string;
+  name: string;
+  description: string;
+  builtIn: boolean;
+  isSystemAdmin: boolean;
+  copiedFrom: { code: string; name: string } | null;
+  /** People who hold it and aren't deleted. */
+  peopleCount: number;
+  /** The newest permission change or role event; `byName` is "System" for the catalog sync. */
+  lastChanged: { at: string; byName: string } | null;
+};
+
+export type RolePermission = {
+  key: string;
+  label: string;
+  description: string;
+  lockedRoles: string[];
+  /** Built in roles whose catalog default is on (Reset to defaults). */
+  defaultRoles: string[];
+};
+
+export type RolesData = {
+  system: SystemCode;
+  /** The system has permission keys, so custom roles can be offered. */
+  supportsCustomRoles: boolean;
+  /** Only suite admins change permissions and roles. */
+  canEdit: boolean;
+  /** The matrix version a save sends. */
+  version: number;
+  /** Live roles: built in first in catalog order, then custom by name. */
+  roles: RoleSummary[];
+  /** Permission groups in catalog order. */
+  groups: { name: string; permissions: RolePermission[] }[];
+  /** Each live role's allowed keys. */
+  cells: Record<string, string[]>;
+};
+
+export function fetchRoles(system: SystemCode): Promise<RolesData> {
+  return withStepUp(async () => (await api.get<RolesData>(`/auth/admin/roles/${system}`)).data);
+}
+
+/** The message welinc-auth sent with an error, when there is one. */
+/** A role's history item (AC-15): a permission change, or a role event from child 0002. */
+export type RoleHistoryItem = {
+  id: string;
+  at: string;
+  /** "System" for the catalog sync. */
+  actorName: string;
+  kind: 'PERMISSION' | 'CREATED' | 'RENAMED' | 'DESCRIBED' | 'DELETED';
+  key?: string;
+  label?: string;
+  before?: boolean | null;
+  after?: boolean | null;
+  fromValue?: string | null;
+  toValue?: string | null;
+  note?: string | null;
+};
+
+export type RoleHistoryPage = { items: RoleHistoryItem[]; next: string | null };
+
+export function roleHistory(system: SystemCode, code: string, cursor?: string): Promise<RoleHistoryPage> {
   return withStepUp(
     async () =>
       (
-        await api.get<MatrixHistoryPage>(`/auth/admin/permissions/${system}/changes`, {
-          params: cursor ? { cursor } : {},
+        await api.get<RoleHistoryPage>(`/auth/admin/roles/${system}/${encodeURIComponent(code)}/history`, {
+          params: cursor ? { cursor, limit: 25 } : { limit: 25 },
         })
       ).data,
   );
 }
 
-/** The message welinc-auth sent with an error, when there is one. */
+/**
+ * AC-14, AC-17: Add people, all or nothing. The admin role asks for the password again
+ * (`REAUTH_REQUIRED`, through `withReauth`) before anyone moves.
+ */
+export function addRoleMembers(
+  system: SystemCode,
+  code: string,
+  userIds: string[],
+): Promise<{ moved: number; skipped: number }> {
+  return withReauth(
+    async (reauthToken) =>
+      (
+        await api.post<{ moved: number; skipped: number }>(
+          `/auth/admin/roles/${system}/${encodeURIComponent(code)}/members`,
+          reauthToken ? { userIds, reauthToken } : { userIds },
+        )
+      ).data,
+  );
+}
+
 export function errorMessage(error: unknown, fallback: string): string {
   const data = (error as { response?: { data?: { message?: unknown } } } | null)?.response?.data;
   const message = data?.message;

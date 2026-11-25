@@ -12,14 +12,15 @@ The portal's admin screens from suite spec 0013. They talk only to welinc-auth's
 | `AdminShell.tsx` | The frame: sidebar, breadcrumb top bar, and on phones a bottom bar or a sheet menu (`BOTTOM_BAR_MAX` in `adminViews.ts`) |
 | `AdminTable.tsx` | `DataTable`, `Row`, `Cell`, `PersonCell`, `Muted`: a table from md up that stacks into blocks on phones |
 | `adminViews.ts` | `ADMIN_VIEWS` (with the `suiteOnly` flag), `landingView`, `viewHref`, `BOTTOM_BAR_MAX` |
-| `useAdminSystem.ts` | `?system=` handling: `useAdminSystem` for one system views (permissions), `useAdminScope` for views where a suite admin may pick `all` (people, activity, deletion). Writes the query with `replace` and drops `?cursor=` on a change |
+| `useAdminSystem.ts` | `?system=` handling: `systemChoices` (the systems a viewer may pick), `useAdminScope` for views where a suite admin may pick `all` (people, activity, deletion). Writes the query with `replace` and drops `?cursor=` on a change |
 | `AdminStates.tsx` | `ViewHeader`, `ViewError`, `ViewEmpty`, `Segmented`, `SystemSwitcher`, `Toolbar`, `NoSystemScope` |
 | `StepUpDialog.tsx`, `ReauthDialog.tsx` | The "Confirm it's you" code dialog and the password dialog, each mounted once in `App.tsx` |
 | `ConfirmFields.tsx`, `reason.ts` | `ReasonField`, `PasswordField`, and `reasonProblem` (10 to 500 trimmed characters) |
 | `useAdminMe.ts` | The shared `/auth/admin/me` read behind the launcher's Admin card and the top bar `AdminEntry` |
 | `useAsync.ts`, `useCatalogs.ts` | The key based loader, and the systems and activity catalogs fetched once per page load |
 | `people/` | Suite spec 0017 (board `People8`): `PeoplePage` (the list beside the whole person; `/admin/people/new` opens `AddPersonDialog` over it), `PeopleListPane` (groups, sorts, search, filters), `PersonPane` and `PersonTabs` (header, facts, Overview, Access, Signed in devices, Activity), `AccessTab`, `PersonHeaderActions`, and the pure rules in `peopleRules.ts` (tested) |
-| `permissions/` | `PermissionsView` (matrix editor, read only for system admins), `matrixDraft.ts` (the draft rules, tested), `MatrixReviewDialog`, `MatrixHistory` |
+| `permissions/` | `matrixDraft.ts` only: the draft rules (cells keyed `role|key`, tested) the Roles page uses |
+| `roles/` | Suite spec 0018 child 0001 (board `Roles9`): `RolesPage` (route `/admin/roles/:system/:role`, data, the stored draft per system, save and conflicts), `RoleList`, `RoleDetail` (header, facts, tabs), `PermissionGroups` (folds, Find a permission), `RolePeople` and `AddPeopleDialog`, `RoleHistory`, `RoleReviewDialog` (RC), `downloadRolesCsv.ts`, and the pure rules in `rolesRules.ts` (tested). `/admin/permissions` redirects here |
 | `temporary/` | `TemporaryAccessView`, `TemporaryAccessDialog`, and `TemporaryAccessBanner.tsx` (the band on Overview and Temporary access, plus `TemporaryAccessChip` for the other views) |
 | `suite/SuiteAdminsView.tsx`, `overview/OverviewView.tsx`, `deletion/`, `activity/` | Suite admins add and remove, the suite report, deletion approve, reject and restore, the activity feed |
 
@@ -34,12 +35,12 @@ The portal's admin screens from suite spec 0013. They talk only to welinc-auth's
 - List views sit on the canvas as table cards (`AdminTable`: `bg-card`, `shadow-card`, suite spec 0016); People fills the content area edge to edge (`flush` on `AdminShell`). Never put a table card inside a card.
 - The person page never depends on a picked system: every system is a row on the Access tab (read only for a system the viewer doesn't admin), and an action sends the system from `actionSystem` in `peopleRules.ts`.
 - Suite admin versus system admin changes what shows (suite only views, the `All` switcher, matrix editing); the server still enforces every rule, so hiding is never the only check.
-- The matrix draft holds only flipped cells; the editor remounts on `system|version`, and a save sends `version`, so a `MATRIX_STALE` answer reloads it.
+- The roles draft holds only flipped cells, one per system, stored through `useDraft`; a save sends `version`, and every read after a save or a `MATRIX_STALE` answer runs `checkDraft`, which keeps only the entries whose `from` still matches the server.
 - Password check codes (`WRONG_PASSWORD`, `ACCOUNT_LOCKED`, `RATE_LIMITED`) get their messages in `reauthFailure` (`lib/adminErrors.ts`); view specific codes (`MATRIX_STALE`, `GRANT_ACTIVE`, `ACCOUNT_EXISTS`, the suite admin 409s) are handled in their view. `ACCOUNT_LOCKED` clears the password field.
 
 ## Gotchas
 
-- Passwords, reauth tokens and the step up ticket live in component state only, never in `localStorage` or `sessionStorage` (spec 0003, AC-36). The one stored thing is a view preference: the sidebar collapse, `welinc:sidebar:<user id>` (`useSidebarCollapsed.ts`, suite spec 0016).
+- Passwords, reauth tokens and the step up ticket live in component state only, never in `localStorage` or `sessionStorage` (spec 0003, AC-36). The stored things are a view preference, the sidebar collapse, `welinc:sidebar:<user id>` (`useSidebarCollapsed.ts`, suite spec 0016), and unsaved drafts through `useDraft` (the Roles page's `welinc:draft:<user id>:roles:<system>`, cleared on sign out).
 - The sidebar links and the landing redirect go through `viewHref` (`adminViews.ts`), which keeps `?system=` and drops every other query; a new link between views should use it too.
 - `?system=all` means suite wide only for a suite admin; the overview's links use it.
 - The step up and reauth hosts are module singletons registered by the two dialogs' effects; without the dialogs mounted, `askForCode` resolves false and the call fails.

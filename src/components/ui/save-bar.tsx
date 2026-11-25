@@ -10,12 +10,17 @@ export type SaveBarChange = {
   id: string
   /** The page's group the item sits in ("Repairs", "Thresholds"). */
   group: string
+  /** A sub heading above the groups when changes span several things ("Chief mechanic"). */
+  section?: string
   label: string
   kind: "added" | "removed"
   from?: string
   to?: string
   onUndo: () => void
 }
+
+/** Who the changes reach, at the bottom of the change list; one line per section when there are several. */
+export type SaveBarPeople = { key: string; names: string[]; text: string }
 
 /** While a bar shows, toasts sit 88px higher (design.md, Feedback: Toasts). */
 let barsShown = 0
@@ -47,10 +52,12 @@ function SaveBar({
   name,
   changes,
   subline,
+  countDetail,
   keptAt,
-  people,
+  people = [],
   onDiscard,
   onReview,
+  onOpenList,
   saving = false,
 }: {
   /** What is edited, for "Changes to [name]". */
@@ -58,12 +65,16 @@ function SaveBar({
   changes: SaveBarChange[]
   /** The caller's line under the count ("Chief mechanic · affects 8 people"). */
   subline?: string
+  /** Added after the count ("3 unsaved changes in 2 roles"). */
+  countDetail?: string
   /** Set when the changes were restored from a draft: the sub line reads "Kept from [time]". */
   keptAt?: number | null
   /** The people the changes touch, at the bottom of the change list. */
-  people?: { names: string[]; text: string }
+  people?: SaveBarPeople[]
   onDiscard: () => void
   onReview: () => void
+  /** Called when the change list opens, so the caller can load who it touches. */
+  onOpenList?: () => void
   saving?: boolean
 }) {
   const open = changes.length > 0
@@ -90,13 +101,19 @@ function SaveBar({
   const rows = open ? changes : last
   const added = rows.filter((row) => row.kind === "added").length
   const removed = rows.length - added
-  const count = `${rows.length} unsaved ${rows.length === 1 ? "change" : "changes"}`
+  const count = `${rows.length} unsaved ${rows.length === 1 ? "change" : "changes"}${countDetail ?? ""}`
   const sub = keptAt ? `Kept from ${new Date(keptAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : subline
 
   return (
     // A zero height sticky strip: the bar hangs above it, so the page never jumps when it shows.
     <div data-slot="save-bar" className="pointer-events-none sticky bottom-save-bar z-30 h-0">
-      <Popover open={open && listOpen} onOpenChange={setListOpen}>
+      <Popover
+        open={open && listOpen}
+        onOpenChange={(next) => {
+          setListOpen(next)
+          if (next) onOpenList?.()
+        }}
+      >
         <PopoverAnchor asChild>
           <div
             role="region"
@@ -158,9 +175,9 @@ function ChangeList({
   rows: SaveBarChange[]
   added: number
   removed: number
-  people?: { names: string[]; text: string }
+  people: SaveBarPeople[]
 }) {
-  const groups = [...new Set(rows.map((row) => row.group))]
+  const sections = [...new Set(rows.map((row) => row.section ?? ""))]
   return (
     <>
       <div className="flex items-baseline justify-between gap-3 border-b border-divider px-4 py-3">
@@ -170,28 +187,43 @@ function ChangeList({
         </span>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2">
-        {groups.map((group) => (
-          <section key={group} className="py-1">
-            <h3 className="py-1 text-label text-muted-strong">{group}</h3>
-            <ul className="flex flex-col">
-              {rows
-                .filter((row) => row.group === group)
-                .map((row) => (
-                  <ChangeRow key={row.id} row={row} />
-                ))}
-            </ul>
-          </section>
-        ))}
+        {sections.map((section) => {
+          const inSection = rows.filter((row) => (row.section ?? "") === section)
+          const groups = [...new Set(inSection.map((row) => row.group))]
+          return (
+            <section key={section} aria-label={section || undefined} className={cn(section && "py-1")}>
+              {section && <h3 className="pt-2 pb-0.5 text-body font-semibold text-foreground">{section}</h3>}
+              {groups.map((group) => (
+                <section key={group} className="py-1">
+                  <h4 className="py-1 text-label text-muted-strong">{group}</h4>
+                  <ul className="flex flex-col">
+                    {inSection
+                      .filter((row) => row.group === group)
+                      .map((row) => (
+                        <ChangeRow key={row.id} row={row} />
+                      ))}
+                  </ul>
+                </section>
+              ))}
+            </section>
+          )
+        })}
       </div>
-      {people && people.names.length > 0 && (
-        <div className="flex items-center gap-3 border-t border-divider px-4 py-3">
-          <span className="flex -space-x-1.5">
-            {people.names.slice(0, 4).map((person) => (
-              <InitialsTile key={person} name={person} className="ring-2 ring-card" />
-            ))}
-          </span>
-          <span className="min-w-0 truncate text-small text-muted-foreground">{people.text}</span>
-        </div>
+      {people.length > 0 && (
+        <ul className="flex flex-col gap-2 border-t border-divider px-4 py-3">
+          {people.map((line) => (
+            <li key={line.key} className="flex items-center gap-3">
+              {line.names.length > 0 && (
+                <span className="flex -space-x-1.5">
+                  {line.names.slice(0, 3).map((person) => (
+                    <InitialsTile key={person} name={person} className="ring-2 ring-card" />
+                  ))}
+                </span>
+              )}
+              <span className="min-w-0 text-small text-muted-foreground">{line.text}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </>
   )
