@@ -1,9 +1,9 @@
 import {
   History,
+  IdCard,
   KeyRound,
   LayoutDashboard,
   ShieldCheck,
-  SlidersHorizontal,
   UserX,
   Users,
   type LucideIcon,
@@ -18,7 +18,7 @@ export type AdminViewPath =
   | 'activity'
   | 'temporary-access'
   | 'suite-admins'
-  | 'permissions';
+  | 'roles';
 
 /** The `/admin` views (suite spec 0013, AC-23), in sidebar order, grouped by task. */
 export type AdminView = {
@@ -41,7 +41,8 @@ export const ADMIN_VIEWS: readonly AdminView[] = [
   { path: 'people', label: 'People', short: 'People', suiteOnly: false, icon: Users, group: 'Accounts' },
   { path: 'deletion-requests', label: 'Deletion requests', short: 'Deletions', suiteOnly: false, icon: UserX, group: 'Accounts' },
   { path: 'suite-admins', label: 'Suite admins', short: 'Suite', suiteOnly: true, icon: ShieldCheck, group: 'Accounts' },
-  { path: 'permissions', label: 'Permissions', short: 'Roles', suiteOnly: false, icon: SlidersHorizontal, group: 'Access' },
+  // Suite spec 0018, AC-1: the Roles page took the Permissions page's place (/admin/permissions redirects)
+  { path: 'roles', label: 'Roles', short: 'Roles', suiteOnly: false, icon: IdCard, group: 'Access' },
   { path: 'temporary-access', label: 'Temporary access', short: 'Temporary', suiteOnly: false, icon: KeyRound, group: 'Access' },
   { path: 'activity', label: 'Activity', short: 'Activity', suiteOnly: false, icon: History, group: 'Audit' },
 ];

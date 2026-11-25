@@ -545,6 +545,50 @@ export function matrixHistory(system: SystemCode, cursor?: string): Promise<Matr
   );
 }
 
+// ---- roles page (suite spec 0018) -----------------------------------------------------------
+
+export type RoleSummary = {
+  code: string;
+  name: string;
+  description: string;
+  builtIn: boolean;
+  isSystemAdmin: boolean;
+  copiedFrom: { code: string; name: string } | null;
+  /** People who hold it and aren't deleted. */
+  peopleCount: number;
+  /** The newest permission change or role event; `byName` is "System" for the catalog sync. */
+  lastChanged: { at: string; byName: string } | null;
+};
+
+export type RolePermission = {
+  key: string;
+  label: string;
+  description: string;
+  lockedRoles: string[];
+  /** Built in roles whose catalog default is on (Reset to defaults). */
+  defaultRoles: string[];
+};
+
+export type RolesData = {
+  system: SystemCode;
+  /** The system has permission keys, so custom roles can be offered. */
+  supportsCustomRoles: boolean;
+  /** Only suite admins change permissions and roles. */
+  canEdit: boolean;
+  /** The matrix version a save sends. */
+  version: number;
+  /** Live roles: built in first in catalog order, then custom by name. */
+  roles: RoleSummary[];
+  /** Permission groups in catalog order. */
+  groups: { name: string; permissions: RolePermission[] }[];
+  /** Each live role's allowed keys. */
+  cells: Record<string, string[]>;
+};
+
+export function fetchRoles(system: SystemCode): Promise<RolesData> {
+  return withStepUp(async () => (await api.get<RolesData>(`/auth/admin/roles/${system}`)).data);
+}
+
 /** The message welinc-auth sent with an error, when there is one. */
 export function errorMessage(error: unknown, fallback: string): string {
   const data = (error as { response?: { data?: { message?: unknown } } } | null)?.response?.data;

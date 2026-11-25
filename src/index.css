@@ -243,6 +243,27 @@
   height: calc(100dvh - 4rem);
 }
 
+/*
+  A group that opens and closes (design.md, Motion: --duration-fold, height plus fade). Put it on
+  the wrapper, `data-open` when open, and one child with `min-h-0 overflow-hidden`. Mark the
+  closed wrapper `inert` so its controls leave the tab order. Reduced motion: only the fade.
+*/
+@utility fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--duration-fold) var(--ease-enter),
+    opacity var(--duration-fold) var(--ease-enter);
+  &[data-open] {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity var(--duration-fold) var(--ease-enter);
+  }
+}
+
 /* Page titles (design.md, Typography): 24px on phones, 28px from 768px up */
 @utility text-title {
   font-size: 1.5rem;

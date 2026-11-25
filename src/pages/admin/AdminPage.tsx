@@ -12,7 +12,7 @@ import { LauncherShell } from '../launcher/LauncherShell';
 import { AdminShell } from './AdminShell';
 import { landingView, viewHref, viewsFor, type AdminViewPath } from './adminViews';
 import { ActivityView } from './activity/ActivityView';
-import { PermissionsView } from './permissions/PermissionsView';
+import { RolesPage } from './roles/RolesPage';
 import { DeletionRequestsView } from './deletion/DeletionRequestsView';
 import { PeoplePage } from './people/PeoplePage';
 import { OverviewView } from './overview/OverviewView';
@@ -88,8 +88,13 @@ export default function AdminPage() {
 function AdminConsole({ me, onChanged }: { me: AdminMe; onChanged: () => void }) {
   const params = useParams();
   const { search } = useLocation();
-  // /admin/people/:id and /admin/people/new sit under People
-  const view = params.id ? 'people' : params.view;
+  // /admin/people/:id and /admin/people/new sit under People; /admin/roles/:system/:role under Roles
+  const view = params.id ? 'people' : params.system ? 'roles' : params.view;
+  // Suite spec 0018, AC-1: the old Permissions page, ?system= included, opens Roles
+  if (view === 'permissions') {
+    const system = new URLSearchParams(search).get('system');
+    return <Navigate to={system ? `/admin/roles/${system.toUpperCase()}` : '/admin/roles'} replace />;
+  }
   const views = viewsFor(me);
   const current = views.find((v) => v.path === view);
   if (!current) return <Navigate to={viewHref(landingView(me), search)} replace />;
@@ -97,9 +102,9 @@ function AdminConsole({ me, onChanged }: { me: AdminMe; onChanged: () => void })
   const grants = me.temporaryGrants?.length ? me.temporaryGrants : undefined;
   // The full band, with Open and End now, where temporary access is the subject; a pill elsewhere
   const fullBand = current.path === 'overview' || current.path === 'temporary-access';
-  // Lists and the matrix sit on the canvas in their own table cards. People is the list beside
-  // the person, edge to edge (suite spec 0017, AC-1).
-  const flush = current.path === 'people';
+  // Lists sit on the canvas in their own table cards. People and Roles are a list beside one
+  // item, edge to edge (suite spec 0017, AC-1; suite spec 0018, AC-1).
+  const flush = current.path === 'people' || current.path === 'roles';
 
   return (
     <AdminShell
@@ -143,8 +148,8 @@ function AdminViewBody({
       return <DeletionRequestsView me={me} />;
     case 'activity':
       return <ActivityView me={me} />;
-    case 'permissions':
-      return <PermissionsView me={me} />;
+    case 'roles':
+      return <RolesPage me={me} />;
     default: {
       // Unknown paths already redirected above; a view added without a case fails the build here
       const missing: never = view;
