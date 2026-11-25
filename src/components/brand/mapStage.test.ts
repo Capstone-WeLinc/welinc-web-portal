@@ -27,11 +27,12 @@ describe('sign in map', () => {
     expect(coverScale(0, 0)).toBe(1);
   });
 
-  it('places the network where the board does at 1440 by 900', () => {
+  it('places the network as the board does at 1440 by 900, 80px further left', () => {
     // The board's copy ends at 405 and its panel starts at 840
     const at = fitStage({ left: 64, bottom: 405, panelLeft: 840 }, 900);
     expect(at.scale).toBeCloseTo(1, 1);
-    expect(Math.abs(at.x)).toBeLessThan(20);
+    expect(at.x).toBeGreaterThan(-100);
+    expect(at.x).toBeLessThan(-60);
     expect(Math.abs(at.y)).toBeLessThan(20);
   });
 

@@ -35,12 +35,12 @@ export const PIN_FROM = 1024;
 export const NETWORK = { x: 250, y: 415, width: 750, height: 455 } as const;
 
 /**
- * The free area the network is fitted into, as board `R47Quiet` composes it at 1440 by 900: from
- * 10px under the copy to 24px above the window's bottom, and from the copy's left edge to 346px
- * past the panel's left edge (Tanay and Taguig sit under the glass). The scale stays between 0.85
+ * The free area the network is fitted into: from 10px under the copy to 24px above the window's
+ * bottom, and from the copy's left edge to 186px past the panel's left edge (Tanay sits under the
+ * glass). Board `R47Quiet` reaches 346px past it; you moved the map 80px left of that (2026-11-26). The scale stays between 0.85
  * (smaller labels get hard to read; a short window crops the south instead) and 1.3.
  */
-export const FIT = { gap: 10, bottom: 24, pastPanel: 346, min: 0.85, max: 1.3 } as const;
+export const FIT = { gap: 10, bottom: 24, pastPanel: 186, min: 0.85, max: 1.3 } as const;
 
 /** Where the copy column is, in px from the page's top left: its text block and the panel's left edge. */
 export type CopyBox = { left: number; bottom: number; panelLeft: number };
