@@ -147,6 +147,18 @@ describe("Portal", () => {
     expect(sessionStorage.length).toBe(0);
   });
 
+  it("names the whole workspace in the sign in tab and credits OpenStreetMap (suite spec 0019 AC-13)", async () => {
+    get.mockRejectedValue(httpError(401));
+    renderPortal();
+    await screen.findByPlaceholderText(/you@welinc.com/);
+    expect(document.title).toBe("Sign in · WeLinc Logistics Operations Workspace");
+    expect(screen.getByRole("link", { name: "© OpenStreetMap contributors" })).toHaveAttribute(
+      "href",
+      "https://www.openstreetmap.org/copyright",
+    );
+    expect(screen.getByText(/Bookings, maintenance and repairs for the whole fleet/)).toBeInTheDocument();
+  });
+
   it("continues a login request after signing in, never showing the launcher", async () => {
     get.mockRejectedValue(httpError(401));
     post.mockResolvedValue({ data: TWO });

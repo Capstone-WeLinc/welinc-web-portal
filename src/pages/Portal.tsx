@@ -20,7 +20,7 @@ import {
   type Screen,
 } from '../lib/auth';
 import { checkSso } from '../lib/session';
-import { pageTitle, useDocumentTitle } from '../lib/title';
+import { SIGN_IN_TITLE, pageTitle, useDocumentTitle } from '../lib/title';
 import { holdCutoffs, useSessionWatch } from '../lib/sessionWatch/watch';
 import { ARRIVAL, SIGN_IN_GONE, ms } from './launcher/launchMotion';
 
@@ -216,14 +216,14 @@ function screenFor(screen: Screen, appLogin: boolean, params: URLSearchParams, o
 function titleFor(kind: Screen['kind'], appLogin: boolean): string {
   switch (kind) {
     case 'form':
-      return pageTitle('Sign in');
+      return SIGN_IN_TITLE;
     case 'no-access':
       return pageTitle('No access');
     case 'error':
     case 'checking':
     case 'go':
     case 'admin':
-      return appLogin ? pageTitle('Sign in') : pageTitle();
+      return appLogin ? SIGN_IN_TITLE : pageTitle();
     default:
       return pageTitle('Home');
   }

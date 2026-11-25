@@ -87,11 +87,9 @@
   --scene-hills: #141a55;
   --scene-road: #0a0d36;
   --scene-post: #cbd2ea;
-  /* The branch map on the sign in side (`R37SignIn`): water, land, and the pale blue of coasts and sea names */
-  --scene-water: #1a2263;
-  --scene-land: #070a2e;
-  --scene-coast: #8ca0f0;
-  --scene-sea: #a0aff0;
+  /* The sign in (S27d Quiet, `R47Quiet`): the page under the map, and the glass panel's tint */
+  --signin-deep: #0a0d33;
+  --signin-label: #e6e8f7;
   /* Launch 3's route bar (`R31LaunchRoute`): the garage the truck leaves from */
   --scene-garage: #2a3290;
   --scene-garage-roof: #3b43a3;
@@ -160,6 +158,11 @@
   --text-base-input: 1rem;
   --text-base-input--line-height: 1.5;
   /* Suite spec 0019, AC-2 (the Round 69 tiles): the system code and the uppercase mono full name */
+  /* Suite spec 0019, AC-13: the sign in title (`R47Quiet`, 58px) */
+  --text-hero: 3.625rem;
+  --text-hero--line-height: 1.02;
+  --text-hero--font-weight: 800;
+  --text-hero--letter-spacing: -0.035em;
   --text-tile-code: 1.625rem;
   --text-tile-code--line-height: 1;
   --text-tile-code--font-weight: 800;
@@ -383,39 +386,6 @@
 @keyframes scene-blink {
   50% {
     opacity: 0.15;
-  }
-}
-
-/*
-  Arrival 1, faster (Round 30, the launcher map): each branch pops in, then its routes and trucks
-  fade in; set `animation-delay` per part. Still under reduced motion.
-*/
-@utility map-pop {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: map-pop 0.3s var(--ease-enter) both;
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-}
-
-@utility map-fade {
-  animation: map-fade 0.4s var(--ease-enter) both;
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-}
-
-@keyframes map-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.6);
-  }
-}
-
-@keyframes map-fade {
-  from {
-    opacity: 0;
   }
 }
 
@@ -681,4 +651,70 @@
 @keyframes launch-load-truck {
   0%, 56% { transform: none; opacity: 1; }
   96%, 100% { transform: translateX(380px); opacity: 0; }
+}
+
+/*
+  Suite spec 0019, AC-13 (board `R47Quiet`, S27d Quiet): the sign in page. The map is drawn on a
+  1440 by 900 stage, as the board is, and `SignInMap` scales that stage to cover the window.
+*/
+@utility signin-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1440px;
+  height: 900px;
+  transform: translate(-50%, -50%) scale(var(--stage-scale, 1));
+}
+/* The board's own placement of the tilted map on the stage */
+@utility signin-map-tilt {
+  position: absolute;
+  left: -23.65px;
+  top: -133.78px;
+  width: 1240px;
+  height: 1500px;
+  transform: perspective(1500px) rotateX(48deg) rotateZ(-12deg) scale(0.9);
+  transform-origin: 50% 50%;
+}
+/* S27's fades: the copy side and the top go to navy, the map shows on the right and under the form */
+@utility signin-map-fade {
+  background:
+    linear-gradient(90deg, var(--sidebar) 0%, color-mix(in oklab, var(--sidebar) 80%, transparent) 22%, transparent 42%),
+    linear-gradient(180deg, var(--sidebar) 0%, var(--sidebar) 34%, transparent 50%);
+}
+@utility signin-label-garage {
+  font-weight: 800;
+  color: var(--white);
+  text-shadow: 0 0 6px var(--sidebar), 0 0 2px var(--sidebar);
+}
+@utility signin-label-drop {
+  font-weight: 600;
+  color: var(--signin-label);
+  text-shadow: 0 0 4px var(--sidebar), 0 0 2px var(--sidebar);
+}
+/* S27's navy glass panel, and the light on dark colours of everything inside it */
+@utility signin-glass {
+  background: color-mix(in oklab, var(--signin-deep) 50%, transparent);
+  backdrop-filter: blur(6px) saturate(1.1);
+  box-shadow: inset 1px 0 0 color-mix(in oklab, var(--white) 12%, transparent);
+}
+@utility signin-dark {
+  color: var(--white);
+  --foreground: #ffffff;
+  --muted-foreground: rgb(255 255 255 / 0.62);
+  --muted-strong: rgb(255 255 255 / 0.72);
+  --primary: #ffffff;
+  --primary-foreground: #0f1445;
+  --ring: #ffffff;
+  --card: rgb(255 255 255 / 0.06);
+  --muted: rgb(255 255 255 / 0.04);
+  --border: rgb(255 255 255 / 0.14);
+  --input: rgb(255 255 255 / 0.14);
+  --divider: rgb(255 255 255 / 0.1);
+  --table-head: rgb(255 255 255 / 0.06);
+  --track: rgb(255 255 255 / 0.12);
+  --success: #75e0a7;
+  --success-bg: rgb(23 178 106 / 0.16);
+  --error: #fda29b;
+  --error-bg: rgb(240 68 56 / 0.16);
+  --info-bg: rgb(255 255 255 / 0.1);
 }

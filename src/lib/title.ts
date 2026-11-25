@@ -5,6 +5,9 @@ import { useEffect } from 'react';
 
 export const SUITE_MANAGEMENT = 'Suite management';
 
+/** AC-13: the sign in names the whole workspace, as its title on the page does. */
+export const SIGN_IN_TITLE = 'Sign in · WeLinc Logistics Operations Workspace';
+
 /** The tab title for `parts`, most specific first; empty parts are left out. */
 export function pageTitle(...parts: (string | null | undefined)[]): string {
   return [...parts.map((p) => p?.trim()).filter(Boolean), 'WeLinc'].join(' · ');

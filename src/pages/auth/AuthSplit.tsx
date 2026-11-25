@@ -1,66 +1,82 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
-import { BranchMap } from '@/components/brand/BranchMap';
+import { SignInMap } from '@/components/brand/SignInMap';
 import { BrandLockup } from '@/components/brand/BrandLockup';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 /*
-  Suite spec 0019, AC-13 to AC-16 (boards `R37SignIn`, `R32Forgot1` to `R32Forgot4`,
-  `R34NoAccess`): the sign in split. The navy side holds the copy and the branch map; the white
-  side holds the form, or a result centred on it. Below 1024px the navy side shrinks to a strip
-  with the logo over the white side.
+  Suite spec 0019, AC-13 to AC-16 (board `R47Quiet`, S27d Quiet; the forgot boards `R32Forgot1` to
+  `R32Forgot4` and `R34NoAccess` for their content): the drawn map under the whole page, the copy
+  on its left, and the form, or a result centred, on a navy glass panel at the right. Inside the
+  panel `signin-dark` turns the app's colour tokens light on dark, so the shared fields, links and
+  notices follow. Below 1024px the copy gives way to a strip with the logo, and the panel takes
+  the width.
 */
 
-/** Fields on the split: the app's field, 46px, with focus as a navy edge and a soft navy ring (AC-14, never gold). */
+/** Fields on the sign in page: 48px glass fields; focus is a light edge with a soft ring (AC-14, never gold). */
 export const splitInput =
-  'h-11.5 rounded-xl md:h-11.5 focus-visible:inset-ring-0 focus-visible:ring-3 focus-visible:ring-primary/15';
+  'h-12 rounded-xl placeholder:text-white/42 md:h-12 focus-visible:inset-ring-0 focus-visible:ring-3 focus-visible:ring-primary/15';
 
-/** The split's one action: navy, 48px, full width. */
-export const splitButton = 'h-12 w-full rounded-xl bg-sidebar text-group font-bold hover:bg-primary max-sm:h-12';
+/** The sign in page's one action: gold on the navy glass (`R47Quiet`), 50px, full width. */
+export const splitButton =
+  'h-12.5 w-full rounded-xl bg-highlight text-group font-extrabold text-highlight-foreground hover:bg-commit-hover max-sm:h-12.5';
 
-/** A code box (board `R32Forgot2`): 52 by 58 on wider screens, the active one with a navy edge and a soft ring. */
+/** A code box (board `R32Forgot2`): 52 by 58 on wider screens, the active one with a light edge and a soft ring. */
 export const splitCodeSlot =
-  'h-14.5 w-11 rounded-lg font-sans text-heading font-bold tabular-nums first:rounded-lg first:border last:rounded-lg sm:w-13 md:h-14.5 md:w-13 data-[active=true]:ring-4 data-[active=true]:ring-sidebar/10';
+  'h-14.5 w-11 rounded-lg font-sans text-heading font-bold tabular-nums first:rounded-lg first:border last:rounded-lg sm:w-13 md:h-14.5 md:w-13 data-[active=true]:ring-4 data-[active=true]:ring-primary/15';
 
-/** The navy band beside every sign in screen, on large screens. */
-function BrandSide() {
+/** The copy beside the panel, on large screens (AC-13). */
+function CopySide() {
   return (
-    <div className="relative hidden overflow-hidden bg-sidebar text-white lg:col-span-7 lg:block">
-      <div className="relative z-10 px-16 pt-10">
-        <BrandLockup />
-        <div className="mt-14">
-          <p className="text-small font-bold tracking-widest text-highlight uppercase">#hasslefree transport solution</p>
-          <h1 className="mt-3 text-5xl leading-none font-extrabold tracking-tight">
-            Keep the fleet
-            <br />
-            moving.
-          </h1>
-          <p className="mt-3.5 max-w-md text-group leading-relaxed font-normal text-white/70">
-            Sign in with your WeLinc work account to pick up where you left off.
-          </p>
-        </div>
+    <div className="relative z-10 hidden min-w-0 flex-1 flex-col px-16 pt-11 lg:flex">
+      <BrandLockup />
+      <div className="mt-15">
+        <p className="font-mono text-small font-semibold tracking-widest text-highlight">#HASSLEFREE TRANSPORT SOLUTION</p>
+        <h1 className="mt-4 text-hero">
+          WeLinc Logistics
+          <br />
+          <em className="text-highlight not-italic">Operations</em>
+          <br />
+          Workspace
+        </h1>
+        <p className="mt-4.5 max-w-105 text-subheading leading-relaxed font-normal text-white/66">
+          Bookings, maintenance and repairs for the whole fleet, in one place.
+        </p>
       </div>
-      <BranchMap className="pointer-events-none absolute top-82 left-36 h-140 w-180" />
     </div>
   );
 }
 
 /**
- * The split page. `toaster` mounts inside the white column only, so the sign in toasts sit at
- * its top (AC-15); `transform-gpu` makes the column the box sonner's fixed list is placed in.
+ * The sign in page. `toaster` mounts inside the glass panel but outside its dark colours, so the
+ * sign in toasts sit at its top in their own colours (AC-15); `transform-gpu` makes the panel the
+ * box sonner's fixed list is placed in.
  */
 export function AuthSplit({ children, toaster }: { children: ReactNode; toaster?: ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col bg-card lg:grid lg:grid-cols-12">
-      <BrandSide />
-      <div className="bg-sidebar px-6 py-5 lg:hidden">
+    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-sidebar text-white lg:flex-row">
+      <SignInMap />
+      <CopySide />
+      <div className="relative z-10 px-6 py-5 lg:hidden">
         <BrandLockup />
       </div>
-      <div className="relative flex min-w-0 flex-1 transform-gpu items-center justify-center bg-card px-6 py-10 text-foreground lg:col-span-5">
+      <div className="signin-glass relative z-10 flex min-w-0 flex-1 transform-gpu flex-col items-center justify-center px-6 pt-10 pb-20 lg:w-150 lg:flex-none">
         {toaster}
-        <main className="flex w-full max-w-sm flex-col gap-6.5">{children}</main>
+        <main className="signin-dark flex w-full max-w-96 flex-col gap-7">{children}</main>
+        <p className="absolute inset-x-0 bottom-7 flex flex-wrap justify-center gap-x-2.5 gap-y-1 px-6 text-caption font-normal whitespace-nowrap text-white/56">
+          <span>© 2026 WeLinc Logistics</span>
+          <span aria-hidden="true">·</span>
+          <a
+            href="https://www.openstreetmap.org/copyright"
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-sm hover:text-white hover:underline focus-visible:ring-2 focus-visible:ring-ring-on-dark focus-visible:outline-hidden"
+          >
+            © OpenStreetMap contributors
+          </a>
+        </p>
       </div>
     </div>
   );
