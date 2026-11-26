@@ -350,6 +350,31 @@ describe('saving (AC-7 to AC-11)', () => {
     expect(within(dialog).getByRole('button', { name: 'Save 1 change' })).toBeEnabled();
   });
 
+  it('on LOCKED_CELL names the permission for the role, drops that entry and keeps the rest (AC-11)', async () => {
+    const user = userEvent.setup();
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    await user.click(await screen.findByRole('switch', { name: 'See costs' }));
+    api.saveMatrix.mockRejectedValue(conflict('LOCKED_CELL'));
+    // The catalog locked See costs for Mechanic after the draft was made
+    const locked = vrms({
+      version: 4,
+      groups: vrms().groups.map((g) => ({
+        ...g,
+        permissions: g.permissions.map((p) => (p.key === 'ticket.costs.view' ? { ...p, lockedRoles: ['MECHANIC'] } : p)),
+      })),
+    });
+    api.fetchRoles.mockResolvedValue(locked);
+    await user.click(screen.getByRole('button', { name: 'Review and save' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Save 1 change' }));
+    await vi.waitFor(() =>
+      expect(notify.notifyError).toHaveBeenCalledWith(
+        "See costs for Mechanic can't be changed any more, so it was removed from your draft.",
+      ),
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await vi.waitFor(() => expect(screen.queryByText(/unsaved/)).toBeNull());
+  });
+
   it('Reset to defaults stages the differences, then says it is already on the defaults', async () => {
     const user = userEvent.setup();
     const groups = vrms().groups.map((g) => ({
