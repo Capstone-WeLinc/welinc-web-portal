@@ -135,7 +135,7 @@ export function PersonPane({
       {load.kind === 'missing' && <Missing />}
       {load.kind === 'error' && (
         <div className="p-6">
-          <ViewError message={load.message} onRetry={retry} />
+          <ViewError kind="tile" subject="people" message={load.message} onRetry={retry} />
         </div>
       )}
       {load.kind === 'ready' && (
@@ -377,7 +377,7 @@ function RecentActivity({
         )}
         {state.kind === 'error' && (
           <div className="pb-3">
-            <ViewError message="We couldn't load the activity." onRetry={() => setAttempt((n) => n + 1)} />
+            <ViewError kind="tile" subject="activity" message="We couldn't load the activity." onRetry={() => setAttempt((n) => n + 1)} />
           </div>
         )}
         {state.kind === 'ready' && state.value.data.length === 0 && (

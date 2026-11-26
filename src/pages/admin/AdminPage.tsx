@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, RotateCw, ShieldCheck, ShieldOff, TriangleAlert } from 'lucide-react';
+import { ArrowLeft, RotateCw, ShieldCheck, ShieldOff } from 'lucide-react';
+import { LoadScene } from '@/components/brand/scenes/LoadScene';
+import { ScenePanel } from '@/components/brand/scenes/ScenePanel';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { askForCode, errorStatus, fetchAdminMe, isAdmin, needsCode, type AdminMe } from '@/lib/admin';
@@ -252,22 +254,24 @@ function AdminLoading() {
   );
 }
 
+/** VRMS spec 0028, AC-22: Admin's first load failed; the idling truck panel inside the shell. */
 function AdminError({ onRetry }: { onRetry: () => void }) {
   return (
     <LauncherShell>
-      <div role="alert" className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
-        <div className="flex size-12 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
-          <TriangleAlert className="size-6" aria-hidden="true" />
-        </div>
-        <div>
-          <h1 className="text-subheading font-semibold text-foreground">We couldn't load Admin.</h1>
-          <p className="mt-1 text-body text-muted-foreground">Check your connection, then try again.</p>
-        </div>
-        <Button size="touch" onClick={onRetry}>
-          <RotateCw aria-hidden="true" />
-          Retry
-        </Button>
-      </div>
+      <ScenePanel
+        heading="h1"
+        scene={<LoadScene />}
+        title="We couldn't load Admin."
+        line="Check your connection, then try again."
+        actions={
+          <Button size="touch" onClick={onRetry}>
+            <RotateCw aria-hidden="true" />
+            Retry
+          </Button>
+        }
+      >
+        <p className="mt-1 text-body text-muted-foreground">Nothing you saved is lost.</p>
+      </ScenePanel>
     </LauncherShell>
   );
 }

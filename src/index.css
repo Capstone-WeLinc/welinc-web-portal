@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+/* The scene kit's tokens and motion (VRMS spec 0028), shared byte for byte with web-vrms */
+@import './styles/scenes.css';
 
 /*
   Design tokens (design.md, suite spec 0016). This file is the one place color values live.
@@ -79,14 +81,6 @@
   --duration-sheet-out: 150ms;
 
 
-  /*
-    Suite spec 0019: the drawn brand scenes (the launcher band, the 404 road, sign in). The trucks
-    wear the real WeLinc livery (white closed van, orange and blue swoosh, navy wordmark); only
-    these drawings use these values, never a working page.
-  */
-  --scene-hills: #141a55;
-  --scene-road: #0a0d36;
-  --scene-post: #cbd2ea;
   /* The sign in (S27d Quiet, `R47Quiet`): the page under the map, and the glass panel's tint */
   --signin-deep: #0a0d33;
   --signin-label: #e6e8f7;
@@ -107,33 +101,6 @@
   --signin-field-inset: rgb(0 0 0 / 0.45);
   --signin-tile-glow: rgb(232 184 0 / 0.22);
   --signin-tile-base: rgb(0 0 0 / 0.12);
-  /* Launch 3's route bar (`R31LaunchRoute`): the garage the truck leaves from */
-  --scene-garage: #2a3290;
-  --scene-garage-roof: #3b43a3;
-  --scene-garage-door: #060828;
-  /* Launch 2's dock (`R29LaunchDock`) and Launch 4's cartons (`L28MLoad`) */
-  --scene-dock: #0b0f3c;
-  --scene-dock-wall: #111650;
-  --scene-shutter: #3a43a6;
-  --scene-shutter-slat: #2c348f;
-  --scene-shutter-edge: #1a2070;
-  --scene-carton: #f2d27a;
-  --scene-carton-edge: #c9a44a;
-  --livery-roof: #d5dbee;
-  --livery-seam: #bfc6e2;
-  --livery-handle: #94a3b8;
-  --livery-tail: #f04438;
-  --livery-body: #f7f8fb;
-  --livery-edge: #c9d0de;
-  --livery-orange: #f29a1f;
-  --livery-blue: #1f5cc4;
-  --livery-cab: #eef1f6;
-  --livery-cab-edge: #c3cad8;
-  --livery-glass: #14205a;
-  --livery-bumper: #2a2f45;
-  --livery-step: #8d96ab;
-  --livery-tyre: #11131f;
-  --livery-hub: #aab2c5;
 
   /* The content column's left edge; AdminShell sets it to its sidebar's width (the banner centers on it) */
   --content-left: 0px;
@@ -397,19 +364,6 @@
   animation-play-state: paused;
 }
 
-/* Suite spec 0019, AC-26: a warning lamp on the 404 road blinks; still under reduced motion */
-@utility scene-blink {
-  animation: scene-blink 1.1s steps(1) infinite;
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-}
-
-@keyframes scene-blink {
-  50% {
-    opacity: 0.15;
-  }
-}
 
 /*
   Suite spec 0019, AC-24 (Round 29 option C): the steering wheel wait swings left and right. It

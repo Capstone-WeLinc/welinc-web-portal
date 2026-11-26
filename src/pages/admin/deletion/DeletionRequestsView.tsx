@@ -114,6 +114,8 @@ function PendingList({ system }: { system: Scope }) {
   if (state.kind === 'error') {
     return (
       <ViewError
+        kind="tile"
+        subject="people"
         message={errorMessage(state.error, "We couldn't load the requests.")}
         onRetry={() => setAttempt((n) => n + 1)}
       />
@@ -293,6 +295,8 @@ function GraceList({ system }: { system: Scope }) {
   if (state.kind === 'error') {
     return (
       <ViewError
+        kind="tile"
+        subject="people"
         message={errorMessage(state.error, "We couldn't load deleted accounts.")}
         onRetry={() => setAttempt((n) => n + 1)}
       />

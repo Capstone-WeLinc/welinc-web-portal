@@ -29,7 +29,7 @@ export function RoleHistory({ system, role, version }: { system: SystemCode; rol
     );
   }
   if (state.kind === 'error') {
-    return <ViewError message={errorMessage(state.error, `We couldn't load the history of ${role.name}.`)} onRetry={retry} />;
+    return <ViewError kind="tile" subject="history" message={errorMessage(state.error, `We couldn't load the history of ${role.name}.`)} onRetry={retry} />;
   }
   if (state.value.items.length === 0) {
     return <ViewEmpty icon={<History className="size-5" aria-hidden="true" />} message="No changes yet" />;

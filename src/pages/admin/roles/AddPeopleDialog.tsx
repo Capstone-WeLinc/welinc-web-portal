@@ -149,6 +149,8 @@ function AddPeopleBody({
         )}
         {candidates.state.kind === 'error' && (
           <ViewError
+            kind="tile"
+            subject="people"
             message={errorMessage(candidates.state.error, "We couldn't load the people.")}
             onRetry={candidates.retry}
           />

@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { LiveryTruck } from '@/components/brand/LiveryTruck';
+import { LiveryTruck } from '@/components/brand/scenes/LiveryTruck';
 import type { LauncherSystem } from '@/lib/auth';
 import { LAUNCH, ms, type LaunchScene } from './launchMotion';
 

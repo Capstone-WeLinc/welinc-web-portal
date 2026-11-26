@@ -1,4 +1,6 @@
-import { RotateCw, TriangleAlert } from 'lucide-react';
+import { RotateCw } from 'lucide-react';
+import { LoadScene } from '@/components/brand/scenes/LoadScene';
+import { ScenePanel } from '@/components/brand/scenes/ScenePanel';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LauncherFrame } from './LauncherFrame';
@@ -27,21 +29,27 @@ export function LauncherLoading() {
   );
 }
 
-/** `/auth/sso` failed with 429, 5xx or no network (AC-20). */
+/**
+ * `/auth/sso` failed with 429, 5xx or no network (AC-20). VRMS spec 0028, AC-22: the idling truck
+ * panel in place of the tiles; the band above stays calm.
+ */
 export function LauncherError({ onRetry }: { onRetry: () => void }) {
   return (
     <LauncherFrame>
-      <div role="alert" className="flex flex-col items-center gap-4 rounded-3xl bg-card px-6 py-10 text-center ring-1 ring-border">
-        <div className="flex size-12 items-center justify-center rounded-lg bg-error-bg text-destructive">
-          <TriangleAlert className="size-6" aria-hidden="true" />
-        </div>
-        <h1 className="text-heading font-bold text-foreground">We couldn't load your systems.</h1>
-        <p className="text-body text-muted-foreground">Check your connection, then try again.</p>
-        <Button size="touch" onClick={onRetry}>
-          <RotateCw aria-hidden="true" />
-          Retry
-        </Button>
-      </div>
+      <ScenePanel
+        heading="h1"
+        scene={<LoadScene />}
+        title="We couldn't load your systems."
+        line="Check your connection, then try again."
+        actions={
+          <Button size="touch" onClick={onRetry}>
+            <RotateCw aria-hidden="true" />
+            Retry
+          </Button>
+        }
+      >
+        <p className="mt-1 text-body text-muted-foreground">Nothing you saved is lost.</p>
+      </ScenePanel>
     </LauncherFrame>
   );
 }
