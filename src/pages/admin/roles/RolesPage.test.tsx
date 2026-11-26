@@ -440,12 +440,21 @@ describe('stored drafts (AC-12)', () => {
     expect(notify.notify).toHaveBeenCalledWith('1 change to a role that was deleted was removed from your draft.', 'warning');
   });
 
+  it('says "are kept" for several changes and "is kept" for one when leaving', async () => {
+    const user = userEvent.setup();
+    renderAt('/admin/roles/VRMS/MECHANIC');
+    await user.click(await screen.findByRole('switch', { name: 'See costs' }));
+    await user.click(screen.getByRole('switch', { name: 'See tickets assigned to you' }));
+    await user.click(screen.getByRole('button', { name: 'BMS' }));
+    expect(notify.notify).toHaveBeenCalledWith('Your 2 changes to Mechanic are kept for when you come back', 'info');
+  });
+
   it('keeps each system’s draft apart and says so on leaving', async () => {
     const user = userEvent.setup();
     renderAt('/admin/roles/VRMS/MECHANIC');
     await user.click(await screen.findByRole('switch', { name: 'See costs' }));
     await user.click(screen.getByRole('button', { name: 'BMS' }));
-    expect(notify.notify).toHaveBeenCalledWith('Your 1 change to Mechanic are kept for when you come back', 'info');
+    expect(notify.notify).toHaveBeenCalledWith('Your 1 change to Mechanic is kept for when you come back', 'info');
     await screen.findByTestId('where');
     expect(localStorage.getItem('welinc:draft:me:roles:VRMS')).not.toBeNull();
     expect(localStorage.getItem('welinc:draft:me:roles:BMS')).toBeNull();

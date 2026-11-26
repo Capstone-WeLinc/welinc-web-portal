@@ -96,7 +96,7 @@ export function useDraft<T>({
   useEffect(
     () => () => {
       const count = latest.current.changes.length;
-      if (count > 0) notify(`Your ${plural(count)} to ${latest.current.name} are kept for when you come back`, 'info');
+      if (count > 0) notify(`Your ${plural(count)} to ${latest.current.name} ${count === 1 ? 'is' : 'are'} kept for when you come back`, 'info');
     },
     [],
   );
