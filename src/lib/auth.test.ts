@@ -95,9 +95,35 @@ describe('portal routing rules', () => {
     expect(screenForAnswer(params(''), mechanic)).toEqual({ kind: 'go', url: 'http://vrms.test' });
   });
 
+  // covers: suite spec 0019 AC-5 (a suite admin whose only role is temporary and not ADMIN)
+  it('keeps a suite admin with one non admin role on the launcher; a missing suiteAdmin is false', () => {
+    const temporary = {
+      ...answer,
+      suiteAdmin: true,
+      systems: [{ ...sys('VRMS'), roles: [{ code: 'MECHANIC', name: 'Mechanic' }] }],
+    };
+    expect(screenForAnswer(params(''), temporary)).toEqual({ kind: 'launcher', answer: temporary });
+    const older = { ...temporary, suiteAdmin: undefined };
+    expect(screenForAnswer(params(''), older)).toEqual({ kind: 'go', url: 'http://vrms.test' });
+  });
+
+  // covers: suite spec 0019 AC-5 (no systems: No access, unless a suite admin)
+  // covers: suite spec 0019 AC-5 (a suite admin with no system skips the launcher)
+  it('shows No access for no systems, and sends a suite admin with none to Suite management', () => {
+    expect(screenForAnswer(params(''), answer)).toEqual({ kind: 'no-access', email: 'p@welinc.com' });
+    const suiteOnly = { ...answer, suiteAdmin: true };
+    expect(screenForAnswer(params(''), suiteOnly)).toEqual({ kind: 'admin' });
+  });
+
   // covers: suite spec 0013 AC-14 (an admin whose session ended signs in and lands back on the page)
   it('says the session ended and returns an admin to the page they were on', () => {
     expect(noticeFor(params('reason=ended'))?.message).toBe('Your session ended. Sign in again.');
+    // Suite spec 0019, AC-15: a sign out is a success, an ended session a warning
+    expect(noticeFor(params('reason=logout'))?.tone).toBe('success');
+    for (const reason of ['ended', 'idle', 'maxage']) {
+      expect(noticeFor(params(`reason=${reason}`))?.tone).toBe('warning');
+    }
+    expect(noticeFor(params('error=LOGIN_STATE_INVALID'))?.tone).toBe('error');
     expect(startFor(params('reason=ended&next=%2Fadmin%2Fpeople'))).toEqual({ kind: 'form' });
     expect(signInAgainHref('/admin/people/u1?system=VRMS', true)).toBe(
       '/login?reason=ended&next=%2Fadmin%2Fpeople%2Fu1%3Fsystem%3DVRMS',

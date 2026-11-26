@@ -85,7 +85,7 @@ async function alertWith(text: string) {
 
 async function submit(email: string, password = "pw") {
   const user = userEvent.setup();
-  await user.type(await screen.findByPlaceholderText(/you@welinc.com/), email);
+  await user.type(await screen.findByPlaceholderText(/you@example.com/), email);
   await user.type(screen.getByPlaceholderText("Enter password"), password);
   await user.click(screen.getByRole("button", { name: "Sign in" }));
 }
@@ -131,6 +131,34 @@ describe("Portal", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it("fades the sign in out over the arriving launcher, then drops it (suite spec 0019 AC-8)", async () => {
+    get.mockRejectedValue(httpError(401));
+    post.mockResolvedValue({ data: TWO });
+    renderPortal();
+    await submit("pedro");
+
+    const links = await screen.findAllByRole("link");
+    expect(links[0]).toHaveClass("arrive-deal");
+    const layer = document.querySelector(".signin-leave");
+    expect(layer).toHaveAttribute("aria-hidden", "true");
+    expect(layer).toHaveAttribute("inert");
+    await waitFor(() => expect(document.querySelector(".signin-leave")).toBeNull());
+    expect(screen.queryByPlaceholderText("Enter password")).toBeNull();
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it("names the whole workspace in the sign in tab and credits OpenStreetMap (suite spec 0019 AC-13)", async () => {
+    get.mockRejectedValue(httpError(401));
+    renderPortal();
+    await screen.findByPlaceholderText(/you@example.com/);
+    expect(document.title).toBe("Sign in · WeLinc Logistics Operations Workspace");
+    expect(screen.getByRole("link", { name: "© OpenStreetMap" })).toHaveAttribute(
+      "href",
+      "https://www.openstreetmap.org/copyright",
+    );
+    expect(screen.getByText(/Centralized platform for managing logistics operations/)).toBeInTheDocument();
+  });
+
   it("continues a login request after signing in, never showing the launcher", async () => {
     get.mockRejectedValue(httpError(401));
     post.mockResolvedValue({ data: TWO });
@@ -165,16 +193,14 @@ describe("Portal", () => {
     get.mockResolvedValue({ data: TWO });
     renderPortal("/?from=VRMS");
     expect(await screen.findByText("You're here")).toBeTruthy();
-    expect(screen.getByText("Pick where you want to work today.")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Your systems" })).toBeTruthy();
   });
 
   // covers: AC-16 (a `from` that is not a held system code tags nothing, and cards link only to registry addresses)
   it("tags no card for a foreign from address, and every card links to its registry address", async () => {
     get.mockResolvedValue({ data: TWO });
     renderPortal("/?from=https://evil.test");
-    expect(
-      await screen.findByText("Pick where you want to work today."),
-    ).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Your systems" })).toBeTruthy();
     expect(screen.queryByText("You're here")).toBeNull();
     const hrefs = screen
       .getAllByRole("link")
@@ -217,12 +243,20 @@ describe("Portal", () => {
   });
 
   it("always shows the form after a logout or an idle cutoff, without asking /auth/sso", async () => {
-    for (const reason of ["logout", "idle", "maxage"]) {
+    // Suite spec 0019, AC-15: the message is a toast on the sign in side (success for a sign
+    // out, a warning that stays for an ended session)
+    const messages: Record<string, RegExp> = {
+      logout: /You signed out/,
+      idle: /30 minutes without activity/,
+      maxage: /12 hour limit/,
+    };
+    for (const [reason, message] of Object.entries(messages)) {
       const view = renderPortal(`/login?reason=${reason}`);
       expect(
         await screen.findByRole("button", { name: "Sign in" }),
       ).toBeTruthy();
-      expect(screen.getByRole("status")).toBeTruthy();
+      const toast = (await screen.findByText(message)).closest("[data-slot=toast]");
+      expect(toast).toHaveAttribute("data-kind", reason === "logout" ? "success" : "warning");
       view.unmount();
     }
     expect(get).not.toHaveBeenCalled();
@@ -248,9 +282,14 @@ describe("Portal", () => {
     );
     const view = renderPortal("/");
     expect(
-      await screen.findByText(/no access to any WeLinc system/),
+      await screen.findByText(/doesn't have a role yet/),
     ).toBeTruthy();
     expect(screen.getByText(/pedro@welinc.com/)).toBeTruthy();
+    // Suite spec 0019, AC-16: it names no system, and Try again asks /auth/sso once more
+    expect(screen.queryByText(/VRMS|VMMS|BMS/)).toBeNull();
+    get.mockResolvedValueOnce({ data: TWO });
+    await userEvent.setup().click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findAllByRole("link")).toHaveLength(2);
     view.unmount();
 
     get
@@ -319,15 +358,12 @@ describe("Portal", () => {
     expect(post).toHaveBeenLastCalledWith("/auth/logout", {});
   });
 
-  it("shows the greeting, the account details and the role pills", async () => {
+  // covers: suite spec 0019 AC-1 (no greeting; the account circle), AC-2 (the role on each tile)
+  it("shows no greeting, the account initials and the role on each tile", async () => {
     get.mockResolvedValue({ data: TWO });
     renderPortal("/");
-    expect(
-      await screen.findByRole("heading", {
-        level: 1,
-        name: /^Good (morning|afternoon|evening), Pedro$/,
-      }),
-    ).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Your systems" })).toBeTruthy();
+    expect(screen.queryByText(/^Good (morning|afternoon|evening)/)).toBeNull();
     expect(screen.getAllByText("Mechanic")).toHaveLength(2);
     expect(screen.getAllByText("PC").length).toBeGreaterThan(0);
   });

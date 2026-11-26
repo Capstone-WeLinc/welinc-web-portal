@@ -58,14 +58,6 @@ export default defineConfig([
     },
   },
   {
-    // Spec 0016 AC-20: the sign in hero is a brand surface and keeps its soft gold glows
-    // (shadow-lg), so only the old type sizes are banned there.
-    files: ['src/pages/auth/**/*.{ts,tsx}'],
-    rules: {
-      'design-sweep/no-restricted-classes': ['error', { restrict: SWEEP_CLASSES.filter((rule) => !rule.pattern.includes('shadow')) }],
-    },
-  },
-  {
     // shadcn files export their variant helpers next to the component.
     files: ['src/components/ui/**/*.{ts,tsx}'],
     rules: {

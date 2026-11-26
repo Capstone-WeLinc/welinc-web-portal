@@ -9,8 +9,8 @@ import { extendTailwindMerge } from "tailwind-merge";
 const twMerge = extendTailwindMerge({
   extend: {
     theme: {
-      text: ["display", "title", "heading", "subheading", "group", "body", "small", "caption", "label", "base-input"],
-      shadow: ["card", "pop", "bar", "dialog", "segment", "pane"],
+      text: ["display", "title", "heading", "subheading", "group", "body", "small", "caption", "label", "base-input", "hero", "tile-code", "tile-name", "signin-wordmark"],
+      shadow: ["card", "pop", "bar", "dialog", "segment", "pane", "key", "lift", "field-inset"],
     },
   },
 });

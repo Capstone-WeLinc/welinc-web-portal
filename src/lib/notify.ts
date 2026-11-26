@@ -1,4 +1,4 @@
-import { createElement } from 'react';
+import { createElement, type ReactElement } from 'react';
 import { toast, type ExternalToast } from 'sonner';
 import { Toast, type ToastKind } from '@/components/ui/toast';
 
@@ -17,6 +17,15 @@ export const TOAST_MS: Record<NotifyKind, number> = {
   error: Infinity,
 };
 export const MAX_TOASTS = 3;
+
+/**
+ * Suite spec 0019, AC-25: the session warning's fixed id. It never counts toward MAX_TOASTS (it
+ * is not in `shown`), so the toaster shows one more than the limit.
+ */
+export const SESSION_TOAST_ID = 'session-warning';
+
+/** Suite spec 0019, AC-15: the Toaster mounted only inside the sign in split's white side. */
+export const SIGN_IN_TOASTER = 'sign-in';
 
 export type NotifyOptions = {
   /** One optional line under the title. */
@@ -80,6 +89,38 @@ export function notifyError(message: string, options?: NotifyOptions) {
 
 export function notifySuccess(message: string, options?: NotifyOptions) {
   notify(message, 'success', options);
+}
+
+/**
+ * Suite spec 0019, AC-25: shows the session warning (or redraws it), with no time limit and no
+ * swipe away. `render` reads the session store itself, so its countdown ticks on its own.
+ */
+export function showSessionToast(render: () => ReactElement) {
+  toast.custom(render, { id: SESSION_TOAST_ID, duration: Infinity, dismissible: false });
+}
+
+export function dismissSessionToast() {
+  toast.dismiss(SESSION_TOAST_ID);
+}
+
+/**
+ * Suite spec 0019, AC-15: a message on the sign in page, on the sign in Toaster. A warning (the
+ * session ended) stays until closed with no time bar; a success lasts as any success toast. The
+ * id is the message, so drawing the page twice never stacks it.
+ */
+export function notifySignIn(message: string, type: 'success' | 'warning') {
+  const id = `sign-in:${message}`;
+  const duration = type === 'warning' ? Infinity : TOAST_MS.success;
+  toast.custom(
+    () =>
+      createElement(Toast, {
+        kind: type,
+        title: message,
+        durationMs: Number.isFinite(duration) ? duration : undefined,
+        onClose: () => toast.dismiss(id),
+      }),
+    { id, duration, toasterId: SIGN_IN_TOASTER },
+  );
 }
 
 /** Tests only. */

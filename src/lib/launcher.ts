@@ -1,5 +1,5 @@
 import { API_BASE_URL } from './api';
-import type { LauncherAnswer } from './auth';
+import { administers, type LauncherAnswer } from './auth';
 
 // Display rules for the launcher (spec 0007, AC-15, AC-17), kept pure so they are easy to test.
 
@@ -63,4 +63,66 @@ export function signOutLine(systems?: readonly string[]): string {
   if (!systems || systems.length === 0) return "You'll need to sign in again.";
   const list = systems.length === 1 ? systems[0] : `${systems.slice(0, -1).join(', ')} and ${systems[systems.length - 1]}`;
   return `You'll be signed out of ${list} on this browser, and need to sign in again to use ${systems.length === 1 ? 'it' : 'them'}.`;
+}
+
+/**
+ * Suite spec 0019, AC-2, AC-20: the role on a system's tile and switcher card. `Admin` when any role
+ * there is `ADMIN` (a temporary one included), else the first role's name in catalog order (the
+ * answer already lists them that way), temporary roles shown by name like any other.
+ */
+export function roleTag(system: LauncherAnswer['systems'][number]): string {
+  if (administers(system)) return 'Admin';
+  return system.roles[0]?.name ?? '';
+}
+
+/** Suite spec 0019, AC-2: systems always show in this order, whatever order welinc-auth answers. */
+export const SYSTEM_ORDER = ['BMS', 'VMMS', 'VRMS'] as const;
+
+const rank = (system: string) => {
+  const i = (SYSTEM_ORDER as readonly string[]).indexOf(system);
+  return i === -1 ? SYSTEM_ORDER.length : i;
+};
+
+/** The systems in BMS, VMMS, VRMS order; an unknown code goes last, keeping welinc-auth's order. */
+export function orderedSystems<T extends { system: string }>(systems: readonly T[]): T[] {
+  return [...systems].sort((a, b) => rank(a.system) - rank(b.system));
+}
+
+/** "For VRMS", "For VMMS and VRMS", "For BMS, VMMS and VRMS" (suite spec 0019, AC-3). */
+export function coversLine(systems: readonly string[]): string {
+  if (systems.length <= 1) return `For ${systems[0] ?? ''}`;
+  return `For ${systems.slice(0, -1).join(', ')} and ${systems[systems.length - 1]}`;
+}
+
+/**
+ * Suite spec 0019, AC-3: the Suite management tile, for anyone who administers something. It covers
+ * every system for a suite admin, else only the systems where they hold `ADMIN`, in BMS, VMMS, VRMS
+ * order; never one where they hold another role only.
+ */
+export function suiteTileFor(answer: Pick<LauncherAnswer, 'systems' | 'suiteAdmin'>): { covers: string[] } | null {
+  if (answer.suiteAdmin === true) return { covers: [...SYSTEM_ORDER] };
+  const covers = orderedSystems(answer.systems.filter(administers)).map((s) => s.system);
+  return covers.length > 0 ? { covers } : null;
+}
+
+/** AC-1: the band's account circle, the initials, or the email's first letter when there is no name. */
+export function accountInitials(user: Pick<LauncherAnswer['user'], 'name' | 'email'>): string {
+  if (user.name.trim()) return initialsOf(user.name);
+  return (user.email.trim()[0] ?? '?').toUpperCase();
+}
+
+/**
+ * Suite spec 0019, AC-2 (P5): the tile a key press opens, as its index in the shown order, or null.
+ * Only a plain digit 1 to 9 that isn't repeating counts; a press while typing in a field, with a
+ * modifier held, or while a menu or dialog is open does nothing (the caller checks those last two
+ * against the page). A digit with no tile is null too.
+ */
+export function keyTarget(
+  event: Pick<KeyboardEvent, 'key' | 'repeat' | 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey'>,
+  tiles: number,
+): number | null {
+  if (event.repeat || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return null;
+  if (!/^[1-9]$/.test(event.key)) return null;
+  const index = Number(event.key) - 1;
+  return index < tiles ? index : null;
 }

@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { MailCheck } from 'lucide-react';
-import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { Button } from '@/components/ui/button';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { api } from '../../lib/api';
 import { CODE_EXPIRED_MESSAGE, codeFailure, type EmailStep, type LauncherAnswer } from '../../lib/auth';
-import { HeroLabel, HeroNotice, heroButton, heroCodeGroup, heroCodeSlot } from './AuthHero';
+import { BackAction, SplitHeading, SplitNotice, Strong, splitButton } from './AuthSplit';
+import { CODE_LENGTH, CodeField, ResendHint } from './CodeField';
 
 type EmailCodeStepProps = {
   step: EmailStep;
@@ -14,9 +12,6 @@ type EmailCodeStepProps = {
   /** Back to the password step, with a message when the code expired. */
   onBack: (message?: string) => void;
 };
-
-const CODE_LENGTH = 6;
-
 
 /**
  * Suite spec 0009, AC-25 and AC-26: the sign in step for an unverified email. One real input
@@ -95,28 +90,21 @@ export default function EmailCodeStep({ step, onSignedIn, onBack }: EmailCodeSte
 
   return (
     <>
-      <div className="mb-8">
-        <div className="mb-5 flex size-12 items-center justify-center rounded-2xl bg-highlight shadow-lg shadow-highlight/20">
-          <MailCheck size={22} className="text-primary" strokeWidth={2.5} aria-hidden="true" />
-        </div>
-        <h2 className="mb-1 text-title font-black text-white">
-          {adminStep ? "Confirm it's you" : 'Check your email'}
-        </h2>
-        <p className="text-body break-words text-white/50">
-          {adminStep ? 'Admin accounts confirm each sign in. ' : ''}
-          We sent a 6 digit code to <span className="font-semibold text-white/80">{step.email}</span>
-        </p>
-      </div>
+      <BackAction onClick={() => onBack()}>Use a different account</BackAction>
+      <SplitHeading title={adminStep ? "Confirm it's you" : 'Check your email'}>
+        {adminStep ? 'Admin accounts confirm each sign in. ' : ''}
+        We sent a 6 digit code to <Strong>{step.email}</Strong>.
+      </SplitHeading>
 
       {error && (
-        <HeroNotice tone="error">
+        <SplitNotice tone="error">
           <p>{error}</p>
-        </HeroNotice>
+        </SplitNotice>
       )}
       {sent && !error && (
-        <HeroNotice tone="success">
+        <SplitNotice tone="success">
           <p>{sent}</p>
-        </HeroNotice>
+        </SplitNotice>
       )}
 
       <form
@@ -124,55 +112,24 @@ export default function EmailCodeStep({ step, onSignedIn, onBack }: EmailCodeSte
           e.preventDefault();
           void verify(code);
         }}
-        className="flex flex-col gap-5"
+        className="flex flex-col gap-4.5"
       >
-        <div>
-          <HeroLabel htmlFor="login-code">Code</HeroLabel>
-          <InputOTP
-            ref={codeRef}
-            id="login-code"
-            maxLength={CODE_LENGTH}
-            pattern={REGEXP_ONLY_DIGITS}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            autoFocus
-            value={code}
-            onChange={setCode}
-            onComplete={(value: string) => void verify(value)}
-            disabled={verifying}
-            aria-invalid={error ? true : undefined}
-            containerClassName="justify-center"
-          >
-            <InputOTPGroup className={heroCodeGroup}>
-              {Array.from({ length: CODE_LENGTH }, (_, i) => (
-                <InputOTPSlot key={i} index={i} className={heroCodeSlot} />
-              ))}
-            </InputOTPGroup>
-          </InputOTP>
-        </div>
-
-        <Button type="submit" loading={verifying} disabled={code.length !== CODE_LENGTH} className={heroButton}>
+        <CodeField
+          id="login-code"
+          label="Code"
+          value={code}
+          onChange={setCode}
+          onComplete={(value) => void verify(value)}
+          disabled={verifying}
+          invalid={Boolean(error)}
+          inputRef={codeRef}
+        />
+        <Button type="submit" loading={verifying} disabled={code.length !== CODE_LENGTH} className={splitButton}>
           {verifying ? 'Verifying' : 'Verify'}
         </Button>
       </form>
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-body">
-        <button
-          type="button"
-          onClick={() => void resend()}
-          disabled={wait > 0 || resending}
-          className="min-h-11 cursor-pointer rounded-md font-semibold text-highlight tabular-nums hover:text-commit-hover focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-white/40"
-        >
-          {wait > 0 ? `Resend code in ${wait} s` : resending ? 'Sending' : 'Resend code'}
-        </button>
-        <button
-          type="button"
-          onClick={() => onBack()}
-          className="min-h-11 cursor-pointer rounded-md text-white/60 hover:text-white focus-visible:ring-2 focus-visible:ring-highlight focus-visible:outline-hidden"
-        >
-          Use a different account
-        </button>
-      </div>
+      <ResendHint wait={wait} resending={resending} onResend={() => void resend()} />
     </>
   );
 }

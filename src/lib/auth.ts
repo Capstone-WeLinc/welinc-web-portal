@@ -37,26 +37,37 @@ export type LauncherAnswer = {
   sessionAbsoluteExpiresAt: string;
   /** welinc-auth's clock when it answered (ISO), for the clock gap. */
   serverTime: string;
+  /**
+   * Suite spec 0019, AC-6: whether the person is a suite admin. Missing from a welinc-auth older
+   * than spec 0019, which counts as false (`isSuiteAdmin`).
+   */
+  suiteAdmin?: boolean;
 };
+
+/** Suite spec 0019, AC-5, AC-6: a missing `suiteAdmin` (an older welinc-auth) is false. */
+export const isSuiteAdmin = (answer: Pick<LauncherAnswer, 'suiteAdmin'>): boolean => answer.suiteAdmin === true;
 
 /** The phone only systems, empty when the answer has none. */
 export const mobileSystemsOf = (answer: LauncherAnswer): MobileSystem[] => answer.mobileSystems ?? [];
 
-/** A message shown above the form, from the address the portal was opened with. */
-export type Notice = { tone: 'info' | 'error'; message: string };
+/**
+ * A message on the sign in page. Suite spec 0019, AC-15: a sign out is a success toast, a session
+ * that ended a warning toast that stays until closed; an error stays inline above the form.
+ */
+export type Notice = { tone: 'success' | 'warning' | 'error'; message: string };
 
 const SYSTEM_NAMES: Record<string, string> = { VRMS: 'VRMS', VMMS: 'VMMS', BMS: 'BMS' };
 
 /** The plain message for each error code and reason the apps send here (AC-36). */
 export function noticeFor(params: URLSearchParams): Notice | null {
   const reason = params.get('reason');
-  if (reason === 'logout') return { tone: 'info', message: 'You signed out.' };
-  if (reason === 'ended') return { tone: 'info', message: 'Your session ended. Sign in again.' };
+  if (reason === 'logout') return { tone: 'success', message: 'You signed out.' };
+  if (reason === 'ended') return { tone: 'warning', message: 'Your session ended. Sign in again.' };
   if (reason === 'idle') {
-    return { tone: 'info', message: 'You were signed out after 30 minutes without activity.' };
+    return { tone: 'warning', message: 'You were signed out after 30 minutes without activity.' };
   }
   if (reason === 'maxage') {
-    return { tone: 'info', message: 'Your session reached its 12 hour limit. Sign in again to keep working.' };
+    return { tone: 'warning', message: 'Your session reached its 12 hour limit. Sign in again to keep working.' };
   }
   switch (params.get('error')) {
     case 'LOGIN_REQUEST_EXPIRED':
@@ -129,7 +140,13 @@ export type Screen =
   | { kind: 'checking' }
   | { kind: 'form' }
   | { kind: 'go'; url: string }
-  | { kind: 'launcher'; answer: LauncherAnswer }
+  /** Suite spec 0019, AC-5: a suite admin with no system role goes straight to Suite management. */
+  | { kind: 'admin' }
+  /**
+   * `arrive` (suite spec 0019, AC-8): set only right after a sign in through the portal's own form
+   * in this tab, so the launcher plays Arrival 2 once. Memory only, never stored or in the address.
+   */
+  | { kind: 'launcher'; answer: LauncherAnswer; arrive?: boolean }
   | { kind: 'phone-only'; answer: LauncherAnswer }
   | { kind: 'app-not-allowed'; answer: LauncherAnswer; system: string | null }
   | { kind: 'no-access'; email: string | null }
@@ -152,9 +169,21 @@ export function screenForAnswer(params: URLSearchParams, answer: LauncherAnswer)
   // Suite spec 0013, AC-14: back to the admin page whose session ended
   const back = returnPath(params);
   if (back) return { kind: 'go', url: back };
-  // One system and no error: straight in, unless they administer it. An admin lands on the launcher
-  // so they can reach Admin from its card; a one system admin would otherwise never see it.
-  if (answer.systems.length === 1 && !params.has('error') && !administers(answer.systems[0])) {
+  // Suite spec 0019, AC-5: no system and a suite admin goes straight to Suite management (the only
+  // place they can work); no system and not a suite admin has nothing to open
+  if (answer.systems.length === 0) {
+    return isSuiteAdmin(answer) ? { kind: 'admin' } : { kind: 'no-access', email: answer.user.email };
+  }
+  // One system and no error: straight in, unless they administer it or are a suite admin. An admin
+  // lands on the launcher so they can reach Suite management from its strip; a one system admin,
+  // or a suite admin whose only role is temporary (suite spec 0019, AC-5), would otherwise never
+  // see it.
+  if (
+    answer.systems.length === 1 &&
+    !params.has('error') &&
+    !administers(answer.systems[0]) &&
+    !isSuiteAdmin(answer)
+  ) {
     return { kind: 'go', url: answer.systems[0].url };
   }
   return { kind: 'launcher', answer };

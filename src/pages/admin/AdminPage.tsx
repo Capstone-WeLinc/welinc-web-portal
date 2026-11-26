@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, RotateCw, ShieldCheck, ShieldOff, TriangleAlert } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -7,10 +7,12 @@ import { askForCode, errorStatus, fetchAdminMe, isAdmin, needsCode, type AdminMe
 import { onSessionEnded } from '@/lib/api';
 import { signInAgainHref } from '@/lib/auth';
 import { useSessionWatch } from '@/lib/sessionWatch/watch';
+import { pageTitle, SUITE_MANAGEMENT, useDocumentTitle } from '@/lib/title';
 import { cn } from '@/lib/utils';
 import { LauncherShell } from '../launcher/LauncherShell';
+import NotFound from '../NotFound';
 import { AdminShell } from './AdminShell';
-import { landingView, viewHref, viewsFor, type AdminViewPath } from './adminViews';
+import { ADMIN_VIEWS, landingView, viewHref, viewsFor, type AdminViewPath } from './adminViews';
 import { ActivityView } from './activity/ActivityView';
 import { RolesPage } from './roles/RolesPage';
 import { DeletionRequestsView } from './deletion/DeletionRequestsView';
@@ -33,11 +35,19 @@ export default function AdminPage() {
   const { pathname, search } = useLocation();
   const navigate = useNavigate();
 
-  // AC-14: a session that ends while a view is open sends you to sign in, then back to this page
+  // AC-14: a session that ends while a view is open sends you to sign in, then back to this page.
+  // The page comes from the router, and only the first ended call acts: several admin calls can
+  // answer 401 at once, and by the second one the address is already the sign in page.
+  const here = useRef(pathname + search);
   useEffect(() => {
+    here.current = pathname + search;
+  }, [pathname, search]);
+  useEffect(() => {
+    let left = false;
     onSessionEnded(() => {
-      const here = window.location.pathname + window.location.search;
-      navigate(signInAgainHref(here, true), { replace: true });
+      if (left) return;
+      left = true;
+      navigate(signInAgainHref(here.current, true), { replace: true });
     });
     return () => onSessionEnded(null);
   }, [navigate]);
@@ -70,6 +80,8 @@ export default function AdminPage() {
   // Suite spec 0016, AC-12b: the signing out soon watch, once the session is known to be live. A
   // reload or a pasted link starts with no cutoffs, so the watch asks /auth/sso once itself.
   useSessionWatch(load.kind === 'ready');
+  // The console names its view; every other admin state is Suite management alone
+  useDocumentTitle(load.kind === 'ready' && isAdmin(load.me) && !needsCode(load.me) ? null : pageTitle(SUITE_MANAGEMENT));
 
   switch (load.kind) {
     case 'loading':
@@ -90,13 +102,19 @@ function AdminConsole({ me, onChanged }: { me: AdminMe; onChanged: () => void })
   const { search } = useLocation();
   // /admin/people/:id and /admin/people/new sit under People; /admin/roles/:system/:role under Roles
   const view = params.id ? 'people' : params.system ? 'roles' : params.view;
-  // Suite spec 0018, AC-1: the old Permissions page, ?system= included, opens Roles
+  const views = viewsFor(me);
+  const current = views.find((v) => v.path === view);
+  // People names itself (the list, or the open person)
+  useDocumentTitle(current && current.path !== 'people' ? pageTitle(current.label, SUITE_MANAGEMENT) : null);
+  // Suite spec 0018, AC-1: the old Permissions page, ?system= included, opens Roles (before Wrong turn,
+  // since it is no view any more)
   if (view === 'permissions') {
     const system = new URLSearchParams(search).get('system');
     return <Navigate to={system ? `/admin/roles/${system.toUpperCase()}` : '/admin/roles'} replace />;
   }
-  const views = viewsFor(me);
-  const current = views.find((v) => v.path === view);
+  // Suite spec 0019, AC-26: an address that is no view at all is Wrong turn; a view you can't
+  // open (a suite only one) and `/admin` itself still land on your first view
+  if (view !== undefined && !ADMIN_VIEWS.some((v) => v.path === view)) return <NotFound />;
   if (!current) return <Navigate to={viewHref(landingView(me), search)} replace />;
 
   const grants = me.temporaryGrants?.length ? me.temporaryGrants : undefined;

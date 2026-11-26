@@ -2,8 +2,10 @@ import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Portal from './pages/Portal';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import NotFound from './pages/NotFound';
 import { Toaster } from '@/components/ui/sonner';
 import { BannerHost } from '@/components/feedback/BannerHost';
+import { SessionToastHost } from '@/components/feedback/SessionToast';
 import { StepUpDialog } from './pages/admin/StepUpDialog';
 import { ReauthDialog } from './pages/admin/ReauthDialog';
 import { onSignedOutElsewhere } from './lib/session';
@@ -63,7 +65,8 @@ export default function App() {
             />
           )}
           <Route path="/portal" element={<Navigate to="/" replace />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* Suite spec 0019, AC-26: any other address is Wrong turn */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
       {/* AC-22: one step up dialog for every admin call that answers ADMIN_CODE_REQUIRED */}
@@ -71,6 +74,8 @@ export default function App() {
       {/* AC-14a, AC-14b: one password dialog for every write that answers REAUTH_REQUIRED */}
       <ReauthDialog />
       <Toaster />
+      {/* Suite spec 0019, AC-25: the session warning toast, in place of the signing out banner */}
+      <SessionToastHost />
       <BannerHost />
     </>
   );

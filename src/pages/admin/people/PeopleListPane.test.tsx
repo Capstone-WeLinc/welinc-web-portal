@@ -6,7 +6,7 @@ import type { AdminMe } from '@/lib/admin';
 import type { ManagedPerson, PeopleCounts, PeopleGroup, PeoplePage } from '@/lib/adminApi';
 import { PeopleListPane } from './PeopleListPane';
 
-const api = vi.hoisted(() => ({ listPeople: vi.fn(), fetchSystems: vi.fn() }));
+const api = vi.hoisted(() => ({ listPeople: vi.fn(), fetchSystems: vi.fn(), fetchFacets: vi.fn() }));
 const notify = vi.hoisted(() => ({ notifyError: vi.fn(), notifySuccess: vi.fn() }));
 
 vi.mock('@/lib/api', () => ({ API_BASE_URL: 'http://localhost:3000', api: {} }));
@@ -14,7 +14,8 @@ vi.mock('@/lib/adminApi', async (importOriginal) => ({ ...(await importOriginal<
 vi.mock('@/lib/notify', () => notify);
 
 // covers: suite spec 0017 AC-3 (title, search, filter, count, sort), AC-4 (sort and sub line),
-// AC-5 (groups, counts, Load more, no match and empty states), AC-6 (code chips), AC-1 (selection)
+// AC-5 (groups, counts, Load more, no match and empty states), AC-6 (code chips), AC-1 (selection);
+// suite spec 0019 AC-21 (the Filter popover, the draft, the address values, Clear filters)
 
 const me = (over: Partial<AdminMe> = {}): AdminMe => ({
   user: { id: 'me', name: 'Felicidad Roxas', email: 'multi.admin@welinc.com', picture: null },
@@ -75,8 +76,18 @@ function renderPane(viewer: AdminMe = me(), start = '/admin/people', onSelect = 
 const lastCall = (group: PeopleGroup) =>
   api.listPeople.mock.calls.map(([p]) => p as Record<string, unknown>).filter((p) => p.group === group).at(-1)!;
 
+const facets = {
+  total: 7,
+  status: { ATTENTION: 1, LOCKED: 0, SETUP_PENDING: 1, ACTIVE_GROUP: 5, INACTIVE: 1 },
+  systems: [
+    { system: 'VRMS', count: 4, roles: [{ code: 'MECHANIC', count: 4 }] },
+    { system: 'VMMS', count: 3, roles: [{ code: 'OPERATIONS', count: 3 }] },
+  ],
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
+  api.fetchFacets.mockResolvedValue(facets);
   api.fetchSystems.mockResolvedValue([
     {
       code: 'VRMS',
@@ -197,31 +208,92 @@ describe('rows (AC-4, AC-6, AC-1)', () => {
   });
 });
 
-describe('the system filter (AC-3)', () => {
-  it('shows All, VRMS and VMMS to a two system admin and asks for the picked system', async () => {
+describe('the Filter popover (suite spec 0019, AC-21)', () => {
+  const openFilter = async () => {
+    await userEvent.click(await screen.findByRole('button', { name: 'Filter' }));
+    return screen.findByRole('dialog', { name: 'Filters' });
+  };
+
+  it('replaces the system switcher with one Filter button', async () => {
     serve({ active: [person('b1', 'Bong Rivera')] }, { attention: 0, active: 1, inactive: 0 });
     renderPane();
-    const group = await screen.findByRole('group', { name: 'System' });
-    expect(within(group).getAllByRole('button').map((r) => r.textContent)).toEqual(['All', 'VRMS', 'VMMS']);
-    expect(within(group).getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
-    await userEvent.click(within(group).getByRole('button', { name: 'VMMS' }));
-    expect(within(group).getByRole('button', { name: 'VMMS' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByTestId('where')).toHaveTextContent('system=VMMS');
-    await vi.waitFor(() => expect(lastCall('active')).toMatchObject({ system: 'VMMS' }));
-  });
-
-  it('shows no filter to an admin of one system', async () => {
-    serve({ active: [person('b1', 'Bong Rivera')] }, { attention: 0, active: 1, inactive: 0 });
-    renderPane(me({ adminOf: ['VRMS'] }));
     await screen.findByText('Bong Rivera');
     expect(screen.queryByRole('group', { name: 'System' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Filter' })).toBeInTheDocument();
   });
 
-  it('shows all four choices to a suite admin', async () => {
+  it('shows the status chips and one row per system the viewer admins, each with its count', async () => {
     serve({ active: [person('b1', 'Bong Rivera')] }, { attention: 0, active: 1, inactive: 0 });
-    renderPane(me({ suiteAdmin: true, adminOf: [] }));
-    const group = await screen.findByRole('group', { name: 'System' });
-    expect(within(group).getAllByRole('button').map((r) => r.textContent)).toEqual(['All', 'VRMS', 'VMMS', 'BMS']);
+    renderPane();
+    const pop = await openFilter();
+    const status = within(pop).getByRole('group', { name: 'Status' });
+    expect(within(status).getAllByRole('checkbox').map((c) => c.textContent)).toEqual([
+      'Needs attention1',
+      'Locked0',
+      'Pending1',
+      'Active5',
+      'Inactive1',
+    ]);
+    expect(within(pop).getByRole('checkbox', { name: 'All of VRMS' })).toBeInTheDocument();
+    expect(within(pop).getByRole('checkbox', { name: 'All of VMMS' })).toBeInTheDocument();
+    expect(within(pop).queryByRole('checkbox', { name: 'All of BMS' })).not.toBeInTheDocument();
+    expect(within(pop).getByRole('button', { name: 'Show 7 people' })).toBeInTheDocument();
+  });
+
+  it('keeps the picks as a draft until Show, then writes them to the address and every group call', async () => {
+    serve({ active: [person('b1', 'Bong Rivera')] }, { attention: 0, active: 1, inactive: 0 });
+    renderPane();
+    const pop = await openFilter();
+    await userEvent.click(within(pop).getByRole('checkbox', { name: /Locked/ }));
+    await userEvent.click(within(pop).getByRole('checkbox', { name: 'All of VMMS' }));
+    expect(within(pop).getByText('2 filters on')).toBeInTheDocument();
+    expect(screen.getByTestId('where')).toBeEmptyDOMElement();
+    await vi.waitFor(() => expect(api.fetchFacets).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: 'LOCKED', access: 'VMMS' }),
+      expect.anything(),
+    ));
+    await userEvent.click(await within(pop).findByRole('button', { name: 'Show 7 people' }));
+    expect(screen.getByTestId('where')).toHaveTextContent('status=LOCKED&access=VMMS');
+    await vi.waitFor(() => expect(lastCall('attention')).toMatchObject({ status: 'LOCKED', access: 'VMMS' }));
+    expect(screen.getByRole('button', { name: 'Filter, 2 on' })).toBeInTheDocument();
+  });
+
+  it('discards the draft on Esc', async () => {
+    serve({ active: [person('b1', 'Bong Rivera')] }, { attention: 0, active: 1, inactive: 0 });
+    renderPane();
+    const pop = await openFilter();
+    await userEvent.click(within(pop).getByRole('checkbox', { name: /Locked/ }));
+    await userEvent.keyboard('{Escape}');
+    expect(screen.getByTestId('where')).toBeEmptyDOMElement();
+    const again = await openFilter();
+    expect(within(again).getByRole('checkbox', { name: /Locked/ })).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('turns every role ticked back into the whole system', async () => {
+    serve({ active: [person('b1', 'Bong Rivera')] }, { attention: 0, active: 1, inactive: 0 });
+    renderPane();
+    const pop = await openFilter();
+    await userEvent.click(within(pop).getByRole('button', { name: /^VRMS/ }));
+    await userEvent.click(within(pop).getByRole('checkbox', { name: /Mechanic/ }));
+    expect(within(pop).getByRole('checkbox', { name: 'All of VRMS' })).toHaveAttribute('aria-checked', 'true');
+    expect(within(pop).getByText('Everyone')).toBeInTheDocument();
+  });
+
+  it('disables Show and says so when no one matches', async () => {
+    serve({ active: [person('b1', 'Bong Rivera')] }, { attention: 0, active: 1, inactive: 0 });
+    api.fetchFacets.mockResolvedValue({ ...facets, total: 0 });
+    renderPane();
+    const pop = await openFilter();
+    expect(await within(pop).findByRole('button', { name: 'No one matches' })).toBeDisabled();
+  });
+
+  it('drops address values the viewer cannot use and rewrites the address before loading', async () => {
+    serve({ active: [person('b1', 'Bong Rivera')] }, { attention: 0, active: 1, inactive: 0 });
+    renderPane(me(), '/admin/people?status=LOCKED,BOGUS&access=BMS,VRMS:GONE,VMMS:OPERATIONS');
+    await screen.findByText('Bong Rivera');
+    expect(screen.getByTestId('where')).toHaveTextContent('status=LOCKED&access=VMMS');
+    expect(api.listPeople.mock.calls.every(([p]) => (p as { access?: string }).access !== 'BMS,VRMS:GONE,VMMS:OPERATIONS')).toBe(true);
+    expect(lastCall('active')).toMatchObject({ status: 'LOCKED', access: 'VMMS' });
   });
 
   it('falls back to All for a system the viewer cannot pick, and to Name for an unknown sort', async () => {
@@ -266,13 +338,13 @@ describe('search, no match and empty (AC-3, AC-5)', () => {
     await vi.waitFor(() => expect(lastCall('active')).toMatchObject({ q: 'Bong' }));
   });
 
-  it('shows the no match state with the filters as removable chips and Clear all', async () => {
+  it('shows the no match state with the filters as removable chips and Clear filters', async () => {
     serve({}, { attention: 0, active: 0, inactive: 0 });
     renderPane(me(), '/admin/people?q=zzz&system=VMMS');
     expect(await screen.findByText('No one matches “zzz”')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Remove “zzz”' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Remove VMMS' })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
     await vi.waitFor(() => expect(screen.getByTestId('where')).toBeEmptyDOMElement());
   });
 
@@ -282,20 +354,37 @@ describe('search, no match and empty (AC-3, AC-5)', () => {
     expect(await screen.findByText('No one in VMMS')).toBeInTheDocument();
   });
 
-  it('shows the empty state with Add person when nothing is searched or filtered', async () => {
+  it('shows Clear filters instead of Add user when a filter leaves no one', async () => {
+    serve({}, { attention: 0, active: 0, inactive: 0 });
+    renderPane(me(), '/admin/people?status=LOCKED');
+    expect(await screen.findByText('No one matches these filters')).toBeInTheDocument();
+    expect(screen.queryByText('No one has access yet.')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    await vi.waitFor(() => expect(screen.getByTestId('where')).toBeEmptyDOMElement());
+  });
+
+  it('shows the empty state with Add user when nothing is searched or filtered', async () => {
     serve({}, { attention: 0, active: 0, inactive: 0 });
     const { onAdd } = renderPane();
     expect(await screen.findByText('No one has access yet.')).toBeInTheDocument();
-    const adds = screen.getAllByRole('button', { name: 'Add person' });
+    const adds = screen.getAllByRole('button', { name: 'Add user' });
     await userEvent.click(adds.at(-1)!);
     expect(onAdd).toHaveBeenCalledWith(null);
   });
 
-  it('opens Add person in place with the picked system, without leaving the page', async () => {
+  it('opens Add user in place with the picked system, without leaving the page', async () => {
     serve({ active: [person('b1', 'Bong Rivera')] }, { attention: 0, active: 1, inactive: 0 });
     const { onAdd } = renderPane(me(), '/admin/people?system=VMMS', vi.fn(), 'b1');
     await screen.findByText('Bong Rivera');
-    await userEvent.click(screen.getByRole('button', { name: 'Add person' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Add user' }));
     expect(onAdd).toHaveBeenCalledWith('VMMS');
+  });
+
+  it('preselects a system for Add user only when the filter is exactly one whole system', async () => {
+    serve({ active: [person('b1', 'Bong Rivera')] }, { attention: 0, active: 1, inactive: 0 });
+    const { onAdd } = renderPane(me(), '/admin/people?access=VRMS');
+    await screen.findByText('Bong Rivera');
+    await userEvent.click(screen.getByRole('button', { name: 'Add user' }));
+    expect(onAdd).toHaveBeenCalledWith('VRMS');
   });
 });

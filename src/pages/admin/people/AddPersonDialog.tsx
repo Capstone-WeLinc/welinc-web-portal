@@ -1,41 +1,44 @@
 import { useEffect, useState } from 'react';
-import { UserRound } from 'lucide-react';
+import { Check, Mail, UserRound, UserRoundPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { InitialsTile } from '@/components/ui/initials-tile';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SteeringWheel } from '@/components/ui/steering-wheel';
 import { errorCode, errorStatus, type AdminMe, type SystemCode } from '@/lib/admin';
 import {
+  checkEmail,
   createPerson,
   errorMessage,
   listPeople,
-  lookupPeople,
   ReauthCancelled,
   type CatalogSystem,
-  type LookupPerson,
+  type EmailCheck,
 } from '@/lib/adminApi';
 import { notifySuccess } from '@/lib/notify';
 import { cn } from '@/lib/utils';
-import { SystemChip } from './peopleParts';
+import { SYSTEM_ICONS } from '../../launcher/systemIcons';
 import { viewerSystems } from './peopleRules';
 
-/** Who the dialog adds: a new account, or one that exists (with the systems it is already in). */
-export type AddWho =
-  | { kind: 'new'; name: string; email: string }
-  | { kind: 'existing'; id: string; name: string; email: string; systems: SystemCode[] };
+/** A person the dialog gives access to (Give access on their page). */
+export type AddWho = { kind: 'existing'; id: string; name: string; email: string; systems: SystemCode[] };
 
-/** The dialog's start: Add person (step 1), or Give access on a person (step 2, person and system set). */
-export type AddStart = { who?: AddWho & { kind: 'existing' }; system?: SystemCode } | null;
+/** The dialog's start: Add user (maybe with a system), or Give access for a known person. */
+export type AddStart = { who?: AddWho; system?: SystemCode } | null;
 
-const STEPS = ['Who', 'Access', 'Check and send'] as const;
-const LOOKUP_DELAY_MS = 300;
+/** The email check waits this long after typing stops (AC-22). */
+const CHECK_DELAY_MS = 400;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CONTACT_MAX = 100;
+const SYSTEM_SUBS: Record<SystemCode, string> = { VRMS: 'Vehicle repair', VMMS: 'Maintenance', BMS: 'Bookings' };
 
 /**
- * Suite spec 0017, AC-14 (board `AddPerson6`, dialog AA): "Add a person" in three steps. Step 1
- * finds an existing account (`GET /auth/admin/users/lookup`) or takes a new name and email,
- * step 2 picks one of the viewer's systems and a role, step 3 reads it back and sends
- * `POST /auth/admin/users` (with `attachExisting` for an existing account). No end date step.
+ * Suite spec 0019, AC-22 (board `AddUser15`): Add a user on one screen. Email first, its own icon
+ * is the check (`GET /auth/admin/users/email-check`): a red ! while it isn't an email, the wheel
+ * while checking, a navy tick when free, a person icon and a card when it has an account, which
+ * turns the dialog into Give access. One Full name, an optional contact number, system cards when
+ * the viewer admins more than one system, role cards with a one line meaning, one system per add.
  */
 export function AddPersonDialog({
   start,
@@ -53,12 +56,15 @@ export function AddPersonDialog({
 }) {
   return (
     <Dialog open={start !== null} onOpenChange={(open) => !open && onClose()}>
-      {start && <AddPersonSteps key={start.who?.id ?? 'new'} start={start} me={me} catalog={catalog} onClose={onClose} onAdded={onAdded} />}
+      {start && <AddUserForm key={start.who?.id ?? 'new'} start={start} me={me} catalog={catalog} onClose={onClose} onAdded={onAdded} />}
     </Dialog>
   );
 }
 
-function AddPersonSteps({
+type Check = { key: string; result: EmailCheck | null };
+type Errors = { email?: string; name?: string; contact?: string; role?: string };
+
+function AddUserForm({
   start,
   me,
   catalog,
@@ -72,59 +78,80 @@ function AddPersonSteps({
   onAdded: (id: string) => void;
 }) {
   const systems = viewerSystems(me);
-  const [step, setStep] = useState<1 | 2 | 3>(start.who ? 2 : 1);
-  const [who, setWho] = useState<AddWho>(start.who ?? { kind: 'new', name: '', email: '' });
-  const [system, setSystem] = useState<SystemCode | null>(
-    start.system ?? systems.find((s) => !(start.who?.systems ?? []).includes(s)) ?? null,
+  const [email, setEmail] = useState(start.who?.email ?? '');
+  const [settledEmail, setSettledEmail] = useState(email.trim().toLowerCase());
+  const [name, setName] = useState('');
+  const [contact, setContact] = useState('');
+  const [system, setSystem] = useState<SystemCode>(
+    start.system ?? systems.find((s) => !(start.who?.systems ?? []).includes(s)) ?? systems[0],
   );
   const [role, setRole] = useState('');
-  const [errors, setErrors] = useState<{ name?: string; email?: string; system?: string; role?: string }>({});
+  const [errors, setErrors] = useState<Errors>({});
   const [problem, setProblem] = useState('');
-  const [already, setAlready] = useState<{ id: string | null; system: SystemCode } | null>(null);
+  const [check, setCheck] = useState<Check | null>(null);
   const [sending, setSending] = useState(false);
-  const roles = catalog?.find((s) => s.code === system)?.roles ?? [];
-  const roleLabel = roles.find((r) => r.code === role)?.name ?? role;
-  const giveOnly = Boolean(start.who);
 
-  const next = () => {
-    if (step === 1) {
-      if (who.kind === 'new') {
-        const found: typeof errors = {};
-        if (!who.name.trim()) found.name = 'Enter their full name.';
-        if (!EMAIL_RE.test(who.email.trim())) found.email = 'Enter an email like name@example.com.';
-        setErrors(found);
-        if (Object.keys(found).length > 0) return;
-      }
-      setStep(2);
-      return;
-    }
-    if (step === 2) {
-      const found: typeof errors = {};
-      if (!system) found.system = 'Pick a system.';
-      else if (!role) found.role = 'Pick a role.';
-      setErrors(found);
-      if (Object.keys(found).length === 0) setStep(3);
-    }
+  const typed = email.trim().toLowerCase();
+  const valid = EMAIL_RE.test(typed);
+  const checkKey = `${settledEmail}|${system}`;
+  const result = check?.key === checkKey ? check.result : null;
+  const checking = valid && typed === settledEmail && check?.key !== checkKey;
+  const typing = typed !== settledEmail;
+  const status = typing ? null : result?.status ?? null;
+  const giving = status === 'existing';
+  const blocked = status === 'in-system' || status === 'suite-admin' || status === 'inactive';
+  const known = giving || blocked;
+  const takenSystems = known ? (result?.systems ?? []) : [];
+  const roles = catalog?.find((s) => s.code === system)?.roles ?? [];
+  const roleLabel = roles.find((r) => r.code === role)?.name;
+  const personName = known ? (result?.name ?? 'This person') : name.trim();
+
+  // Typing settles 400 ms after the last key
+  useEffect(() => {
+    if (typed === settledEmail) return;
+    const timer = window.setTimeout(() => setSettledEmail(typed), CHECK_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [typed, settledEmail]);
+
+  // Only a settled email that passes the format check is asked about; an older check is cancelled
+  useEffect(() => {
+    if (!EMAIL_RE.test(settledEmail)) return;
+    const controller = new AbortController();
+    const key = `${settledEmail}|${system}`;
+    checkEmail(settledEmail, system, controller.signal)
+      .then((answer) => setCheck({ key, result: answer }))
+      // A failed check shows no icon; the server still refuses a duplicate on send
+      .catch(() => !controller.signal.aborted && setCheck({ key, result: null }));
+    return () => controller.abort();
+  }, [settledEmail, system]);
+
+  const validate = (): Errors => {
+    const found: Errors = {};
+    if (!valid) found.email = 'Enter the whole email, like name@example.com.';
+    if (!known && !name.trim()) found.name = 'Enter their full name.';
+    if (!known && contact.trim().length > CONTACT_MAX) found.contact = `Keep it to ${CONTACT_MAX} characters.`;
+    if (!role) found.role = 'Pick a role.';
+    return found;
   };
 
   const send = async () => {
-    if (!system || !role) return;
+    const found = validate();
+    setErrors(found);
+    setSettledEmail(typed);
+    if (Object.keys(found).length > 0 || blocked) return;
     setSending(true);
     setProblem('');
-    setAlready(null);
-    const name = who.name.trim();
-    const email = who.email.trim();
     try {
       const person = await createPerson({
         system,
-        name,
-        email,
+        name: giving ? (result?.name ?? typed) : name.trim(),
+        email: typed,
         roleAssignments: [{ role, system }],
-        ...(who.kind === 'existing' ? { attachExisting: true } : {}),
+        ...(giving ? { attachExisting: true } : contact.trim() ? { contact: contact.trim() } : {}),
       });
       notifySuccess(
-        who.kind === 'existing'
-          ? `${person.name} now has ${roleLabel} in ${system}.`
+        giving
+          ? `${person.name} now has ${roleLabel ?? role} in ${system}.`
           : person.setupEmailSent === false
             ? `${person.name} was added, but the setup email didn't go out. Send a setup code from their page.`
             : `${person.name} was added. They got an email to set their password.`,
@@ -133,16 +160,14 @@ function AddPersonSteps({
     } catch (error) {
       if (error instanceof ReauthCancelled) return;
       if (errorCode(error) === 'ACCOUNT_EXISTS') {
-        // The email has an account outside this system: give that account access instead
-        const data = (error as { response?: { data?: { id?: string; name?: string; systems?: SystemCode[] } } }).response?.data;
-        if (data?.id) {
-          setWho({ kind: 'existing', id: data.id, name: data.name ?? name, email, systems: data.systems ?? [] });
-          setProblem(`${email} already has a WeLinc account${data.name ? ` (${data.name})` : ''}. Send again to give that account access.`);
-          return;
-        }
+        // Someone made the account since the check: give that account access instead
+        const data = (error as { response?: { data?: { name?: string; systems?: SystemCode[] } } }).response?.data;
+        setCheck({ key: checkKey, result: { status: 'existing', name: data?.name ?? typed, systems: data?.systems ?? [] } });
+        setProblem('This email already has a WeLinc account. Send again to give that account access.');
+        return;
       }
       if (errorStatus(error) === 409 && !errorCode(error)) {
-        setAlready({ id: await findInSystem(email, system), system });
+        setCheck({ key: checkKey, result: { status: 'in-system', name: result?.name ?? typed, systems: [system] } });
         return;
       }
       setProblem(errorMessage(error, "We couldn't add this person. Try again."));
@@ -151,106 +176,322 @@ function AddPersonSteps({
     }
   };
 
-  return (
-    <DialogContent className="sm:max-w-xl">
-      <DialogHeader>
-        <DialogTitle>Add a person</DialogTitle>
-        <DialogDescription className="sr-only">Who they are, where they sign in, then check and send.</DialogDescription>
-      </DialogHeader>
-      <ol className="grid grid-cols-3 gap-2" aria-label="Steps">
-        {STEPS.map((label, i) => (
-          <li key={label} aria-current={i + 1 === step ? 'step' : undefined} className="flex flex-col gap-1.5">
-            <span className={cn('h-1 rounded-full', i < step ? 'bg-primary' : 'bg-border')} />
-            <span
-              className={cn(
-                'text-caption',
-                i < step ? 'text-foreground' : 'text-muted-foreground',
-                i + 1 === step ? 'font-semibold' : 'font-medium',
-              )}
-            >
-              {i + 1}. {label}
-            </span>
-          </li>
-        ))}
-      </ol>
+  const openExisting = async () => {
+    const id = await findInSystem(typed, system);
+    if (id) onAdded(id);
+    else setProblem("We couldn't open this person. Search for them in the list.");
+  };
 
-      {step === 1 && <WhoStep who={who} errors={errors} system={system ?? systems[0]} onChange={setWho} />}
-      {step === 2 && (
-        <AccessStep
-          systems={systems}
-          blocked={who.kind === 'existing' ? who.systems : []}
-          system={system}
-          role={role}
-          catalog={catalog}
-          errors={errors}
-          onSystem={(next) => {
-            setSystem(next);
-            setRole('');
-          }}
-          onRole={setRole}
-        />
-      )}
-      {step === 3 && system && (
-        <div className="flex flex-col gap-3">
-          <div className="flex items-start gap-3 rounded-xl border border-divider bg-background p-4">
-            <UserRound className="mt-0.5 size-5 shrink-0 text-muted-strong" aria-hidden="true" />
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <p className="text-body font-semibold text-foreground">
-                {who.name.trim()} gets {roleLabel} in {system}.
-              </p>
-              <p className="text-small break-all text-muted-foreground">{who.email.trim()}</p>
+  return (
+    <DialogContent className="gap-0 p-0 sm:max-w-160">
+      <DialogHeader className="flex-row items-start gap-3.5 px-6 pt-5.5 pb-4.5 text-left">
+        <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-info-bg text-primary">
+          <UserRoundPlus className="size-5" />
+        </span>
+        <div className="flex min-w-0 flex-col gap-1">
+          <DialogTitle>{giving ? 'Give access' : 'Add a user'}</DialogTitle>
+          <DialogDescription>
+            {giving ? 'This email already has a WeLinc account.' : 'They get an email to set their password.'}
+          </DialogDescription>
+        </div>
+      </DialogHeader>
+
+      <form
+        id="add-user"
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          void send();
+        }}
+        className="flex flex-col gap-4.5 px-6 pt-1 pb-5.5"
+      >
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="add-email">Email</Label>
+          <div className="relative">
+            <Input
+              id="add-email"
+              type="email"
+              value={email}
+              autoComplete="off"
+              readOnly={Boolean(start.who)}
+              aria-invalid={errors.email || (!typing && typed && !valid) ? true : undefined}
+              aria-describedby="add-email-state"
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setErrors((x) => ({ ...x, email: undefined }));
+                setProblem('');
+              }}
+              className="pr-10"
+            />
+            <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2">
+              <EmailIcon state={typing || !typed ? 'none' : !valid ? 'invalid' : checking ? 'checking' : status} />
+            </span>
+          </div>
+          <p id="add-email-state" className="text-small text-error" aria-live="polite">
+            {errors.email ?? (!typing && typed && !valid ? 'Enter the whole email, like name@example.com.' : '')}
+          </p>
+          {known && result && (
+            <KnownCard result={result} system={system} onOpen={status === 'in-system' ? () => void openExisting() : undefined} />
+          )}
+        </div>
+
+        {!known && (
+          <div className="grid gap-3.5 sm:grid-cols-5">
+            <div className="flex flex-col gap-1.5 sm:col-span-3">
+              <Label htmlFor="add-name">Full name</Label>
+              <Input
+                id="add-name"
+                value={name}
+                autoComplete="off"
+                aria-invalid={errors.name ? true : undefined}
+                aria-describedby={errors.name ? 'add-name-error add-name-hint' : 'add-name-hint'}
+                onChange={(e) => setName(e.target.value)}
+              />
+              {errors.name ? (
+                <p id="add-name-error" className="text-small text-error">
+                  {errors.name}
+                </p>
+              ) : (
+                <p id="add-name-hint" className="text-caption font-normal text-muted-foreground">
+                  As it appears on their ID, in one field.
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <Label htmlFor="add-contact">
+                Contact number <span className="font-normal text-muted-foreground">optional</span>
+              </Label>
+              <Input
+                id="add-contact"
+                type="tel"
+                value={contact}
+                autoComplete="off"
+                placeholder="+63 917 555 0142"
+                aria-invalid={errors.contact ? true : undefined}
+                aria-describedby={errors.contact ? 'add-contact-error' : undefined}
+                onChange={(e) => setContact(e.target.value)}
+              />
+              {errors.contact && (
+                <p id="add-contact-error" className="text-small text-error">
+                  {errors.contact}
+                </p>
+              )}
             </div>
           </div>
-          <p className="text-small text-muted-foreground">
-            {who.kind === 'existing'
-              ? 'Their name and password stay as they are.'
-              : 'We email them a setup code so they set their own password.'}
-          </p>
-          {already && (
-            <p role="alert" className="flex flex-wrap items-center gap-2 text-body text-foreground">
-              Already in {already.system}.
-              {already.id && (
-                <Button variant="link" size="sm" className="px-0" onClick={() => onAdded(already.id!)}>
-                  Open person
-                </Button>
-              )}
+        )}
+
+        <div className="h-px bg-divider" />
+
+        {systems.length > 1 && (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-2 text-label text-muted-strong">System</legend>
+            <div role="radiogroup" aria-label="System" className="grid gap-2 sm:grid-cols-3">
+              {systems.map((code) => {
+                const taken = takenSystems.includes(code) && code !== system;
+                const on = code === system;
+                const Icon = SYSTEM_ICONS[code];
+                return (
+                  <button
+                    key={code}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    disabled={taken}
+                    onClick={() => {
+                      setSystem(code);
+                      setRole('');
+                    }}
+                    className={cn(
+                      'flex items-center gap-2.5 rounded-xl border p-3 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45',
+                      on ? 'border-primary bg-info-bg ring-1 ring-primary' : 'border-input bg-card hover:border-muted-foreground',
+                    )}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'flex size-8.5 shrink-0 items-center justify-center rounded-lg',
+                        on ? 'bg-primary text-highlight' : 'bg-info-bg text-primary',
+                      )}
+                    >
+                      {Icon && <Icon className="size-4.25" />}
+                    </span>
+                    <span className="flex min-w-0 flex-col">
+                      <span className="text-body font-semibold text-foreground">{code}</span>
+                      <span className="text-caption font-normal text-muted-foreground">
+                        {taken ? 'Already has it' : SYSTEM_SUBS[code]}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+        )}
+
+        <fieldset className="flex flex-col gap-2" aria-describedby={errors.role ? 'add-role-error' : undefined}>
+          <legend className="mb-2 text-label text-muted-strong">{systems.length > 1 ? 'Role' : `Role in ${system}`}</legend>
+          <div role="radiogroup" aria-label="Role" className="grid gap-2 sm:grid-cols-2">
+            {roles.map((r) => {
+              const on = r.code === role;
+              return (
+                <button
+                  key={r.code}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => {
+                    setRole(r.code);
+                    setErrors((x) => ({ ...x, role: undefined }));
+                  }}
+                  className={cn(
+                    'flex items-start gap-2.5 rounded-xl border px-3.5 py-3 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    on ? 'border-primary bg-info-bg ring-1 ring-primary' : 'border-input bg-card hover:border-muted-foreground',
+                  )}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'mt-0.5 size-4 shrink-0 rounded-full bg-card',
+                      on ? 'border-5 border-primary' : 'border-2 border-input',
+                    )}
+                  />
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-body font-semibold text-foreground">{r.name}</span>
+                    {r.description && <span className="text-caption font-normal text-muted-foreground">{r.description}</span>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {errors.role && (
+            <p id="add-role-error" className="text-small text-error">
+              {errors.role}
             </p>
           )}
-          {problem && (
-            <p role="alert" className="text-body text-destructive">
-              {problem}
-            </p>
-          )}
-        </div>
+        </fieldset>
+      </form>
+
+      <div className="mx-6 flex items-start gap-2.5 rounded-xl bg-background px-3.5 py-3">
+        {giving ? (
+          <Check aria-hidden="true" className="mt-0.5 size-4.25 shrink-0 text-primary" />
+        ) : (
+          <Mail aria-hidden="true" className="mt-0.5 size-4.25 shrink-0 text-primary" />
+        )}
+        <p className="text-small text-muted-strong" aria-live="polite">
+          {summary({ giving, blocked, name: personName, role: roleLabel, system })}
+        </p>
+      </div>
+      {problem && (
+        <p role="alert" className="mx-6 mt-3 text-body text-error">
+          {problem}
+        </p>
       )}
 
-      <DialogFooter className="sm:justify-between">
-        <Button
-          variant="ghost"
-          className={cn(step === 1 || (giveOnly && step === 2) ? 'invisible' : undefined)}
-          disabled={sending}
-          onClick={() => setStep((s) => (s === 3 ? 2 : 1))}
-        >
-          ← Back
+      <DialogFooter className="px-6 pt-4 pb-5">
+        <Button variant="ghost" disabled={sending} onClick={onClose}>
+          Cancel
         </Button>
-        <div className="flex gap-2">
-          <Button variant="outline" disabled={sending} onClick={onClose}>
-            Cancel
-          </Button>
-          {step < 3 ? (
-            <Button onClick={next}>Next</Button>
-          ) : (
-            <Button loading={sending} onClick={() => void send()}>
-              {who.kind === 'existing' ? 'Give access' : 'Send invite'}
-            </Button>
-          )}
-        </div>
+        <Button type="submit" form="add-user" loading={sending} disabled={blocked || checking}>
+          {giving ? 'Give access' : 'Add and send invite'}
+        </Button>
       </DialogFooter>
     </DialogContent>
   );
 }
 
-/** A 409 with no code: the email is already in this system; find them so "Open person" works. */
+/** The grey box: one sentence on what happens next (board `AddUser15`). */
+function summary({
+  giving,
+  blocked,
+  name,
+  role,
+  system,
+}: {
+  giving: boolean;
+  blocked: boolean;
+  name: string;
+  role: string | undefined;
+  system: SystemCode;
+}): string {
+  if (blocked) return 'This email can’t be added here. Check the address, or pick another system.';
+  if (!role) return giving ? `Pick their role in ${system}.` : `Pick a role in ${system}. We email them a code to set a password.`;
+  const who = name || 'They';
+  if (giving) return `${who} gets ${role} in ${system} straight away and signs in with their current password.`;
+  return `${who} gets ${role} in ${system}. We email them a code to set a password; it works for one hour, and they show as Pending until then.`;
+}
+
+type IconState = 'none' | 'invalid' | 'checking' | EmailCheck['status'] | null;
+
+/** The field's own icon is the whole check (AC-22). */
+function EmailIcon({ state }: { state: IconState }) {
+  if (state === 'invalid') {
+    return (
+      <span aria-hidden="true" className="flex size-5 items-center justify-center rounded-full bg-error-bg text-small font-bold text-error">
+        !
+      </span>
+    );
+  }
+  if (state === 'checking') {
+    return (
+      <span role="status" aria-label="Checking the email" className="flex">
+        <SteeringWheel className="text-primary" />
+      </span>
+    );
+  }
+  if (state === 'free') {
+    return (
+      <span role="img" aria-label="Email is free" className="flex size-5 items-center justify-center rounded-full bg-info-bg text-primary">
+        <Check aria-hidden="true" className="size-3" strokeWidth={3.2} />
+      </span>
+    );
+  }
+  if (state === 'existing' || state === 'in-system' || state === 'suite-admin' || state === 'inactive') {
+    return (
+      <span role="img" aria-label="Has an account" className="flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+        <UserRound aria-hidden="true" className="size-3" strokeWidth={2.6} />
+      </span>
+    );
+  }
+  return null;
+}
+
+/** The card under the email when it has an account. */
+function KnownCard({ result, system, onOpen }: { result: EmailCheck; system: SystemCode; onOpen?: () => void }) {
+  const name = result.name ?? 'This person';
+  const others = (result.systems ?? []).filter((s) => s !== system);
+  const line =
+    result.status === 'existing'
+      ? others.length > 0
+        ? `In ${others.join(', ')}. Pick their ${system} role below to give them more access.`
+        : `Pick their ${system} role below.`
+      : result.status === 'in-system'
+        ? `Already in ${system}. Pick another system, or open them to change their role.`
+        : result.status === 'suite-admin'
+          ? 'This is a suite admin. Suite admins can’t take a system role.'
+          : 'This account is turned off or deleted, so it can’t be added here.';
+  const title =
+    result.status === 'existing' || result.status === 'in-system'
+      ? `${name} already has an account`
+      : result.status === 'suite-admin'
+        ? 'A suite admin'
+        : 'Account not active';
+  return (
+    <div className="mt-1 flex items-center gap-3 rounded-xl bg-info-bg px-3.5 py-3">
+      {result.name ? <InitialsTile name={result.name} className="size-9 bg-card text-small ring-1 ring-border" /> : null}
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="text-body font-semibold text-foreground">{title}</span>
+        <span className="text-caption font-normal text-muted-strong">{line}</span>
+      </span>
+      {onOpen && (
+        <Button type="button" variant="link" size="sm" onClick={onOpen}>
+          Open user
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/** The email is already in this system: find them so Open user works. */
 async function findInSystem(email: string, system: SystemCode): Promise<string | null> {
   try {
     const page = await listPeople({ system, q: email, limit: 5 });
@@ -258,204 +499,4 @@ async function findInSystem(email: string, system: SystemCode): Promise<string |
   } catch {
     return null;
   }
-}
-
-function WhoStep({
-  who,
-  errors,
-  system,
-  onChange,
-}: {
-  who: AddWho;
-  errors: { name?: string; email?: string };
-  system: SystemCode | undefined;
-  onChange: (who: AddWho) => void;
-}) {
-  const [matches, setMatches] = useState<LookupPerson[]>([]);
-  const query = who.kind === 'new' ? (who.email.trim() || who.name.trim()) : '';
-
-  // Existing accounts outside the system, as you type (30 a minute per admin, server side)
-  useEffect(() => {
-    if (!system || query.length < 3) return;
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      lookupPeople(system, query)
-        .then((found) => !cancelled && setMatches(found.slice(0, 4)))
-        .catch(() => !cancelled && setMatches([]));
-    }, LOOKUP_DELAY_MS);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [query, system]);
-
-  if (who.kind === 'existing') {
-    return (
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-divider bg-background p-4">
-        <div className="min-w-0">
-          <p className="text-body font-semibold text-foreground">{who.name}</p>
-          <p className="text-small break-all text-muted-foreground">{who.email}</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => onChange({ kind: 'new', name: '', email: '' })}>
-          Someone else
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="add-name">Full name</Label>
-        <Input
-          id="add-name"
-          value={who.name}
-          autoComplete="off"
-          aria-invalid={errors.name ? true : undefined}
-          aria-describedby={errors.name ? 'add-name-error' : undefined}
-          onChange={(e) => onChange({ ...who, name: e.target.value })}
-        />
-        {errors.name && (
-          <p id="add-name-error" className="text-small text-destructive">
-            {errors.name}
-          </p>
-        )}
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="add-email">Work email</Label>
-        <Input
-          id="add-email"
-          type="email"
-          value={who.email}
-          autoComplete="off"
-          aria-invalid={errors.email ? true : undefined}
-          aria-describedby={errors.email ? 'add-email-error add-email-hint' : 'add-email-hint'}
-          onChange={(e) => onChange({ ...who, email: e.target.value })}
-        />
-        <p id="add-email-hint" className="text-small text-muted-foreground">
-          Their sign in name. We check it isn't taken.
-        </p>
-        {errors.email && (
-          <p id="add-email-error" className="text-small text-destructive">
-            {errors.email}
-          </p>
-        )}
-      </div>
-      {query.length >= 3 && matches.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <p className="text-label text-muted-strong">Already has a WeLinc account</p>
-          <ul className="flex flex-col gap-1.5">
-            {matches.map((m) => (
-              <li key={m.id}>
-                <button
-                  type="button"
-                  onClick={() => onChange({ kind: 'existing', id: m.id, name: m.name, email: m.email, systems: m.systems })}
-                  className="flex w-full items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-left hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-body font-semibold text-foreground">{m.name}</span>
-                    <span className="block truncate text-caption font-normal text-muted-foreground">{m.email}</span>
-                  </span>
-                  <span className="flex gap-1">
-                    {m.systems.map((s) => (
-                      <SystemChip key={s} system={s} />
-                    ))}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AccessStep({
-  systems,
-  blocked,
-  system,
-  role,
-  catalog,
-  errors,
-  onSystem,
-  onRole,
-}: {
-  systems: SystemCode[];
-  /** Systems the existing account is already in. */
-  blocked: SystemCode[];
-  system: SystemCode | null;
-  role: string;
-  catalog: CatalogSystem[] | null;
-  errors: { system?: string; role?: string };
-  onSystem: (system: SystemCode) => void;
-  onRole: (role: string) => void;
-}) {
-  const roles = catalog?.find((s) => s.code === system)?.roles ?? [];
-  return (
-    <div className="flex flex-col gap-4">
-      <fieldset className="flex flex-col gap-2" aria-describedby={errors.system ? 'add-system-error' : undefined}>
-        <legend className="mb-2 text-body font-semibold text-foreground">Where can they sign in?</legend>
-        {systems.map((code) => {
-          const inIt = blocked.includes(code);
-          return (
-            <label
-              key={code}
-              className={cn(
-                'flex items-center gap-3 rounded-lg border border-border p-3 has-checked:border-primary has-checked:bg-info-bg has-focus-visible:ring-2 has-focus-visible:ring-ring',
-                inIt ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
-              )}
-            >
-              <input
-                type="radio"
-                name="add-system"
-                value={code}
-                checked={system === code}
-                disabled={inIt}
-                onChange={() => onSystem(code)}
-                className="size-4 accent-primary outline-none"
-              />
-              <SystemChip system={code} className="w-12" />
-              <span className="flex-1 text-body text-foreground">{catalog?.find((s) => s.code === code)?.name ?? code}</span>
-              {inIt && <span className="text-caption font-normal text-muted-foreground">Already in {code}</span>}
-            </label>
-          );
-        })}
-        {errors.system && (
-          <p id="add-system-error" className="text-small text-destructive">
-            {errors.system}
-          </p>
-        )}
-      </fieldset>
-      {system && (
-        <fieldset className="flex flex-col gap-2" aria-describedby={errors.role ? 'add-role-error' : undefined}>
-          <legend className="mb-2 text-body font-semibold text-foreground">Role in {system}</legend>
-          {roles.map((r) => (
-            <label
-              key={r.code}
-              className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 has-checked:border-primary has-checked:bg-info-bg has-focus-visible:ring-2 has-focus-visible:ring-ring"
-            >
-              <input
-                type="radio"
-                name="add-role"
-                value={r.code}
-                checked={role === r.code}
-                onChange={() => onRole(r.code)}
-                className="mt-0.5 size-4 accent-primary outline-none"
-              />
-              <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-body font-semibold text-foreground">{r.name}</span>
-                {r.description && <span className="text-caption font-normal text-muted-foreground">{r.description}</span>}
-              </span>
-            </label>
-          ))}
-          {errors.role && (
-            <p id="add-role-error" className="text-small text-destructive">
-              {errors.role}
-            </p>
-          )}
-        </fieldset>
-      )}
-    </div>
-  );
 }

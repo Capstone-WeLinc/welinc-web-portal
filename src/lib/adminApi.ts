@@ -72,7 +72,6 @@ export type PersonDetail = ManagedPerson & {
   restorableUntil: string | null;
 };
 
-export type LookupPerson = { id: string; name: string; email: string; systems: SystemCode[] };
 
 export type SessionView = {
   sid: string;
@@ -202,13 +201,16 @@ export async function fetchEventCatalog(): Promise<EventCatalog> {
 export function listPeople(params: {
   system: Scope;
   q?: string;
+  /** One status, or a comma list (suite spec 0019, AC-21a: any of). */
+  status?: PeopleStatus | string;
+  /** Suite spec 0019, AC-21a: `VRMS,VMMS:MECHANIC`, any of. */
+  access?: string;
   /** Only holders of this role in `system` (suite spec 0018: faces and the People tab). */
   role?: string;
   /** Leaves out holders of this role in `system` (suite spec 0018: Add people candidates). */
   excludeRole?: string;
   /** Leaves out suite admins and the caller, who can't be moved into a role. */
   assignable?: boolean;
-  status?: PeopleStatus;
   group?: PeopleGroup;
   sort?: PeopleSort;
   limit?: number;
@@ -227,9 +229,37 @@ export function getPerson(id: string, system: Scope = null): Promise<PersonDetai
   );
 }
 
-export function lookupPeople(system: SystemCode, q: string): Promise<LookupPerson[]> {
+/** Suite spec 0019, AC-21b: the People filter's status chips, in the order the facets answer. */
+export type FacetStatus = 'ATTENTION' | 'LOCKED' | 'SETUP_PENDING' | 'ACTIVE_GROUP' | 'INACTIVE';
+
+export type PeopleFacets = {
+  total: number;
+  status: Record<FacetStatus, number>;
+  systems: { system: SystemCode; count: number; roles: { code: string; count: number }[] }[];
+};
+
+/**
+ * `GET /auth/admin/users/facets` (AC-21b): counts only. Not wrapped in `withStepUp` on purpose:
+ * the list beside it asks for the code, and a refused or aborted count just leaves its dashes.
+ */
+export async function fetchFacets(
+  params: { system: Scope; q?: string; status?: string; access?: string },
+  signal?: AbortSignal,
+): Promise<PeopleFacets> {
+  const { system, ...rest } = params;
+  const query = Object.fromEntries(Object.entries(rest).filter(([, v]) => v));
+  return (await api.get<PeopleFacets>('/auth/admin/users/facets', { params: { ...query, ...scoped(system) }, signal })).data;
+}
+
+export type EmailCheckStatus = 'inactive' | 'suite-admin' | 'in-system' | 'existing' | 'free';
+
+/** `GET /auth/admin/users/email-check` (AC-23). */
+export type EmailCheck = { status: EmailCheckStatus; name?: string; picture?: string | null; systems?: SystemCode[] };
+
+export function checkEmail(email: string, system: SystemCode, signal?: AbortSignal): Promise<EmailCheck> {
   return withStepUp(
-    async () => (await api.get<LookupPerson[]>('/auth/admin/users/lookup', { params: { system, q } })).data,
+    async () =>
+      (await api.get<EmailCheck>('/auth/admin/users/email-check', { params: { email, system }, signal })).data,
   );
 }
 
@@ -239,6 +269,8 @@ export type CreatePersonInput = {
   email: string;
   roleAssignments: RoleAssignment[];
   attachExisting?: boolean;
+  /** Suite spec 0019, AC-22: optional, at most 100 characters. */
+  contact?: string;
 };
 
 export function createPerson(input: CreatePersonInput): Promise<ManagedPerson & { setupEmailSent?: boolean }> {

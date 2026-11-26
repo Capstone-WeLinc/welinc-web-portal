@@ -78,15 +78,62 @@
   --duration-bar-out: 130ms;
   --duration-sheet-out: 150ms;
 
+
   /*
-    The login hero (spec 0007, AC-22): the split layout keeps today's dark navy, gradient
-    and gold glows, a deliberate exception to design.md's ban. `hero` is also the portal's navy
-    brand band (design.md, Brand surfaces); nothing else uses these.
+    Suite spec 0019: the drawn brand scenes (the launcher band, the 404 road, sign in). The trucks
+    wear the real WeLinc livery (white closed van, orange and blue swoosh, navy wordmark); only
+    these drawings use these values, never a working page.
   */
-  --hero: #0d1240;
-  --hero-deep: #0a0e35;
-  --hero-danger: #fca5a5;
-  --hero-success: #34d399;
+  --scene-hills: #141a55;
+  --scene-road: #0a0d36;
+  --scene-post: #cbd2ea;
+  /* The sign in (S27d Quiet, `R47Quiet`): the page under the map, and the glass panel's tint */
+  --signin-deep: #0a0d33;
+  --signin-label: #e6e8f7;
+  /* Its depth (Round 75, `R75Shade4`, AC-13): the glow under the map, the dark edge over it, the
+     glass panel, the inset fields and the gold mark tile */
+  --signin-glow: #131a56;
+  --signin-glow-mid: #10164b;
+  --signin-vignette: rgb(4 6 26 / 0.6);
+  --signin-glass-sheen: rgb(255 255 255 / 0.075);
+  --signin-glass-sheen-low: rgb(255 255 255 / 0.03);
+  --signin-glass-tint: rgb(8 11 42 / 0.4);
+  --signin-glass-solid: rgb(8 11 42 / 0.88);
+  --signin-glass-edge: rgb(255 255 255 / 0.17);
+  --signin-glass-top: rgb(255 255 255 / 0.1);
+  --signin-glass-shadow: rgb(3 5 22 / 0.35);
+  --signin-field: rgb(3 5 24 / 0.62);
+  --signin-field-edge: rgb(255 255 255 / 0.11);
+  --signin-field-inset: rgb(0 0 0 / 0.45);
+  --signin-tile-glow: rgb(232 184 0 / 0.22);
+  --signin-tile-base: rgb(0 0 0 / 0.12);
+  /* Launch 3's route bar (`R31LaunchRoute`): the garage the truck leaves from */
+  --scene-garage: #2a3290;
+  --scene-garage-roof: #3b43a3;
+  --scene-garage-door: #060828;
+  /* Launch 2's dock (`R29LaunchDock`) and Launch 4's cartons (`L28MLoad`) */
+  --scene-dock: #0b0f3c;
+  --scene-dock-wall: #111650;
+  --scene-shutter: #3a43a6;
+  --scene-shutter-slat: #2c348f;
+  --scene-shutter-edge: #1a2070;
+  --scene-carton: #f2d27a;
+  --scene-carton-edge: #c9a44a;
+  --livery-roof: #d5dbee;
+  --livery-seam: #bfc6e2;
+  --livery-handle: #94a3b8;
+  --livery-tail: #f04438;
+  --livery-body: #f7f8fb;
+  --livery-edge: #c9d0de;
+  --livery-orange: #f29a1f;
+  --livery-blue: #1f5cc4;
+  --livery-cab: #eef1f6;
+  --livery-cab-edge: #c3cad8;
+  --livery-glass: #14205a;
+  --livery-bumper: #2a2f45;
+  --livery-step: #8d96ab;
+  --livery-tyre: #11131f;
+  --livery-hub: #aab2c5;
 
   /* The content column's left edge; AdminShell sets it to its sidebar's width (the banner centers on it) */
   --content-left: 0px;
@@ -127,6 +174,23 @@
   --text-caption--font-weight: 500;
   --text-base-input: 1rem;
   --text-base-input--line-height: 1.5;
+  /* Suite spec 0019, AC-2 (the Round 69 tiles): the system code and the uppercase mono full name */
+  /* Suite spec 0019, AC-13: the sign in title (`R47Quiet`, 58px) */
+  --text-hero: 3.625rem;
+  --text-hero--line-height: 1.02;
+  --text-hero--font-weight: 800;
+  --text-hero--letter-spacing: -0.035em;
+  --text-tile-code: 1.625rem;
+  --text-tile-code--line-height: 1;
+  --text-tile-code--font-weight: 800;
+  --text-tile-code--letter-spacing: -0.03em;
+  /* Suite spec 0019, AC-13 (`R75Shade4`): the wordmark beside the gold mark tile on the sign in */
+  --text-signin-wordmark: 1.1875rem;
+  --text-signin-wordmark--line-height: 1.5;
+  --text-tile-name: 0.71875rem;
+  --text-tile-name--line-height: 1.35;
+  --text-tile-name--font-weight: 600;
+  --text-tile-name--letter-spacing: 0.02em;
 
   /* Shadows (design.md, Shape and surfaces) */
   --shadow-card: 0 0 0 1px rgba(15, 20, 69, 0.07), 0 1px 3px rgba(15, 20, 69, 0.06);
@@ -137,6 +201,11 @@
   --shadow-segment: 0 0 0 1px rgba(15, 20, 69, 0.12), 0 1px 2px rgba(15, 20, 69, 0.1);
   /* A list pane beside its detail, lifted off it (suite spec 0018, board Roles9) */
   --shadow-pane: 4px 0 16px rgba(15, 20, 69, 0.04);
+  /* Suite spec 0019, AC-2: a tile's number key cap, and a tile lifting on hover (Round 69) */
+  --shadow-key: inset 0 0 0 1px var(--border), inset 0 -2px 0 var(--border);
+  --shadow-lift: 0 14px 30px rgba(15, 23, 42, 0.1);
+  /* Suite spec 0019, AC-13 (`R75Shade4`): a sign in field set into the glass */
+  --shadow-field-inset: inset 0 1px 3px var(--signin-field-inset);
 
   /* The time left bar in a success or info toast (suite spec 0016 AC-11); its length comes from the toast */
   --animate-toast-bar: toast-bar linear forwards;
@@ -222,10 +291,6 @@
   --color-sidebar-line: var(--sidebar-line);
   --color-sidebar-count: var(--sidebar-count);
 
-  --color-hero: var(--hero);
-  --color-hero-deep: var(--hero-deep);
-  --color-hero-danger: var(--hero-danger);
-  --color-hero-success: var(--hero-success);
 }
 
 /*
@@ -332,6 +397,68 @@
   animation-play-state: paused;
 }
 
+/* Suite spec 0019, AC-26: a warning lamp on the 404 road blinks; still under reduced motion */
+@utility scene-blink {
+  animation: scene-blink 1.1s steps(1) infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes scene-blink {
+  50% {
+    opacity: 0.15;
+  }
+}
+
+/*
+  Suite spec 0019, AC-24 (Round 29 option C): the steering wheel wait swings left and right. It
+  stands still under reduced motion and keeps its label.
+*/
+@utility wheel-turn {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wheel-turn 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes wheel-turn {
+  from {
+    transform: rotate(-70deg);
+  }
+  to {
+    transform: rotate(70deg);
+  }
+}
+
+/*
+  Suite spec 0019, AC-21 (board `Filter18`): a part that folds open over --duration-fold, by
+  animating its grid row from 0fr to 1fr. Its one child holds the content. Set `data-open` to open.
+*/
+@utility fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--duration-fold) var(--ease-enter);
+  & > * {
+    overflow: hidden;
+    min-height: 0;
+  }
+  &[data-open] {
+    grid-template-rows: 1fr;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+/*
+  Suite spec 0019, AC-4: the launcher fits a 1280 by 720 or 1024 by 768 projector with no page
+  scroll, so its band is shorter on screens under 820px tall.
+*/
+@custom-variant short (@media (max-height: 820px));
+
 /* A scrolling strip whose cut off last item already says it scrolls (the Admin tabs on phones) */
 @utility no-scrollbar {
   scrollbar-width: none;
@@ -380,4 +507,335 @@
 /* The phone bottom bar clears the iPhone home indicator */
 @utility pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/*
+  Suite spec 0019, AC-1 (Q1 and M1, boards `R69Victor` to `R69Armando`): the launcher's 88px navy
+  band, a soft light up at its right and a thin gold fade along its bottom edge.
+*/
+@utility launcher-band {
+  background:
+    radial-gradient(720px 260px at 82% 0%, var(--primary) 0%, transparent 70%),
+    var(--sidebar);
+  &::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--highlight) 35%, transparent) 50%,
+      transparent
+    );
+  }
+}
+
+/* M1: the ///L mark drawn oversized (h-75) and faint at the band's right, its edge 720px right of centre */
+@utility launcher-mark {
+  position: absolute;
+  top: -110px;
+  right: max(0px, calc(50% - 720px));
+  color: color-mix(in oklab, var(--white) 5%, transparent);
+  pointer-events: none;
+}
+
+/*
+  Suite spec 0019, AC-8 and AC-11: Arrival A3 (board `R66A3`). The timings come from
+  `src/pages/launcher/launchMotion.ts` through --arrive-at and --arrive-for on each part. Under
+  reduced motion and below 768px a part only fades, with no movement.
+*/
+@utility arrive-deal {
+  animation: arrive-deal var(--arrive-for) var(--ease-enter) var(--arrive-at) both;
+  @media (prefers-reduced-motion: reduce), (width < 48rem) {
+    animation-name: arrive-fade;
+  }
+}
+@utility arrive-fade {
+  animation: arrive-fade var(--arrive-for) ease var(--arrive-at) both;
+}
+/* The sign in over the launcher: it holds, then fades out (reduced: a 200ms fade at once) */
+@utility signin-leave {
+  animation: arrive-out var(--arrive-for) ease var(--arrive-at) both;
+  @media (prefers-reduced-motion: reduce), (width < 48rem) {
+    animation-duration: 200ms;
+    animation-delay: 0ms;
+  }
+}
+@keyframes arrive-deal {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes arrive-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes arrive-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/*
+  Suite spec 0019, AC-10 to AC-12: the launch covers. Each scene is cut from its board's 9s demo
+  loop to `--launch-time` (1.2s, `LAUNCH` in launchMotion.ts, set on the cover); the percentages
+  below are of that time, so the scenes keep their order at any length. Under
+  reduced motion and below 768px the cover is a 200ms fade and the scene stands still, drawn as
+  it ends (the route drawn, the cartons in).
+*/
+@utility launch-cover {
+  animation: arrive-fade 150ms ease both;
+  @media (prefers-reduced-motion: reduce), (width < 48rem) {
+    animation-duration: 200ms;
+    & * {
+      animation: none !important;
+    }
+  }
+}
+/* Launch 2: the dock frame, the shutter rolling up, the truck pulling away (`R29LaunchDock`) */
+@utility launch-dock {
+  background: var(--scene-garage-door);
+  box-shadow: inset 0 0 0 7px var(--scene-garage);
+}
+@utility launch-shutter {
+  background: repeating-linear-gradient(180deg, var(--scene-shutter) 0 11px, var(--scene-shutter-slat) 11px 13px);
+  box-shadow: 0 3px 0 var(--scene-shutter-edge);
+  animation: launch-shutter var(--launch-time, 1200ms) cubic-bezier(0.6, 0, 0.2, 1) both;
+}
+@utility launch-dock-sill {
+  background: var(--scene-garage);
+  box-shadow: inset 0 3px 0 var(--highlight);
+}
+@utility launch-dock-truck {
+  transform-box: view-box;
+  transform-origin: 104px 104px;
+  animation: launch-dock-truck var(--launch-time, 1200ms) cubic-bezier(0.55, 0, 0.6, 1) both;
+}
+@keyframes launch-shutter {
+  0%, 7% { transform: none; }
+  38%, 100% { transform: translateY(-94%); }
+}
+@keyframes launch-dock-truck {
+  0%, 42% { transform: none; opacity: 1; }
+  51% { transform: translateY(1px); }
+  87% { transform: scale(0.22); opacity: 1; }
+  96%, 100% { transform: scale(0.18); opacity: 0; }
+}
+/* Launch 3: the route draws in gold as the truck drives from the garage to the pin (`R31LaunchRoute`) */
+@utility launch-route-line {
+  stroke-dasharray: 600;
+  animation: launch-route-line var(--launch-time, 1200ms) cubic-bezier(0.45, 0, 0.2, 1) both;
+}
+@utility launch-route-truck {
+  animation: launch-route-truck var(--launch-time, 1200ms) cubic-bezier(0.45, 0, 0.2, 1) both;
+}
+@keyframes launch-route-line {
+  0%, 4% { stroke-dashoffset: 600; }
+  73%, 100% { stroke-dashoffset: 0; }
+}
+@keyframes launch-route-truck {
+  0%, 4% { transform: none; }
+  73%, 100% { transform: translateX(538px); }
+}
+/* Launch 4: three cartons slide in, the doors close, the van pulls away (`L28MLoad`) */
+@utility launch-carton {
+  animation: launch-carton var(--launch-time, 1200ms) ease both;
+  animation-delay: var(--carton-at, 0ms);
+}
+@utility launch-door {
+  transform-box: fill-box;
+  animation: launch-door var(--launch-time, 1200ms) var(--ease-enter) both;
+}
+@utility launch-load-truck {
+  animation: launch-load-truck var(--launch-time, 1200ms) cubic-bezier(0.5, 0, 0.8, 0.4) both;
+}
+@keyframes launch-carton {
+  0%, 4% { opacity: 0; transform: translateX(-90px); }
+  15%, 100% { opacity: 1; transform: none; }
+}
+@keyframes launch-door {
+  0%, 40% { transform: scaleX(0); }
+  54%, 100% { transform: none; }
+}
+@keyframes launch-load-truck {
+  0%, 56% { transform: none; opacity: 1; }
+  96%, 100% { transform: translateX(380px); opacity: 0; }
+}
+
+/*
+  Suite spec 0019, AC-13 (board `R47Quiet`, S27d Quiet): the sign in page. The map is drawn on a
+  1440 by 900 stage, as the board is, and `SignInMap` scales that stage to cover the window.
+*/
+@utility signin-stage {
+  position: absolute;
+  /* Centred by default; from 1024px `SignInMap` places and scales it beside the copy (`fitStage`) */
+  left: var(--stage-at, 50%);
+  top: var(--stage-at, 50%);
+  width: 1440px;
+  height: 900px;
+  transform-origin: var(--stage-origin, 50% 50%);
+  transform: translate(var(--stage-x, -50%), var(--stage-y, -50%)) scale(var(--stage-scale, 1));
+}
+/* The board's own placement of the tilted map on the stage */
+@utility signin-map-tilt {
+  position: absolute;
+  left: -23.65px;
+  top: -133.78px;
+  width: 1240px;
+  height: 1500px;
+  transform: perspective(1500px) rotateX(48deg) rotateZ(-12deg) scale(0.9);
+  transform-origin: 50% 50%;
+}
+/* S27's fades: the copy side and the top go to navy, the map shows on the right and under the form */
+@utility signin-map-fade {
+  background:
+    linear-gradient(90deg, var(--sidebar) 0%, color-mix(in oklab, var(--sidebar) 80%, transparent) 22%, transparent 42%),
+    linear-gradient(180deg, var(--sidebar) 0%, var(--sidebar) 34%, transparent 50%);
+  /* It runs 4000px past the stage's bottom, so the left fade carries on below the stage; the top
+     fade keeps the stage's own 900px */
+  height: calc(100% + 4000px);
+  background-size: 100% 100%, 100% 900px;
+  background-repeat: no-repeat;
+
+  /* The fades start at solid navy, so carry that navy on past the stage's left and top edges:
+     once `fitStage` moves the stage right or down, no edge of it shows */
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    background: var(--sidebar);
+  }
+  &::before {
+    top: -4000px;
+    bottom: -4000px;
+    right: 100%;
+    width: 4000px;
+  }
+  &::after {
+    bottom: 100%;
+    left: 0;
+    right: -4000px;
+    height: 4000px;
+  }
+}
+/* The trucks' layer ends at the glass panel's left edge (`SignInMap`): they fade out over its last
+   48px, so they drive into the glass instead of being cut */
+@utility signin-trucks-clip {
+  mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
+}
+@utility signin-label-garage {
+  font-weight: 800;
+  color: var(--white);
+  text-shadow: 0 0 6px var(--sidebar), 0 0 2px var(--sidebar);
+}
+/* A label that ends 36px left of its pin ("Sta. Rosa", `R75Shade4`), clear of the glass panel */
+@utility signin-label-before {
+  translate: calc(-100% - 36px) -50%;
+}
+@utility signin-label-drop {
+  font-weight: 600;
+  color: var(--signin-label);
+  text-shadow: 0 0 4px var(--sidebar), 0 0 2px var(--sidebar);
+}
+/* The map's ground (`R75Shade4`): a navy glow low in the middle in place of the flat navy, and a
+   dark edge over the map and its labels, so the page has depth without turning bluer */
+@utility signin-ground {
+  background: radial-gradient(ellipse 62% 58% at 47% 70%, var(--signin-glow) 0%, var(--signin-glow-mid) 38%, var(--sidebar) 78%);
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse 78% 74% at 44% 62%, transparent 52%, var(--signin-vignette) 100%);
+  }
+}
+/* The navy glass panel (`R75Shade4`): a soft sheen from the top, a 16px blur (8px below 1024px),
+   lit left and top edges, and a shadow onto the map. Where the blur is missing, or less
+   transparency is asked for, the panel is solid with the same edges. */
+@utility signin-glass {
+  --signin-glass-blur: 8px;
+  background:
+    linear-gradient(180deg, var(--signin-glass-sheen), var(--signin-glass-sheen-low) 60%),
+    var(--signin-glass-tint);
+  -webkit-backdrop-filter: blur(var(--signin-glass-blur));
+  backdrop-filter: blur(var(--signin-glass-blur));
+  box-shadow:
+    inset 1px 0 0 var(--signin-glass-edge),
+    inset 0 1px 0 var(--signin-glass-top),
+    -24px 0 60px var(--signin-glass-shadow);
+  @media (width >= 64rem) {
+    --signin-glass-blur: 16px;
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    background: var(--signin-glass-solid);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    background: var(--signin-glass-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+/* The fields on the glass are set into it: darker than the panel and a faint edge. It sets the
+   colours `bg-card` and `border-input` read, on the field itself, so focus and invalid edges still
+   win; the shadow inside is `shadow-field-inset` */
+@utility signin-field {
+  --card: var(--signin-field);
+  --input: var(--signin-field-edge);
+}
+/* The ///L mark in a gold tile, beside the wordmark on the sign in only */
+@utility signin-mark-tile {
+  box-sizing: content-box;
+  padding: 12px 10px;
+  /* The tile grows round the mark without making the lockup taller (the board's -11px) */
+  margin-block: -11px;
+  border-radius: 12px;
+  background: var(--highlight);
+  color: var(--highlight-foreground);
+  box-shadow: 0 8px 22px var(--signin-tile-glow), inset 0 -2px 0 var(--signin-tile-base);
+}
+@utility signin-dark {
+  color: var(--white);
+  --foreground: #ffffff;
+  --muted-foreground: rgb(255 255 255 / 0.62);
+  --muted-strong: rgb(255 255 255 / 0.72);
+  --primary: #ffffff;
+  --primary-foreground: #0f1445;
+  --ring: #ffffff;
+  --card: rgb(255 255 255 / 0.06);
+  --muted: rgb(255 255 255 / 0.04);
+  --border: rgb(255 255 255 / 0.14);
+  --input: rgb(255 255 255 / 0.14);
+  --divider: rgb(255 255 255 / 0.1);
+  --table-head: rgb(255 255 255 / 0.06);
+  --track: rgb(255 255 255 / 0.12);
+  --success: #75e0a7;
+  --success-bg: rgb(23 178 106 / 0.16);
+  --error: #fda29b;
+  --error-bg: rgb(240 68 56 / 0.16);
+  --info-bg: rgb(255 255 255 / 0.1);
+
+  /* Browser autofill paints a pale field with dark text, which hides the eye button on the glass.
+     Its background can't be overridden, only held off by a transition that never ends, so the
+     glass shows through; the text stays light. Autofill itself stays on for password managers. */
+  & input:-webkit-autofill,
+  & input:-webkit-autofill:hover,
+  & input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--foreground);
+    caret-color: var(--foreground);
+    transition: background-color 600000s 0s, color 600000s 0s;
+  }
 }

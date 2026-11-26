@@ -158,13 +158,14 @@ describe('EmailCodeStep (spec 0009)', () => {
     const user = userEvent.setup();
     post.mockImplementation(() => Promise.resolve({ data: { resendAfter: 60 } }));
     setup({ ...STEP, resendAfter: 1 });
-    expect(screen.getByRole('button', { name: /Resend code in 1 s/ })).toBeDisabled();
-    const ready = await screen.findByRole('button', { name: 'Resend code' }, { timeout: 3000 });
+    expect(screen.getByText('0:01')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Send a new code' })).toBeNull();
+    const ready = await screen.findByRole('button', { name: 'Send a new code' }, { timeout: 3000 });
     expect(ready).toBeEnabled();
     await user.click(ready);
     expect(post).toHaveBeenCalledWith('/auth/login/verify-email/resend', { challengeId: STEP.challengeId });
     expect(await screen.findByText(/We sent a new code/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Resend code in 60 s/ })).toBeDisabled();
+    expect(screen.getByText('1:00')).toBeInTheDocument();
   });
 
   // covers: AC-25, AC-10
@@ -173,7 +174,7 @@ describe('EmailCodeStep (spec 0009)', () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     post.mockImplementation(() => Promise.reject(failure({ code: 'MAIL_FAILED' }, 503)));
     setup({ ...STEP, resendAfter: 0 });
-    await user.click(screen.getByRole('button', { name: 'Resend code' }));
+    await user.click(screen.getByRole('button', { name: 'Send a new code' }));
     expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't send your code. Try again in a minute.");
   });
 

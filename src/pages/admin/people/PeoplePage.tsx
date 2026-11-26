@@ -1,13 +1,16 @@
 import { useCallback, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Users } from 'lucide-react';
-import type { AdminMe } from '@/lib/admin';
+import type { AdminMe, SystemCode } from '@/lib/admin';
+import type { CatalogSystem } from '@/lib/adminApi';
+import { addSystem, filterSystems, parsePicks } from './filterRules';
 import { cn } from '@/lib/utils';
 import { useSystemsCatalog } from '../useCatalogs';
 import { AddPersonDialog, type AddStart } from './AddPersonDialog';
 import { PeopleListPane } from './PeopleListPane';
 import { parseListSystem, personSystems } from './peopleRules';
 import { PersonPane } from './PersonPane';
+import { pageTitle, SUITE_MANAGEMENT, useDocumentTitle } from '@/lib/title';
 
 /** The address without `/new` or a person, keeping `?system`, `?q` and `?sort`. */
 function listHref(search: string): string {
@@ -28,6 +31,8 @@ export function PeoplePage({ me, onMeChanged }: { me: AdminMe; onMeChanged: () =
   const catalog = useSystemsCatalog();
   const adding = id === 'new';
   const selected = id && !adding ? id : undefined;
+  // Suite spec 0019, AC-28: the open person names the tab themselves (`PersonPane`)
+  useDocumentTitle(selected ? null : pageTitle('People', SUITE_MANAGEMENT));
   // Bumped after an action on the person, so the list loads again once (AC-18)
   const [listVersion, setListVersion] = useState(0);
   // Bumped when the dialog changed the open person, so the pane reads them again
@@ -41,9 +46,7 @@ export function PeoplePage({ me, onMeChanged }: { me: AdminMe; onMeChanged: () =
   );
   const listChanged = useCallback(() => setListVersion((n) => n + 1), []);
 
-  const start: AddStart = adding
-    ? { system: parseListSystem(me, new URLSearchParams(search).get('system')) ?? undefined }
-    : giving;
+  const start: AddStart = adding ? { system: newSystem(me, search, catalog) ?? undefined } : giving;
 
   const closeDialog = () => {
     if (adding) navigate(listHref(search), { replace: true });
@@ -95,6 +98,14 @@ export function PeoplePage({ me, onMeChanged }: { me: AdminMe; onMeChanged: () =
       />
     </div>
   );
+}
+
+/** `/admin/people/new` preselects like the Add user button (suite spec 0019, AC-21). */
+function newSystem(me: AdminMe, search: string, catalog: CatalogSystem[] | null): SystemCode | null {
+  const params = new URLSearchParams(search);
+  const scope = parseListSystem(me, params.get('system'));
+  const { picks } = parsePicks({ status: null, access: params.get('access') }, filterSystems(me, scope), catalog);
+  return addSystem(scope, picks);
 }
 
 function NoneSelected() {

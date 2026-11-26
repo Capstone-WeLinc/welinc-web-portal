@@ -1,9 +1,9 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { Loader2 } from "lucide-react"
 import { Slot } from "radix-ui"
 
 import { cn } from "@/lib/utils"
+import { SteeringWheel } from "@/components/ui/steering-wheel"
 
 // Suite spec 0016 AC-6 (design.md, Components: Buttons). Presses shrink to 96% for --duration-press.
 const buttonVariants = cva(
@@ -40,7 +40,7 @@ const buttonVariants = cva(
 type ButtonProps = React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
-    /** Shows a spinner and disables the button while an action runs. */
+    /** Shows the steering wheel wait (suite spec 0019, AC-24) and disables the button while an action runs. */
     loading?: boolean
   }
 
@@ -70,10 +70,7 @@ function Button({
     >
       {loading && !asChild ? (
         <>
-          <Loader2
-            aria-hidden="true"
-            className={cn("animate-spin", touch ? "size-5" : "size-4")}
-          />
+          <SteeringWheel className={touch ? "size-5" : "size-4"} />
           {!iconOnly && children}
         </>
       ) : (
