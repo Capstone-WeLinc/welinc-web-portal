@@ -182,14 +182,14 @@ function Group({
           <ChevronRight
             aria-hidden="true"
             className={cn(
-              "mt-0.75 size-4 shrink-0 text-muted-strong transition-transform duration-(--duration-fold) ease-enter motion-reduce:transition-none",
+              "mt-0.75 mr-1 size-4 shrink-0 text-muted-strong transition-transform duration-(--duration-fold) ease-enter motion-reduce:transition-none",
               open && "rotate-90",
             )}
           />
           <span className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="flex items-center gap-3">
               <span className="min-w-0 flex-1 text-group text-foreground">{name}</span>
-              <span aria-hidden="true" className="w-32 shrink-0 max-sm:w-24">
+              <span aria-hidden="true" className="w-35.5 shrink-0 max-sm:w-24">
                 <Meter value={summary.allowed} max={summary.total} label={`${name} allowed`} className="gap-2.5" />
               </span>
               <span className="sr-only">
@@ -252,7 +252,7 @@ function Row({
   return (
     <li
       className={cn(
-        "flex items-center gap-5 py-2.75 pr-5 pl-12 max-sm:pl-5",
+        "flex items-center gap-5 py-2.75 pr-5 pl-13 max-sm:pl-5",
         changed && "bg-draft-row",
       )}
     >
