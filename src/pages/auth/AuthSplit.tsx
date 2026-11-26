@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 /*
-  Suite spec 0019, AC-13 to AC-16 (board `R47Quiet`, S27d Quiet; the forgot boards `R32Forgot1` to
+  Suite spec 0019, AC-13 to AC-16 (board `R47Quiet`, S27d Quiet, with the depth of `R75Shade4`; the forgot boards `R32Forgot1` to
   `R32Forgot4` and `R34NoAccess` for their content): the drawn map under the whole page, the copy
   on its left, and the form, or a result centred, on a navy glass panel at the right. Inside the
   panel `signin-dark` turns the app's colour tokens light on dark, so the shared fields, links and
@@ -15,9 +15,9 @@ import { cn } from '@/lib/utils';
   the width.
 */
 
-/** Fields on the sign in page: 48px glass fields; focus is a light edge with a soft ring (AC-14, never gold). */
+/** Fields on the sign in page: 48px, set into the glass (`R75Shade4`); focus is a light edge with a soft ring (AC-14, never gold). */
 export const splitInput =
-  'h-12 rounded-xl placeholder:text-white/42 md:h-12 focus-visible:inset-ring-0 focus-visible:ring-3 focus-visible:ring-primary/15';
+  'signin-field h-12 rounded-xl shadow-field-inset placeholder:text-white/50 md:h-12 focus-visible:inset-ring-0 focus-visible:ring-3 focus-visible:ring-primary/15';
 
 /** The sign in page's one action: gold on the navy glass (`R47Quiet`), 50px, full width. */
 export const splitButton =
@@ -25,13 +25,13 @@ export const splitButton =
 
 /** A code box (board `R32Forgot2`): 52 by 58 on wider screens, the active one with a light edge and a soft ring. */
 export const splitCodeSlot =
-  'h-14.5 w-11 rounded-lg font-sans text-heading font-bold tabular-nums first:rounded-lg first:border last:rounded-lg sm:w-13 md:h-14.5 md:w-13 data-[active=true]:ring-4 data-[active=true]:ring-primary/15';
+  'signin-field shadow-field-inset h-14.5 w-11 rounded-lg font-sans text-heading font-bold tabular-nums first:rounded-lg first:border last:rounded-lg sm:w-13 md:h-14.5 md:w-13 data-[active=true]:ring-4 data-[active=true]:ring-primary/15';
 
 /** The copy beside the panel, on large screens (AC-13). */
 function CopySide({ copyRef }: { copyRef: RefObject<HTMLDivElement | null> }) {
   return (
-    <div className="relative z-10 hidden min-w-0 flex-1 flex-col px-16 pt-11 lg:flex">
-      <BrandLockup />
+    <header className="relative z-10 hidden min-w-0 flex-1 flex-col px-16 pt-11 lg:flex">
+      <BrandLockup tile />
       <div ref={copyRef} className="mt-15">
         <p className="font-mono text-small font-semibold tracking-widest text-highlight">#HASSLEFREE TRANSPORT SOLUTION</p>
         <h1 className="mt-4 text-hero">
@@ -41,11 +41,11 @@ function CopySide({ copyRef }: { copyRef: RefObject<HTMLDivElement | null> }) {
           <br />
           Workspace
         </h1>
-        <p className="mt-4.5 max-w-120 text-subheading leading-relaxed font-normal text-white/66">
+        <p className="mt-4.5 max-w-120 text-subheading leading-relaxed font-normal text-white/72">
           Centralized platform for managing logistics operations, vehicle monitoring, maintenance schedules and repairs.
         </p>
       </div>
-    </div>
+    </header>
   );
 }
 
@@ -60,13 +60,13 @@ export function AuthSplit({ children, toaster }: { children: ReactNode; toaster?
     <div className="relative flex min-h-dvh flex-col overflow-hidden bg-sidebar text-white lg:flex-row">
       <SignInMap clearOf={copyRef} />
       <CopySide copyRef={copyRef} />
-      <div className="relative z-10 px-6 py-5 lg:hidden">
-        <BrandLockup />
-      </div>
+      <header className="relative z-10 px-6 py-5 lg:hidden">
+        <BrandLockup tile />
+      </header>
       <div className="signin-glass relative z-10 flex min-w-0 flex-1 transform-gpu flex-col items-center justify-center px-6 pt-10 pb-20 lg:w-150 lg:flex-none">
         {toaster}
         <main className="signin-dark flex w-full max-w-96 flex-col gap-7">{children}</main>
-        <p className="absolute inset-x-0 bottom-7 flex flex-wrap justify-center gap-x-2.5 gap-y-1 px-6 text-caption font-normal whitespace-nowrap text-white/56">
+        <footer className="absolute inset-x-0 bottom-7 flex flex-wrap justify-center gap-x-2.5 gap-y-1 px-6 text-caption font-normal whitespace-nowrap text-white/56">
           <span>© 2026 WeLinc Logistics</span>
           <span aria-hidden="true">·</span>
           <a
@@ -77,7 +77,7 @@ export function AuthSplit({ children, toaster }: { children: ReactNode; toaster?
           >
             © OpenStreetMap
           </a>
-        </p>
+        </footer>
       </div>
     </div>
   );

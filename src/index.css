@@ -90,6 +90,23 @@
   /* The sign in (S27d Quiet, `R47Quiet`): the page under the map, and the glass panel's tint */
   --signin-deep: #0a0d33;
   --signin-label: #e6e8f7;
+  /* Its depth (Round 75, `R75Shade4`, AC-13): the glow under the map, the dark edge over it, the
+     glass panel, the inset fields and the gold mark tile */
+  --signin-glow: #131a56;
+  --signin-glow-mid: #10164b;
+  --signin-vignette: rgb(4 6 26 / 0.6);
+  --signin-glass-sheen: rgb(255 255 255 / 0.075);
+  --signin-glass-sheen-low: rgb(255 255 255 / 0.03);
+  --signin-glass-tint: rgb(8 11 42 / 0.4);
+  --signin-glass-solid: rgb(8 11 42 / 0.88);
+  --signin-glass-edge: rgb(255 255 255 / 0.17);
+  --signin-glass-top: rgb(255 255 255 / 0.1);
+  --signin-glass-shadow: rgb(3 5 22 / 0.35);
+  --signin-field: rgb(3 5 24 / 0.62);
+  --signin-field-edge: rgb(255 255 255 / 0.11);
+  --signin-field-inset: rgb(0 0 0 / 0.45);
+  --signin-tile-glow: rgb(232 184 0 / 0.22);
+  --signin-tile-base: rgb(0 0 0 / 0.12);
   /* Launch 3's route bar (`R31LaunchRoute`): the garage the truck leaves from */
   --scene-garage: #2a3290;
   --scene-garage-roof: #3b43a3;
@@ -167,6 +184,9 @@
   --text-tile-code--line-height: 1;
   --text-tile-code--font-weight: 800;
   --text-tile-code--letter-spacing: -0.03em;
+  /* Suite spec 0019, AC-13 (`R75Shade4`): the wordmark beside the gold mark tile on the sign in */
+  --text-signin-wordmark: 1.1875rem;
+  --text-signin-wordmark--line-height: 1.5;
   --text-tile-name: 0.71875rem;
   --text-tile-name--line-height: 1.35;
   --text-tile-name--font-weight: 600;
@@ -184,6 +204,8 @@
   /* Suite spec 0019, AC-2: a tile's number key cap, and a tile lifting on hover (Round 69) */
   --shadow-key: inset 0 0 0 1px var(--border), inset 0 -2px 0 var(--border);
   --shadow-lift: 0 14px 30px rgba(15, 23, 42, 0.1);
+  /* Suite spec 0019, AC-13 (`R75Shade4`): a sign in field set into the glass */
+  --shadow-field-inset: inset 0 1px 3px var(--signin-field-inset);
 
   /* The time left bar in a success or info toast (suite spec 0016 AC-11); its length comes from the toast */
   --animate-toast-bar: toast-bar linear forwards;
@@ -720,16 +742,70 @@
   color: var(--white);
   text-shadow: 0 0 6px var(--sidebar), 0 0 2px var(--sidebar);
 }
+/* A label that ends 36px left of its pin ("Sta. Rosa", `R75Shade4`), clear of the glass panel */
+@utility signin-label-before {
+  translate: calc(-100% - 36px) -50%;
+}
 @utility signin-label-drop {
   font-weight: 600;
   color: var(--signin-label);
   text-shadow: 0 0 4px var(--sidebar), 0 0 2px var(--sidebar);
 }
-/* S27's navy glass panel, and the light on dark colours of everything inside it */
+/* The map's ground (`R75Shade4`): a navy glow low in the middle in place of the flat navy, and a
+   dark edge over the map and its labels, so the page has depth without turning bluer */
+@utility signin-ground {
+  background: radial-gradient(ellipse 62% 58% at 47% 70%, var(--signin-glow) 0%, var(--signin-glow-mid) 38%, var(--sidebar) 78%);
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse 78% 74% at 44% 62%, transparent 52%, var(--signin-vignette) 100%);
+  }
+}
+/* The navy glass panel (`R75Shade4`): a soft sheen from the top, a 16px blur (8px below 1024px),
+   lit left and top edges, and a shadow onto the map. Where the blur is missing, or less
+   transparency is asked for, the panel is solid with the same edges. */
 @utility signin-glass {
-  background: color-mix(in oklab, var(--signin-deep) 50%, transparent);
-  backdrop-filter: blur(6px) saturate(1.1);
-  box-shadow: inset 1px 0 0 color-mix(in oklab, var(--white) 12%, transparent);
+  --signin-glass-blur: 8px;
+  background:
+    linear-gradient(180deg, var(--signin-glass-sheen), var(--signin-glass-sheen-low) 60%),
+    var(--signin-glass-tint);
+  -webkit-backdrop-filter: blur(var(--signin-glass-blur));
+  backdrop-filter: blur(var(--signin-glass-blur));
+  box-shadow:
+    inset 1px 0 0 var(--signin-glass-edge),
+    inset 0 1px 0 var(--signin-glass-top),
+    -24px 0 60px var(--signin-glass-shadow);
+  @media (width >= 64rem) {
+    --signin-glass-blur: 16px;
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    background: var(--signin-glass-solid);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    background: var(--signin-glass-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+/* The fields on the glass are set into it: darker than the panel and a faint edge. It sets the
+   colours `bg-card` and `border-input` read, on the field itself, so focus and invalid edges still
+   win; the shadow inside is `shadow-field-inset` */
+@utility signin-field {
+  --card: var(--signin-field);
+  --input: var(--signin-field-edge);
+}
+/* The ///L mark in a gold tile, beside the wordmark on the sign in only */
+@utility signin-mark-tile {
+  box-sizing: content-box;
+  padding: 12px 10px;
+  /* The tile grows round the mark without making the lockup taller (the board's -11px) */
+  margin-block: -11px;
+  border-radius: 12px;
+  background: var(--highlight);
+  color: var(--highlight-foreground);
+  box-shadow: 0 8px 22px var(--signin-tile-glow), inset 0 -2px 0 var(--signin-tile-base);
 }
 @utility signin-dark {
   color: var(--white);

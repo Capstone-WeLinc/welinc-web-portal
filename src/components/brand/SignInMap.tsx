@@ -4,14 +4,20 @@ import stillSvg from './signin-map-still.svg?raw';
 import trucksSvg from './signin-map-trucks.svg?raw';
 import { MAP_LABELS, PIN_FROM, coverScale, fitStage } from './mapStage';
 
-const SIDE = { start: '-translate-y-1/2', end: '-translate-x-full -translate-y-1/2', center: '-translate-x-1/2 -translate-y-1/2' };
+const SIDE = {
+  start: '-translate-y-1/2',
+  end: '-translate-x-full -translate-y-1/2',
+  center: '-translate-x-1/2 -translate-y-1/2',
+  before: 'signin-label-before',
+};
 
 /**
  * Suite spec 0019, AC-13 (board `R47Quiet`, S27d Quiet): the drawn map of the WeLinc area under
  * the whole sign in page. The roads, shores and city dots are dimmed, the twelve trip runs and the
  * drops lit, and the trucks drive the runs on SVG `animateMotion` (the board's own timing). The
  * trucks stand still under reduced motion and while the tab is hidden. Only the three garages and
- * the drop points are named; below 768px only the garages. Decoration only.
+ * the drop points are named; below 768px only the garages. Decoration only. Its ground is the
+ * navy glow with a dark edge over everything (`signin-ground`, Round 75 `R75Shade4`).
  *
  * `clearOf` is the copy's text block: from 1024px the map's network is fitted into the free area
  * beside it (`fitStage`); on phones the stage is centred and covers the page.
@@ -71,7 +77,7 @@ export function SignInMap({ className, clearOf }: { className?: string; clearOf?
 
   const style = stageStyle(stage);
   return (
-    <div ref={boxRef} aria-hidden="true" className={cn('pointer-events-none absolute inset-0 overflow-hidden bg-sidebar', className)}>
+    <div ref={boxRef} aria-hidden="true" className={cn('signin-ground pointer-events-none absolute inset-0 overflow-hidden', className)}>
       {/* Static drawings bundled with the app, never data from a request */}
       <div className="signin-stage" style={style}>
         <div className="signin-map-tilt" dangerouslySetInnerHTML={{ __html: stillSvg }} />

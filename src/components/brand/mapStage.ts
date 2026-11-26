@@ -2,8 +2,10 @@
   Suite spec 0019, AC-13: the labels on the sign in map, placed on its 1440 by 900 stage as board
   `R47Quiet` places them (the three garages and the drop points; no town, water or road names).
   Taken from the board with the map (`signin-map-still.svg`, `signin-map-trucks.svg`); positions are stage pixels.
+  `before` ends the label 36px left of its pin (`R75Shade4`): "Sta. Rosa" sits there so the glass
+  panel's edge never cuts it.
 */
-export type MapLabel = { text: string; kind: 'garage' | 'drop'; x: number; y: number; size: number; side: 'start' | 'end' | 'center' };
+export type MapLabel = { text: string; kind: 'garage' | 'drop'; x: number; y: number; size: number; side: 'start' | 'end' | 'center' | 'before' };
 
 export const MAP_LABELS: readonly MapLabel[] = [
   { text: "Port Area", kind: 'drop', x: 567, y: 612, size: 13.9, side: 'end' },
@@ -16,7 +18,7 @@ export const MAP_LABELS: readonly MapLabel[] = [
   { text: "Dasmariñas", kind: 'drop', x: 594, y: 820, size: 16.2, side: 'end' },
   { text: "Pulilan", kind: 'garage', x: 430, y: 431, size: 20.7, side: 'start' },
   { text: "Marikina", kind: 'garage', x: 721, y: 560, size: 23.0, side: 'start' },
-  { text: "Sta. Rosa", kind: 'garage', x: 843, y: 808, size: 27.4, side: 'start' },
+  { text: "Sta. Rosa", kind: 'garage', x: 843, y: 808, size: 27.4, side: 'before' },
 ];
 
 /** The board's page, the stage the map and labels are drawn on. */
