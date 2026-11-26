@@ -2,7 +2,7 @@
 
 ## Overview
 
-The portal's admin screens from suite spec 0013. They talk only to welinc-auth's cookie based `/auth/admin/*` routes, through `src/lib/admin.ts` (standing, step up) and `src/lib/adminApi.ts` (every call). Entry points: the launcher's `AdminCard` and the top bar `AdminEntry`, both through `useAdminMe`.
+The portal's admin screens from suite spec 0013. They talk only to welinc-auth's cookie based `/auth/admin/*` routes, through `src/lib/admin.ts` (standing, step up) and `src/lib/adminApi.ts` (every call). Entry points: the launcher's Suite management tile (`SuiteTile`) and the top bar `AdminEntry`, both through `useAdminMe`.
 
 ## Key files
 
@@ -16,9 +16,9 @@ The portal's admin screens from suite spec 0013. They talk only to welinc-auth's
 | `AdminStates.tsx` | `ViewHeader`, `ViewError`, `ViewEmpty`, `Segmented`, `SystemSwitcher`, `Toolbar`, `NoSystemScope` |
 | `StepUpDialog.tsx`, `ReauthDialog.tsx` | The "Confirm it's you" code dialog and the password dialog, each mounted once in `App.tsx` |
 | `ConfirmFields.tsx`, `reason.ts` | `ReasonField`, `PasswordField`, and `reasonProblem` (10 to 500 trimmed characters) |
-| `useAdminMe.ts` | The shared `/auth/admin/me` read behind the launcher's Admin card and the top bar `AdminEntry` |
+| `useAdminMe.ts` | The shared `/auth/admin/me` read behind the launcher's Suite management tile and the top bar `AdminEntry` |
 | `useAsync.ts`, `useCatalogs.ts` | The key based loader, and the systems and activity catalogs fetched once per page load |
-| `people/` | Suite spec 0017 (board `People8`): `PeoplePage` (the list beside the whole person; `/admin/people/new` opens `AddPersonDialog` over it), `PeopleListPane` (groups, sorts, search, filters), `PersonPane` and `PersonTabs` (header, facts, Overview, Access, Signed in devices, Activity), `AccessTab`, `PersonHeaderActions`, and the pure rules in `peopleRules.ts` (tested) |
+| `people/` | Suite spec 0017 (board `People8`): `PeoplePage` (the list beside the whole person; `/admin/people/new` opens `AddPersonDialog` over it), `PeopleListPane` (groups, sorts, search, filters), `PeopleFilter` (the Filter popover, suite spec 0019 AC-21) with its pure rules in `filterRules.ts` (tested), `PersonPane` and `PersonTabs` (header, facts, Overview, Access, Signed in devices, Activity), `AccessTab`, `PersonHeaderActions`, and the pure rules in `peopleRules.ts` (tested) |
 | `permissions/` | `matrixDraft.ts` only: the draft rules (cells keyed `role|key`, tested) the Roles page uses |
 | `roles/` | Suite spec 0018 child 0001 (board `Roles9`): `RolesPage` (route `/admin/roles/:system/:role`, data, the stored draft per system, save and conflicts), `RoleList`, `RoleDetail` (header, facts, tabs), `PermissionGroups` (folds, Find a permission), `RolePeople` and `AddPeopleDialog`, `RoleHistory`, `RoleReviewDialog` (RC), `downloadRolesCsv.ts`, and the pure rules in `rolesRules.ts` (tested). `/admin/permissions` redirects here |
 | `temporary/` | `TemporaryAccessView`, `TemporaryAccessDialog`, and `TemporaryAccessBanner.tsx` (the band on Overview and Temporary access, plus `TemporaryAccessChip` for the other views) |

@@ -10,7 +10,7 @@ The SSO portal: a React 19 + Vite SPA. Login goes to `welinc-auth` through the g
 |---|---|
 | `src/App.tsx` | Routes; `/admin*` is lazy loaded (see `src/pages/admin/AGENTS.md`) |
 | `src/pages/Portal.tsx` | Picks the screen (form, launcher, no access, straight in) from the address and the SSO session |
-| `src/pages/launcher/` | The launcher: `SystemCard`, `AdminCard`, account menu and shell, Sign out dialog, the loading, error and no access states |
+| `src/pages/launcher/` | The launcher (suite spec 0019): `LauncherTiles` (`SystemTile`, `SuiteTile`), `LaunchCover` and `launchMotion.ts` (every timing, in CSS; a click holds 1.2 s, then opens the system), account menu and shell, Sign out dialog, the loading, error and no access states |
 | `src/pages/auth/Login.tsx` | Login form; its messages come from `lib/auth.ts` (`loginFailure`, `noticeFor`). `Portal` decides when it shows |
 | `src/pages/auth/EmailCodeStep.tsx` | Spec 0009 email verification step: `/auth/login` answers `EMAIL_VERIFICATION_REQUIRED`; a new login caller must check for it (`isEmailStep` in `lib/auth.ts`). The ticket lives in component state only |
 | `src/pages/auth/ForgotPassword.tsx` | OTP and password reset flow |
