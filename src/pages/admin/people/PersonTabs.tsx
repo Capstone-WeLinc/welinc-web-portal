@@ -81,7 +81,7 @@ export function DevicesTab({
           </div>
         )}
         {system && state.kind === 'error' && (
-          <ViewError message="We couldn't load their sessions." onRetry={() => setAttempt((n) => n + 1)} />
+          <ViewError kind="tile" subject="devices" message="We couldn't load their sessions." onRetry={() => setAttempt((n) => n + 1)} />
         )}
         {system && state.kind === 'ready' && sessions.length === 0 && (
           <p className="py-1 text-body text-muted-foreground">Not signed in anywhere right now.</p>

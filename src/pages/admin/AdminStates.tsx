@@ -1,5 +1,9 @@
 import type { ReactNode } from 'react';
-import { RotateCw, TriangleAlert } from 'lucide-react';
+import { RotateCw } from 'lucide-react';
+import { ErrorTile } from '@/components/brand/scenes/ErrorTile';
+import { LoadScene } from '@/components/brand/scenes/LoadScene';
+import { ScenePanel } from '@/components/brand/scenes/ScenePanel';
+import type { TileSubject } from '@/components/brand/scenes/tileSubjects';
 import { Button } from '@/components/ui/button';
 import { SegmentedControl, SegmentedControlItem } from '@/components/ui/segmented-control';
 import type { SystemCode } from '@/lib/admin';
@@ -21,17 +25,49 @@ export function ViewHeader({ title, context, action }: { title: string; context?
   );
 }
 
-export function ViewError({ message, onRetry, className }: { message: string; onRetry: () => void; className?: string }) {
-  return (
-    <div role="alert" className={cn('flex flex-col items-start gap-3 py-8', className)}>
-      <div className="flex size-10 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
-        <TriangleAlert className="size-5" aria-hidden="true" />
+type ViewErrorProps = {
+  /** What failed; each call site's own words. */
+  message: string;
+  onRetry: () => void;
+  title?: string;
+  className?: string;
+} & (
+  | { kind: 'page' }
+  | { kind: 'tile'; subject: TileSubject }
+);
+
+/**
+ * VRMS spec 0028, AC-22: an Admin view or pane that didn't load. `page` when the failure empties the
+ * view (the idling truck panel, under the view's own h1); `tile` when it fills one pane, list or
+ * dialog (the subject's small drawing, announced as a quiet status).
+ */
+export function ViewError(props: ViewErrorProps) {
+  const { message, onRetry, title = "We couldn't load this", className } = props;
+  const retry = (
+    <Button variant="outline" onClick={onRetry}>
+      <RotateCw aria-hidden="true" />
+      Retry
+    </Button>
+  );
+
+  if (props.kind === 'tile') {
+    return (
+      <div className={cn('flex flex-col items-center px-4 py-6 text-center', className)}>
+        <ErrorTile subject={props.subject} />
+        <div role="status" className="flex flex-col items-center">
+          <p className="mt-3 text-body font-semibold text-foreground">{title}</p>
+          <p className="mt-1 max-w-90 text-small text-muted-foreground">{message}</p>
+        </div>
+        <div className="mt-3">{retry}</div>
       </div>
-      <p className="text-body text-foreground">{message}</p>
-      <Button variant="outline" onClick={onRetry}>
-        <RotateCw aria-hidden="true" />
-        Retry
-      </Button>
+    );
+  }
+
+  return (
+    <div className={className}>
+      <ScenePanel scene={<LoadScene />} title={title} line={message} actions={retry}>
+        <p className="mt-1 text-body text-muted-foreground">Nothing you saved is lost.</p>
+      </ScenePanel>
     </div>
   );
 }

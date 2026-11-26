@@ -34,7 +34,7 @@ export function RolePeople({
     <div className="flex flex-col gap-3">
       {state.kind === 'loading' && <PeopleSkeleton />}
       {state.kind === 'error' && (
-        <ViewError message={errorMessage(state.error, `We couldn't load the people with ${role.name}.`)} onRetry={retry} />
+        <ViewError kind="tile" subject="people" message={errorMessage(state.error, `We couldn't load the people with ${role.name}.`)} onRetry={retry} />
       )}
       {state.kind === 'ready' && state.value.items.length === 0 && (
         <ViewEmpty

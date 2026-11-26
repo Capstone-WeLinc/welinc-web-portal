@@ -94,7 +94,7 @@ export function SuiteAdminsView({ me }: { me: AdminMe }) {
         </div>
       )}
       {state.kind === 'error' && (
-        <ViewError message={errorMessage(state.error, "We couldn't load the suite admins.")} onRetry={reload} />
+        <ViewError kind="page" message={errorMessage(state.error, "We couldn't load the suite admins.")} onRetry={reload} />
       )}
       {state.kind === 'ready' && (
         <DataTable

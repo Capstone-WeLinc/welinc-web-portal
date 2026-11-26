@@ -243,6 +243,8 @@ function SystemRoles({
         {state.kind === 'error' && (
           <div className="p-6">
             <ViewError
+              kind="tile"
+              subject="roles"
               message={errorMessage(state.error, `We couldn't load the ${system} roles.`)}
               onRetry={() => setAttempt((n) => n + 1)}
             />

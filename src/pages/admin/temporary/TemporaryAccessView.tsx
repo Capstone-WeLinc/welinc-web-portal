@@ -124,6 +124,7 @@ export function TemporaryAccessView({ me, onChanged }: { me: AdminMe; onChanged:
       )}
       {load.kind === 'error' && (
         <ViewError
+          kind="page"
           message={errorMessage(load.error, "We couldn't load temporary access.")}
           onRetry={() => setAttempt((n) => n + 1)}
         />

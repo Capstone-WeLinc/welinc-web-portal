@@ -26,6 +26,7 @@ export function OverviewView() {
       {state.kind === 'loading' && <OverviewSkeleton />}
       {state.kind === 'error' && (
         <ViewError
+          kind="page"
           message={errorMessage(state.error, "We couldn't load the overview.")}
           onRetry={() => setAttempt((n) => n + 1)}
         />

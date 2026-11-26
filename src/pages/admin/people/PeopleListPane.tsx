@@ -210,7 +210,7 @@ export function PeopleListPane({
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {failed?.kind === 'error' ? (
           <div className="p-5">
-            <ViewError message={errorMessage(failed.error, "We couldn't load people.")} onRetry={() => setAttempt((n) => n + 1)} />
+            <ViewError kind="tile" subject="people" message={errorMessage(failed.error, "We couldn't load people.")} onRetry={() => setAttempt((n) => n + 1)} />
           </div>
         ) : loading ? (
           <ListSkeleton />

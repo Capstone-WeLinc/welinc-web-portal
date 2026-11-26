@@ -70,6 +70,7 @@ export function ActivityList({
   if (load.kind === 'error') {
     return (
       <ViewError
+        kind="page"
         message={errorMessage(load.error, "We couldn't load the activity.")}
         onRetry={() => setAttempt((n) => n + 1)}
         className={stateClass}
