@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react';
 import { apiOrigin, beforeBreadcrumb, createBeforeSend, IGNORE_ERRORS, portalRoleTag } from './filters';
+import { noteCrashViewer, setCrashViewerStanding } from './standing';
 
 // VRMS spec 0025, Browser setup (the same as welinc-web-vrms). With VITE_SENTRY_DSN blank nothing
 // starts and nothing is sent (AC-14); every other call here is then a harmless no op.
@@ -39,6 +40,8 @@ export function initMonitoring(): void {
  * from the admin standing (`setMonitoringStanding`); `null` clears both on sign out.
  */
 export function setMonitoringUser(user: { id: string } | null): void {
+  // AC-7a: a sign out or a different person drops the admin crash screen, with Sentry off too
+  noteCrashViewer(user?.id ?? null);
   if (!monitoringOn) return;
   if (!user) {
     Sentry.setUser(null);
@@ -54,6 +57,8 @@ export function setMonitoringStanding(me: {
   suiteAdmin: boolean;
   adminOf: readonly string[];
 }): void {
+  // AC-7a: before the off switch, so admins get the details with Sentry off too
+  setCrashViewerStanding(me.user.id, me.suiteAdmin || me.adminOf.length > 0);
   if (!monitoringOn) return;
   Sentry.setUser({ id: me.user.id });
   Sentry.setTag('role', portalRoleTag(me));

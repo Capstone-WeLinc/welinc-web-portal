@@ -165,3 +165,60 @@ describe('with a DSN', () => {
     log.mockRestore();
   });
 });
+
+describe('the crash screen standing (AC-7a)', () => {
+  const me = (id: string, suiteAdmin: boolean, adminOf: string[] = []) => ({ user: { id }, suiteAdmin, adminOf });
+
+  it.each([
+    ['a suite admin', me('u1', true), true],
+    ['a system admin', me('u1', false, ['VRMS']), true],
+    ['anyone else', me('u1', false), false],
+  ])('is set from the standing answer for %s', async (_who, answer, expected) => {
+    const monitoring = await load({ dsn: DSN });
+    const standing = await import('./standing');
+
+    monitoring.setMonitoringStanding(answer);
+
+    expect(standing.crashViewerIsAdmin()).toBe(expected);
+  });
+
+  it('turns false after a demotion', async () => {
+    const monitoring = await load({ dsn: DSN });
+    const standing = await import('./standing');
+
+    monitoring.setMonitoringStanding(me('u1', true));
+    monitoring.setMonitoringStanding(me('u1', false));
+
+    expect(standing.crashViewerIsAdmin()).toBe(false);
+  });
+
+  it('is set with Sentry off, and cleared by a sign out', async () => {
+    const monitoring = await load();
+    const standing = await import('./standing');
+
+    monitoring.setMonitoringStanding(me('u1', true));
+    expect(standing.crashViewerIsAdmin()).toBe(true);
+    monitoring.setMonitoringUser(null);
+    expect(standing.crashViewerIsAdmin()).toBe(false);
+  });
+
+  it('survives the same person on the next launcher answer, but not a different person', async () => {
+    const monitoring = await load();
+    const standing = await import('./standing');
+
+    monitoring.setMonitoringStanding(me('u1', true));
+    monitoring.setMonitoringUser({ id: 'u1' });
+    expect(standing.crashViewerIsAdmin()).toBe(true);
+    monitoring.setMonitoringUser({ id: 'u2' });
+    expect(standing.crashViewerIsAdmin()).toBe(false);
+  });
+
+  it('stays false while the standing check is pending', async () => {
+    const monitoring = await load();
+    const standing = await import('./standing');
+
+    monitoring.setMonitoringUser({ id: 'u1' });
+
+    expect(standing.crashViewerIsAdmin()).toBe(false);
+  });
+});
