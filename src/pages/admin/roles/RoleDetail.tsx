@@ -68,20 +68,20 @@ export function RoleDetail({
         <RoleHeader role={role} data={data} allowed={allowed} total={total} reset={reset} />
         <Tabs value={shown} onValueChange={(next) => onTab(next as RoleTab)} className="flex-1 gap-0">
           <div className="mt-5.5 mb-3.5 flex items-end gap-2 border-b border-border">
-            <TabsList aria-label="Role sections" className="-mb-px h-11 gap-5">
+            <TabsList aria-label="Role sections" className="-mb-px h-11 gap-1">
               {withPermissions && (
-                <TabsTrigger value="permissions">
+                <TabsTrigger value="permissions" className="px-3">
                   Permissions
                   <TabCount on={shown === 'permissions'}>
                     {allowed}/{total}
                   </TabCount>
                 </TabsTrigger>
               )}
-              <TabsTrigger value="people">
+              <TabsTrigger value="people" className="px-3">
                 People
                 <TabCount on={shown === 'people'}>{role.peopleCount}</TabCount>
               </TabsTrigger>
-              {withPermissions && <TabsTrigger value="history">History</TabsTrigger>}
+              {withPermissions && <TabsTrigger value="history" className="px-3">History</TabsTrigger>}
             </TabsList>
             {shown === 'people' && onAddPeople && (
               <Button size="sm" className="mb-1.5 ml-auto" onClick={onAddPeople}>
