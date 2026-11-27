@@ -111,6 +111,7 @@ export default function Launcher({ answer, params, banner, arrive = false, onLau
     return () => {
       window.removeEventListener('pageshow', reset);
       if (opening.current !== null) window.clearTimeout(opening.current);
+      opening.current = null;
     };
   }, []);
   const startLaunch = (system: LauncherSystem) => {
@@ -129,19 +130,26 @@ export default function Launcher({ answer, params, banner, arrive = false, onLau
   // can't open. A ref, so React's double effect in development never opens twice. Then `open` and
   // `from` leave the address; `from` already marked its card for this visit.
   const opened = useRef(false);
+  const announced = useRef(false);
   useEffect(() => {
-    if (opened.current) return;
-    opened.current = true;
-    if (params.has('open') || params.has('from')) {
-      window.history.replaceState(window.history.state, '', `${window.location.pathname}${withoutLaunchParams(window.location.search)}`);
+    if (!opened.current) {
+      opened.current = true;
+      if (params.has('open') || params.has('from')) {
+        window.history.replaceState(window.history.state, '', `${window.location.pathname}${withoutLaunchParams(window.location.search)}`);
+      }
+      if (request && 'denied' in request) {
+        notifyError(`You can’t open ${request.denied} with this account. Pick a system below.`);
+      }
     }
-    if (!request) return;
-    if ('denied' in request) {
-      notifyError(`You can’t open ${request.denied} with this account. Pick a system below.`);
-      return;
+    if (!request || 'denied' in request) return;
+    // The timer is set on every run, not once: React's development double effect runs the cleanup
+    // above between two runs, and that cleanup clears a timer set by the first run
+    const system = request.system;
+    opening.current = window.setTimeout(() => openSystem(system.url), launchHold());
+    if (!announced.current) {
+      announced.current = true;
+      onLaunch?.(system);
     }
-    opening.current = window.setTimeout(() => openSystem(request.system.url), launchHold());
-    onLaunch?.(request.system);
     // Read once, as the launcher shows
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

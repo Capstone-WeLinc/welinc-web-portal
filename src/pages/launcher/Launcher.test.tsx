@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { StrictMode } from "react";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { api } from "@/lib/api";
@@ -240,6 +241,29 @@ describe("the launcher's open parameter", () => {
     expect(onLaunch).toHaveBeenCalledWith(expect.objectContaining({ system: "VMMS" }));
     act(() => vi.advanceTimersByTime(1200));
     expect(opened).toHaveBeenCalledWith("http://vmms.test");
+  });
+
+  it("still opens the system when React runs its development double effect", () => {
+    vi.useFakeTimers();
+    window.history.replaceState(null, "", "/?open=VMMS");
+    opened.mockClear();
+    const onLaunch = vi.fn();
+    render(
+      <StrictMode>
+        <MemoryRouter>
+          <Launcher
+            answer={{ user: USER, systems: [VRMS_CHIEF, VMMS_OPS], ...CUTOFFS }}
+            params={new URLSearchParams("open=VMMS")}
+            banner={null}
+            onLaunch={onLaunch}
+          />
+        </MemoryRouter>
+      </StrictMode>,
+    );
+    act(() => vi.advanceTimersByTime(1200));
+    expect(opened).toHaveBeenCalledTimes(1);
+    expect(opened).toHaveBeenCalledWith("http://vmms.test");
+    expect(onLaunch).toHaveBeenCalledTimes(1);
   });
 
   it("shows the launcher with a toast for a system this person can't open", () => {
