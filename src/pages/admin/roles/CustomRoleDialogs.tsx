@@ -529,6 +529,8 @@ function DeleteRoleBody({
         <AlertDialogTitle>Delete {role.name}?</AlertDialogTitle>
         <AlertDialogDescription>No one has it. Its history stays on record.</AlertDialogDescription>
       </AlertDialogHeader>
+      {/* From the page's current roles read, no extra fetch; never in the blocked dialog (AC-25) */}
+      {role.graceCount > 0 && <p className="text-small text-muted-foreground">{customRoleCopy.graceHolders(role.graceCount)}</p>}
       {error && (
         <p role="alert" className="rounded-lg bg-error-bg px-3 py-2 text-small text-error">
           {error}

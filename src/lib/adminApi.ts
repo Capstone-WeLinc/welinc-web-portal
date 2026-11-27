@@ -570,6 +570,8 @@ export type RoleSummary = {
   copiedFrom: { code: string; name: string } | null;
   /** People who hold it and aren't deleted. */
   peopleCount: number;
+  /** People in their deletion grace period who still hold it; they don't block Delete (AC-25). */
+  graceCount: number;
   /** The newest permission change or role event; `byName` is "System" for the catalog sync. */
   lastChanged: { at: string; byName: string } | null;
 };

@@ -454,6 +454,11 @@ export const customRoleCopy = {
   draftNotCopied: (source: string) => `Unsaved changes on ${source} aren't copied.`,
   power: (name: string, system: SystemCode) => `${name} will be able to manage the team and change settings in ${system}.`,
   stillHeld: (n: number, role: string) => (n === 1 ? `1 person still has ${role}` : `${n} people still have ${role}`),
+  /** AC-25: the Delete dialog's line when people waiting for deletion still hold the role. */
+  graceHolders: (k: number) =>
+    k === 1
+      ? '1 person waiting for deletion keeps it until their deletion completes; if they are restored, they come back without it.'
+      : `${k} people waiting for deletion keep it until their deletion completes; if one is restored, they come back without it.`,
   /** AC-31: the help line's extra sentence for a custom VRMS role. */
   browserOnly: 'Works in the browser. The mobile app is for Mechanics and Chief mechanics.',
 };
