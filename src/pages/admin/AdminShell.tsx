@@ -51,6 +51,19 @@ function standing(me: AdminMe): string {
   return me.suiteAdmin ? 'Suite admin' : `${me.adminOf.join(', ')} admin`;
 }
 
+/**
+ * VRMS spec 0027, AC-12: a view's count bubble. Deletion requests counts the pending ones the
+ * caller can act on (`pendingDeletionRequests`), hot (gold) for a suite admin; 0 shows nothing.
+ */
+function viewCount(view: AdminView, me: AdminMe): { count: number; hot: boolean } | null {
+  if (view.path !== 'deletion-requests') return null;
+  const count = me.pendingDeletionRequests ?? 0;
+  return count > 0 ? { count, hot: me.suiteAdmin } : null;
+}
+
+const countText = (count: number) => (count > 99 ? '99+' : String(count));
+const countName = (count: number) => `${count} waiting for a decision`;
+
 /*
   Suite spec 0016 AC-16 (design.md, Layout and navigation: Sidebar; board Sidebars8): idle items in
   sidebar-idle, hover sidebar-hover, the current one sidebar-current with white semibold text. No
@@ -170,7 +183,7 @@ export function AdminShell({ me, views, current, banner, status, flush, children
         </div>
 
         {bottomBar ? (
-          <BottomBar views={views} current={current} search={search} />
+          <BottomBar me={me} views={views} current={current} search={search} />
         ) : (
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetContent side="left" className="bg-sidebar text-sidebar-foreground md:hidden">
@@ -263,6 +276,7 @@ function SidebarBody({
                 <li key={view.path}>
                   <SideLink
                     view={view}
+                    count={viewCount(view, me)}
                     active={view.path === current}
                     search={search}
                     collapsed={collapsed}
@@ -299,12 +313,14 @@ function SidebarBody({
 
 function SideLink({
   view,
+  count,
   active,
   search,
   collapsed,
   onNavigate,
 }: {
   view: AdminView;
+  count: { count: number; hot: boolean } | null;
   active: boolean;
   search: string;
   collapsed: boolean;
@@ -312,22 +328,45 @@ function SideLink({
 }) {
   const Icon = view.icon;
   return (
-    <CollapsedTooltip label={view.label} collapsed={collapsed}>
+    <CollapsedTooltip label={count ? `${view.label}, ${countName(count.count)}` : view.label} collapsed={collapsed}>
       <NavLink
         to={viewHref(view.path, search)}
         onClick={onNavigate}
         aria-current={active ? 'page' : undefined}
-        className={cn(ITEM_CLASSES, collapsed && 'justify-center px-0', active && CURRENT_CLASSES)}
+        className={cn(ITEM_CLASSES, 'relative', collapsed && 'justify-center px-0', active && CURRENT_CLASSES)}
       >
         <Icon className="size-4.5 shrink-0" aria-hidden="true" />
         <span className={cn('truncate', collapsed && 'sr-only')}>{view.label}</span>
+        {count &&
+          (collapsed ? (
+            <>
+              <span
+                aria-hidden="true"
+                className={cn('absolute top-1.5 right-2.5 size-2 rounded-full', count.hot ? 'bg-highlight' : 'bg-sidebar-idle')}
+              />
+              <span className="sr-only">, {countName(count.count)}</span>
+            </>
+          ) : (
+            <>
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'ml-auto shrink-0 rounded-full px-1.5 font-mono text-caption',
+                  count.hot ? 'bg-highlight text-highlight-foreground' : 'bg-sidebar-count text-sidebar-foreground',
+                )}
+              >
+                {countText(count.count)}
+              </span>
+              <span className="sr-only">, {countName(count.count)}</span>
+            </>
+          ))}
       </NavLink>
     </CollapsedTooltip>
   );
 }
 
 /** design.md: phones get a bottom tab bar when there are at most five views. */
-function BottomBar({ views, current, search }: { views: AdminView[]; current: AdminViewPath; search: string }) {
+function BottomBar({ me, views, current, search }: { me: AdminMe; views: AdminView[]; current: AdminViewPath; search: string }) {
   return (
     <nav
       aria-label="Suite management sections"
@@ -337,6 +376,7 @@ function BottomBar({ views, current, search }: { views: AdminView[]; current: Ad
         {views.map((view) => {
           const Icon = view.icon;
           const active = view.path === current;
+          const count = viewCount(view, me);
           return (
             <li key={view.path} className="min-w-0 flex-1">
               <NavLink
@@ -347,7 +387,16 @@ function BottomBar({ views, current, search }: { views: AdminView[]; current: Ad
                   active ? 'font-medium text-primary' : 'text-muted-foreground',
                 )}
               >
-                <Icon className="size-5 shrink-0" aria-hidden="true" />
+                <span className="relative">
+                  <Icon className="size-5 shrink-0" aria-hidden="true" />
+                  {count && (
+                    <span
+                      aria-hidden="true"
+                      className={cn('absolute -top-0.5 -right-1 size-2.5 rounded-full ring-2 ring-card', count.hot ? 'bg-highlight' : 'bg-muted-foreground')}
+                    />
+                  )}
+                </span>
+                {count && <span className="sr-only">, {countName(count.count)}</span>}
                 {/* The visible short text is the name (WCAG 2.5.3), so voice control can say what it sees. */}
                 <span className="max-w-full truncate">
                   {view.short}
@@ -360,3 +409,4 @@ function BottomBar({ views, current, search }: { views: AdminView[]; current: Ad
     </nav>
   );
 }
+

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from
 import { AlertCircle } from 'lucide-react';
 import { currentSystem, mobileSystemsOf, type LauncherAnswer, type LauncherSystem, type Notice } from '@/lib/auth';
 import { cn } from '@/lib/utils';
-import { keyTarget, orderedSystems, signedInSystems, suiteTileFor } from '@/lib/launcher';
+import { keyTarget, openRequest, orderedSystems, signedInSystems, suiteTileFor, withoutLaunchParams } from '@/lib/launcher';
+import { notifyError } from '@/lib/notify';
 import { LauncherFrame } from './LauncherFrame';
 import { SuiteTile, SystemTile, TileLabel } from './LauncherTiles';
 import { LaunchCover } from './LaunchCover';
@@ -39,6 +40,15 @@ function arriveAt(at: number, duration: number): CSSProperties {
 }
 const HEADING = arriveAt(ARRIVAL.headingAt, ARRIVAL.headingFade);
 const tileTiming = (i: number) => arriveAt(tileAt(i), ARRIVAL.tile);
+
+/** The launch cover for a system; with no scene this time the system still opens after the same wait. */
+function coverFor(system: LauncherSystem): { system: LauncherSystem; scene: LaunchScene } | null {
+  try {
+    return { system, scene: nextLaunch() };
+  } catch {
+    return null;
+  }
+}
 
 /** A key press is not for the launcher while focus is in a text field or a menu or dialog is open. */
 function keyIsBusy(event: KeyboardEvent): boolean {
@@ -83,7 +93,12 @@ export default function Launcher({ answer, params, banner, arrive = false, onLau
   // AC-10: the launch cover over a system that is opening. The click is held while the scene plays,
   // then the system opens; the cover stays up until the system's page replaces this one. Back from
   // the system resets it.
-  const [launching, setLaunching] = useState<{ system: LauncherSystem; scene: LaunchScene } | null>(null);
+  // VRMS spec 0027, AC-13: `?open=<SYSTEM>` (a system switcher's link) starts that card's handoff at
+  // once, so its cover is up from the first frame; read once, before `from`.
+  const [request] = useState(() => openRequest(params, systems));
+  const [launching, setLaunching] = useState<{ system: LauncherSystem; scene: LaunchScene } | null>(() =>
+    request && 'system' in request ? coverFor(request.system) : null,
+  );
   const opening = useRef<number | null>(null);
   useEffect(() => {
     const reset = (event: PageTransitionEvent) => {
@@ -96,20 +111,48 @@ export default function Launcher({ answer, params, banner, arrive = false, onLau
     return () => {
       window.removeEventListener('pageshow', reset);
       if (opening.current !== null) window.clearTimeout(opening.current);
+      opening.current = null;
     };
   }, []);
-  const launch = (system: LauncherSystem, event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
+  const startLaunch = (system: LauncherSystem) => {
     // One launch at a time: a second click or key while one plays does nothing
     if (opening.current !== null) return;
-    try {
-      setLaunching({ system, scene: nextLaunch() });
-    } catch {
-      // No cover this time; the system still opens after the same wait
-    }
+    setLaunching(coverFor(system));
     opening.current = window.setTimeout(() => openSystem(system.url), launchHold());
     onLaunch?.(system);
   };
+  const launch = (system: LauncherSystem, event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    startLaunch(system);
+  };
+
+  // AC-13: the opening itself (the cover is already up), or the toast for a system this person
+  // can't open. A ref, so React's double effect in development never opens twice. Then `open` and
+  // `from` leave the address; `from` already marked its card for this visit.
+  const opened = useRef(false);
+  const announced = useRef(false);
+  useEffect(() => {
+    if (!opened.current) {
+      opened.current = true;
+      if (params.has('open') || params.has('from')) {
+        window.history.replaceState(window.history.state, '', `${window.location.pathname}${withoutLaunchParams(window.location.search)}`);
+      }
+      if (request && 'denied' in request) {
+        notifyError(`You can’t open ${request.denied} with this account. Pick a system below.`);
+      }
+    }
+    if (!request || 'denied' in request) return;
+    // The timer is set on every run, not once: React's development double effect runs the cleanup
+    // above between two runs, and that cleanup clears a timer set by the first run
+    const system = request.system;
+    opening.current = window.setTimeout(() => openSystem(system.url), launchHold());
+    if (!announced.current) {
+      announced.current = true;
+      onLaunch?.(system);
+    }
+    // Read once, as the launcher shows
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // AC-2 (P5): a digit opens its tile exactly as a click would, by clicking it. Keys wait while the
   // arrival plays (AC-8) and while a launch is up

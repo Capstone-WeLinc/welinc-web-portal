@@ -28,7 +28,7 @@ export function SuiteSwitcher({ systems }: { systems: readonly System[] }) {
       >
         <Grip aria-hidden="true" className="size-5" />
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-88 max-w-(--radix-popover-content-available-width) rounded-2xl p-0">
+      <PopoverContent aria-label="Switch system" align="end" className="w-88 max-w-(--radix-popover-content-available-width) rounded-2xl p-0">
         <nav aria-label="Switch system" className="flex flex-col">
           <div className="flex items-center px-4 pt-3.5 pb-2.5">
             <span className="flex-1 text-small font-semibold text-muted-strong">Switch to</span>

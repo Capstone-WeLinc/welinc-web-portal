@@ -1,13 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { StrictMode } from "react";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { api } from "@/lib/api";
 import type { LauncherAnswer } from "@/lib/auth";
 import Launcher from "./Launcher";
 import { openSystem } from "./launchMotion";
+import { notifyError } from "@/lib/notify";
 
 vi.mock("./launchMotion", async (original) => ({ ...(await original<typeof import("./launchMotion")>()), openSystem: vi.fn() }));
 const opened = vi.mocked(openSystem);
+
+vi.mock("@/lib/notify", async (original) => ({ ...(await original<typeof import("@/lib/notify")>()), notifyError: vi.fn() }));
+const toastError = vi.mocked(notifyError);
 
 vi.mock("../../lib/api", () => ({
   API_BASE_URL: "http://localhost:3000",
@@ -37,7 +42,7 @@ const VMMS_OPS = sys("VMMS", "Vehicle Maintenance Management System", [["OPERATI
 const VMMS_ADMIN = sys("VMMS", "Vehicle Maintenance Management System", [["ADMIN", "Admin"]]);
 const BMS_ADMIN = sys("BMS", "Booking Management System", [["ADMIN", "Admin"]]);
 
-function renderLauncher(over: Partial<LauncherAnswer>, onLaunch = vi.fn(), arrive = false) {
+function renderLauncher(over: Partial<LauncherAnswer>, onLaunch = vi.fn(), arrive = false, params = new URLSearchParams()) {
   render(
     <MemoryRouter>
       <Routes>
@@ -46,7 +51,7 @@ function renderLauncher(over: Partial<LauncherAnswer>, onLaunch = vi.fn(), arriv
           element={
             <Launcher
               answer={{ user: USER, systems: [], ...CUTOFFS, ...over }}
-              params={new URLSearchParams()}
+              params={params}
               banner={null}
               arrive={arrive}
               onLaunch={onLaunch}
@@ -221,5 +226,56 @@ describe("launcher", () => {
   it("shows the tiles in place without the arrival", () => {
     renderLauncher({ systems: [VRMS_CHIEF] });
     expect(tiles()[0].classList.contains("arrive-deal")).toBe(false);
+  });
+});
+
+// covers: VRMS spec 0027 AC-13
+describe("the launcher's open parameter", () => {
+  it("starts the asked system's handoff at once, as a click would, and clears open and from from the address", () => {
+    vi.useFakeTimers();
+    window.history.replaceState(null, "", "/?from=VRMS&open=VMMS&x=1");
+    opened.mockClear();
+    const onLaunch = renderLauncher({ systems: [VRMS_CHIEF, VMMS_OPS] }, vi.fn(), false, new URLSearchParams("from=VRMS&open=VMMS"));
+
+    expect(window.location.search).toBe("?x=1");
+    expect(onLaunch).toHaveBeenCalledWith(expect.objectContaining({ system: "VMMS" }));
+    act(() => vi.advanceTimersByTime(1200));
+    expect(opened).toHaveBeenCalledWith("http://vmms.test");
+  });
+
+  it("still opens the system when React runs its development double effect", () => {
+    vi.useFakeTimers();
+    window.history.replaceState(null, "", "/?open=VMMS");
+    opened.mockClear();
+    const onLaunch = vi.fn();
+    render(
+      <StrictMode>
+        <MemoryRouter>
+          <Launcher
+            answer={{ user: USER, systems: [VRMS_CHIEF, VMMS_OPS], ...CUTOFFS }}
+            params={new URLSearchParams("open=VMMS")}
+            banner={null}
+            onLaunch={onLaunch}
+          />
+        </MemoryRouter>
+      </StrictMode>,
+    );
+    act(() => vi.advanceTimersByTime(1200));
+    expect(opened).toHaveBeenCalledTimes(1);
+    expect(opened).toHaveBeenCalledWith("http://vmms.test");
+    expect(onLaunch).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the launcher with a toast for a system this person can't open", () => {
+    window.history.replaceState(null, "", "/?open=BMS");
+    opened.mockClear();
+    toastError.mockClear();
+    const onLaunch = renderLauncher({ systems: [VRMS_CHIEF] }, vi.fn(), false, new URLSearchParams("open=BMS"));
+
+    expect(toastError).toHaveBeenCalledWith(expect.stringContaining("BMS"));
+    expect(onLaunch).not.toHaveBeenCalled();
+    expect(opened).not.toHaveBeenCalled();
+    expect(tiles()).toHaveLength(1);
+    expect(window.location.search).toBe("");
   });
 });
