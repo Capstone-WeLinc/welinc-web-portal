@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, ChevronUp, LogOut, UserRound } from 'lucide-react';
+import { ChevronDown, LogOut, UserRound } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -66,49 +66,17 @@ export function AccountMenu({
   onDark = true,
   systems,
   showName = false,
-  sidebar,
 }: {
   user: User;
   onDark?: boolean;
   systems?: readonly string[];
   /** The launcher band shows the name and a chevron beside the avatar from 768px up (board `R37LineArt`). */
   showName?: boolean;
-  /**
-   * VRMS spec 0027, AC-12: the Suite management sidebar's bottom row, with your name and
-   * standing ("Suite admin"); collapsed only the round tile shows.
-   */
-  sidebar?: { standing: string; collapsed: boolean };
 }) {
   const [signingOut, setSigningOut] = useState(false);
-  const name = user.name || user.email;
   return (
     <>
       <DropdownMenu>
-        {sidebar ? (
-          <DropdownMenuTrigger
-            aria-label={`Account: ${name}, ${sidebar.standing}`}
-            className={cn(
-              'flex min-h-11 w-full items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left outline-none hover:bg-sidebar-hover focus-visible:ring-2 focus-visible:ring-ring-on-dark',
-              sidebar.collapsed && 'justify-center px-0',
-            )}
-          >
-            <span
-              aria-hidden="true"
-              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sidebar-count text-caption font-bold text-sidebar-foreground"
-            >
-              {accountInitials(user)}
-            </span>
-            {!sidebar.collapsed && (
-              <>
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-small font-semibold text-sidebar-foreground">{name}</span>
-                  <span className="truncate text-caption text-sidebar-idle">{sidebar.standing}</span>
-                </span>
-                <ChevronUp aria-hidden="true" className="size-4 shrink-0 text-sidebar-idle" />
-              </>
-            )}
-          </DropdownMenuTrigger>
-        ) : (
         <DropdownMenuTrigger
           className={cn(
             'flex items-center justify-center outline-none focus-visible:ring-2 max-sm:size-11',
@@ -130,12 +98,7 @@ export function AccountMenu({
             </>
           )}
         </DropdownMenuTrigger>
-        )}
-        <DropdownMenuContent
-          align={sidebar ? 'start' : 'end'}
-          side={sidebar ? 'top' : undefined}
-          className="w-64"
-        >
+        <DropdownMenuContent align="end" className="w-64">
           <DropdownMenuLabel className="flex items-center gap-3 font-normal">
             <UserAvatar user={user} className="size-10" />
             <div className="min-w-0">

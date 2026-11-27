@@ -1,21 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { Check, ChevronRight, ChevronsUpDown, LayoutGrid, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { ChevronRight, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { LogoBadge } from '@/components/brand/BrandLockup';
+import { LogoMark } from '@/components/LogoMark';
 import { CrashBoundary } from '@/components/monitoring/CrashBoundary';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import type { AdminMe } from '@/lib/admin';
-import type { LauncherAnswer } from '@/lib/auth';
-import { orderedSystems, signedInSystems } from '@/lib/launcher';
+import { signedInSystems } from '@/lib/launcher';
 import { useHeldAnswer } from '@/lib/sessionWatch/watch';
 import { SUITE_MANAGEMENT } from '@/lib/title';
 import { cn } from '@/lib/utils';
@@ -72,8 +64,6 @@ function viewCount(view: AdminView, me: AdminMe): { count: number; hot: boolean 
 const countText = (count: number) => (count > 99 ? '99+' : String(count));
 const countName = (count: number) => `${count} waiting for a decision`;
 
-type System = LauncherAnswer['systems'][number];
-
 /*
   Suite spec 0016 AC-16 (design.md, Layout and navigation: Sidebar; board Sidebars8): idle items in
   sidebar-idle, hover sidebar-hover, the current one sidebar-current with white semibold text. No
@@ -84,6 +74,8 @@ const ITEM_CLASSES =
 const CURRENT_CLASSES = 'bg-sidebar-current font-semibold text-sidebar-foreground';
 const ROW =
   'flex w-full items-center gap-2.5 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring-on-dark';
+const FOOTER_BUTTON =
+  'flex size-8 shrink-0 items-center justify-center rounded-lg text-sidebar-idle outline-none hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring-on-dark max-md:size-11';
 
 /** Width of the content's left edge from 768px up, so the floating banner centers on the content. */
 const CONTENT_LEFT = { expanded: '15rem', collapsed: '4rem' } as const;
@@ -127,16 +119,16 @@ export function AdminShell({ me, views, current, banner, status, flush, children
             collapsed ? 'md:w-16' : 'md:w-60',
           )}
         >
-          <SidebarBody me={me} views={views} current={current} search={search} collapsed={collapsed} systems={systems}>
+          <SidebarBody me={me} views={views} current={current} search={search} collapsed={collapsed} home={home}>
             <CollapsedTooltip label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} collapsed={collapsed}>
               <button
                 type="button"
                 onClick={toggle}
+                aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                 aria-expanded={!collapsed}
-                className={cn(ITEM_CLASSES, collapsed && 'justify-center px-0')}
+                className={FOOTER_BUTTON}
               >
-                {collapsed ? <PanelLeftOpen aria-hidden="true" className="size-4.5 shrink-0" /> : <PanelLeftClose aria-hidden="true" className="size-4.5 shrink-0" />}
-                <span className={cn('truncate', collapsed && 'sr-only')}>{collapsed ? 'Expand sidebar' : 'Collapse sidebar'}</span>
+                {collapsed ? <PanelLeftOpen aria-hidden="true" className="size-4.5" /> : <PanelLeftClose aria-hidden="true" className="size-4.5" />}
               </button>
             </CollapsedTooltip>
           </SidebarBody>
@@ -175,12 +167,9 @@ export function AdminShell({ me, views, current, banner, status, flush, children
               </ol>
             </nav>
             {status}
-            {/* Phones: the system switcher and your account menu stay top right. From 768px up they
-                live at the top and bottom of the sidebar (VRMS spec 0027, AC-12). */}
-            <div className="flex items-center gap-2 md:hidden">
-              {switcher && <SuiteSwitcher systems={systems} />}
-              <AccountMenu user={me.user} onDark={false} systems={answer ? signedInSystems(answer) : undefined} />
-            </div>
+            {/* AC-19, AC-20: the system switcher and your account menu, top right at every size */}
+            {switcher && <SuiteSwitcher systems={systems} />}
+            <AccountMenu user={me.user} onDark={false} systems={answer ? signedInSystems(answer) : undefined} />
           </header>
 
           {banner && <div className="px-4 pt-4 sm:px-6 lg:px-8">{banner}</div>}
@@ -205,7 +194,7 @@ export function AdminShell({ me, views, current, banner, status, flush, children
                 views={views}
                 current={current}
                 search={search}
-                systems={systems}
+                home={home}
                 onNavigate={() => setMenuOpen(false)}
               />
             </SheetContent>
@@ -234,7 +223,7 @@ function SidebarBody({
   current,
   search,
   collapsed = false,
-  systems,
+  home = '/',
   onNavigate,
   children,
 }: {
@@ -243,17 +232,34 @@ function SidebarBody({
   current: AdminViewPath;
   search: string;
   collapsed?: boolean;
-  /** The held launcher answer's web systems: none means no launcher, so the switcher is a label. */
-  systems: readonly System[];
+  /** Where the logo goes: Home, or `/admin` when there is no launcher (suite spec 0019, AC-20). */
+  home?: string;
   onNavigate?: () => void;
-  /** Above the account menu: the collapse toggle (desktop only). */
+  /** The footer strip's button (the collapse toggle; desktop only). */
   children?: ReactNode;
 }) {
   const pad = collapsed ? 'px-2' : 'px-3';
   return (
     <>
       <div className={cn('shrink-0 pt-3', pad)}>
-        <AdminSwitcher systems={systems} collapsed={collapsed} onNavigate={onNavigate} />
+        <CollapsedTooltip label={home === '/' ? 'Home' : SUITE_MANAGEMENT} collapsed={collapsed}>
+          <Link
+            to={home}
+            onClick={onNavigate}
+            aria-label={collapsed ? `${home === '/' ? 'Home. ' : ''}${SUITE_MANAGEMENT}, ${standing(me)}` : undefined}
+            className={cn(ROW, 'px-1 py-1.5 hover:bg-sidebar-hover', collapsed && 'justify-center px-0')}
+          >
+            {/* Logo B: the mark alone on its gold square (suite spec 0019, AC-28) */}
+            <LogoBadge />
+            {/* Expanded, the spoken name is the visible text (axe label-content-name-mismatch) */}
+            <span className={cn('flex min-w-0 flex-1 flex-col', collapsed && 'hidden')}>
+              {home === '/' && <span className="sr-only">Home. </span>}
+              <span className="truncate text-group font-bold">{SUITE_MANAGEMENT}</span>
+              {/* AC-17: your role in plain muted white, never gold */}
+              <span className="truncate text-caption font-normal text-sidebar-idle">{standing(me)}</span>
+            </span>
+          </Link>
+        </CollapsedTooltip>
         <hr aria-hidden="true" className="mx-0.5 mt-3.5 border-sidebar-line" />
       </div>
 
@@ -283,14 +289,23 @@ function SidebarBody({
         ))}
       </nav>
 
-      {/* VRMS spec 0027, AC-12 (spec 0016): the collapse toggle above the account menu, as in VRMS */}
-      <div className={cn('flex shrink-0 flex-col gap-1 border-t border-sidebar-line py-3', collapsed ? 'px-2' : 'px-3', !children && 'pb-safe')}>
+      {/* AC-18 (Shell20, footer option 5): a darker strip with the mark and "WeLinc Logistics" on
+          one line and the collapse button at its right; no Collapse row, no Back to home row */}
+      <div
+        className={cn(
+          'flex min-h-14 shrink-0 items-center gap-2.5 border-t border-sidebar-line bg-black/15 px-3 py-2.5',
+          collapsed ? 'justify-center px-2' : 'justify-between',
+        )}
+      >
+        {!collapsed && (
+          <span className="flex min-w-0 flex-1 items-center gap-2.5">
+            <span aria-hidden="true" className="flex size-6.5 shrink-0 items-center justify-center rounded-md bg-sidebar-count">
+              <LogoMark className="h-2.5 text-highlight" />
+            </span>
+            <span className="truncate text-small font-semibold text-sidebar-idle">WeLinc Logistics</span>
+          </span>
+        )}
         {children}
-        <CollapsedTooltip label={me.user.name || me.user.email} collapsed={collapsed}>
-          <div>
-            <AccountMenu user={me.user} sidebar={{ standing: standing(me), collapsed }} />
-          </div>
-        </CollapsedTooltip>
       </div>
     </>
   );
@@ -395,70 +410,3 @@ function BottomBar({ me, views, current, search }: { me: AdminMe; views: AdminVi
   );
 }
 
-/**
- * VRMS spec 0027, AC-12: the switcher at the top of the Suite management sidebar, the same frame
- * as VRMS's. It shows the mark, "Admin" and "WeLinc portal"; its menu lists the Launcher and
- * your systems, each through the launcher's `open` (AC-13). With no launcher (no web system)
- * it is a plain label. Collapsed only the mark shows, and the menu still opens from it.
- */
-function AdminSwitcher({
-  systems,
-  collapsed,
-  onNavigate,
-}: {
-  systems: readonly System[];
-  collapsed: boolean;
-  onNavigate?: () => void;
-}) {
-  const body = (
-    <>
-      {/* Logo B: the mark alone on its gold square (suite spec 0019, AC-28) */}
-      <LogoBadge />
-      <span className={cn('flex min-w-0 flex-1 flex-col', collapsed && 'sr-only')}>
-        <span className="truncate text-group font-bold">Admin</span>
-        <span className="truncate text-caption font-normal text-sidebar-idle">WeLinc portal</span>
-      </span>
-      {systems.length > 0 && !collapsed && <ChevronsUpDown aria-hidden="true" className="size-4 shrink-0 text-sidebar-idle" />}
-    </>
-  );
-  if (systems.length === 0) {
-    return <div className={cn(ROW, 'px-2 py-1.5', collapsed && 'justify-center px-0')}>{body}</div>;
-  }
-  return (
-    <DropdownMenu>
-      <CollapsedTooltip label="Switch system" collapsed={collapsed}>
-        <DropdownMenuTrigger
-          aria-label={collapsed ? 'Admin, switch system' : 'Admin, WeLinc portal, switch system'}
-          className={cn(ROW, 'min-h-11 bg-sidebar-hover px-2 py-1.5 hover:bg-sidebar-current', collapsed && 'justify-center px-0')}
-        >
-          {body}
-        </DropdownMenuTrigger>
-      </CollapsedTooltip>
-      <DropdownMenuContent side="bottom" align="start" className="w-60">
-        <DropdownMenuItem disabled className="justify-between data-disabled:opacity-100">
-          <span className="font-semibold text-foreground">Admin</span>
-          <span className="flex items-center gap-1 text-caption text-muted-foreground">
-            <Check aria-hidden="true" />
-            You&rsquo;re here
-          </span>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/" onClick={onNavigate}>
-            <LayoutGrid aria-hidden="true" />
-            Launcher
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-caption font-normal text-muted-foreground">Your systems</DropdownMenuLabel>
-        {orderedSystems(systems).map((system) => (
-          <DropdownMenuItem key={system.system} asChild>
-            <Link to={`/?open=${encodeURIComponent(system.system)}`} onClick={onNavigate}>
-              <span className="font-semibold">{system.system}</span>
-              <span className="truncate text-caption text-muted-foreground">{system.name}</span>
-            </Link>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
