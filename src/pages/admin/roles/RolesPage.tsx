@@ -6,22 +6,34 @@ import { SaveBar, type SaveBarChange, type SaveBarPeople } from '@/components/ui
 import { useDraft } from '@/hooks/useDraft';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import type { AdminMe, SystemCode } from '@/lib/admin';
-import { errorMessage, fetchRoles, listPeople, type RolesData } from '@/lib/adminApi';
+import { errorMessage, fetchRoles, listPeople, type CreatedRole, type RoleSummary, type RolesData } from '@/lib/adminApi';
 import { notify, notifyError, notifySuccess } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import { NoSystemScope, ViewError } from '../AdminStates';
 import { pendingChanges, toggle, type MatrixDraft } from '../permissions/matrixDraft';
 import { useAsync } from '../useAsync';
+import { refreshSystemsCatalog } from '../useCatalogs';
 import { AddPeopleDialog } from './AddPeopleDialog';
+import {
+  DeleteRoleDialog,
+  RoleFieldDialog,
+  RoleFormDialog,
+  type RoleFieldKind,
+  type RoleFormStart,
+} from './CustomRoleDialogs';
 import { downloadRolesCsv } from './downloadRolesCsv';
-import { RoleDetail, RoleSkeleton, type RoleTab } from './RoleDetail';
+import { RoleDetail, RoleSkeleton, type RoleHeaderActions, type RoleTab } from './RoleDetail';
 import { RoleList } from './RoleList';
 import { RoleReviewDialog, type SaveConflict } from './RoleReviewDialog';
 import {
+  atCustomRoleLimit,
   barSubline,
   checkDraft,
+  customRoleCopy,
   deletedCount,
   draftFromStored,
+  dropRoleFromDraft,
+  duplicateName,
   parseRoleSystem,
   reachLine,
   resetToDefaults,
@@ -31,6 +43,8 @@ import {
   storedChanges,
   storedCurrent,
   toMatrix,
+  withCreatedRole,
+  withUpdatedRole,
 } from './rolesRules';
 
 /**
@@ -81,6 +95,11 @@ function SystemRoles({
   const [tab, setTab] = useState<RoleTab>('permissions');
   const [adding, setAdding] = useState(false);
   const [peopleVersion, setPeopleVersion] = useState(0);
+  // Child 0002: the custom role dialogs, and the row that just landed
+  const [forming, setForming] = useState<RoleFormStart | null>(null);
+  const [editing, setEditing] = useState<RoleFieldKind | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [landed, setLanded] = useState<string | undefined>(undefined);
   const asked = useRef(new Set<string>());
   const { state, replace } = useAsync<RolesData>(`${system}|${attempt}`, () => fetchRoles(system));
   const data = state.kind === 'ready' ? state.value : null;
@@ -184,6 +203,47 @@ function SystemRoles({
     }
   };
 
+  /**
+   * AC-20, AC-23: take the new role, its cells and the new version from the create answer (so a
+   * later save isn't refused as stale), flash its row and open it on Permissions.
+   */
+  const afterCreate = (created: CreatedRole, source: string) => {
+    setForming(null);
+    refreshSystemsCatalog();
+    replace((current) => withCreatedRole(current, created));
+    setLanded(created.role.code);
+    setTab('permissions');
+    navigate(rolesHref(system, created.role.code), { replace: true });
+    notifySuccess(customRoleCopy.created(created.role.name, source));
+  };
+
+  /** AC-24: the answer is the role as the list shows it. */
+  const afterUpdate = (saved: RoleSummary, kind: RoleFieldKind) => {
+    setEditing(null);
+    refreshSystemsCatalog();
+    replace((current) => withUpdatedRole(current, saved));
+    notifySuccess(kind === 'name' ? customRoleCopy.renamed(saved.name) : customRoleCopy.described);
+  };
+
+  /** AC-25: drop the role from the draft, read the roles again and open the system's first role. */
+  const afterDelete = async (deleted: RoleSummary) => {
+    setDeleting(false);
+    refreshSystemsCatalog();
+    const kept = dropRoleFromDraft(draft, deleted.code);
+    setDraft(kept);
+    if (Object.keys(kept).length === 0) clear();
+    notifySuccess(customRoleCopy.deleted(deleted.name));
+    try {
+      const next = await fetchRoles(system);
+      replace(() => next);
+      setDraft(checkDraft(next, kept).kept);
+      navigate(rolesHref(system, next.roles[0]?.code), { replace: true });
+    } catch {
+      navigate(rolesHref(system), { replace: true });
+      setAttempt((n) => n + 1);
+    }
+  };
+
   const role = data?.roles.find((r) => r.code === roleCode);
   if (data && !roleCode && !isMobile && data.roles[0]) {
     return <Navigate to={rolesHref(system, data.roles[0].code)} replace />;
@@ -211,11 +271,27 @@ function SystemRoles({
     const line = reachLine(r, names, system);
     return { key: r.code, names, text: several && r.peopleCount > 0 ? `${r.name}: ${line}` : line };
   });
-  const reset =
-    data && role && data.canEdit && data.supportsCustomRoles && role.builtIn
+  // Suite admins on a system with permissions only (AC-10; child 0002, AC-20, AC-27)
+  const manages = Boolean(data?.canEdit && data.supportsCustomRoles);
+  const atLimit = data ? atCustomRoleLimit(data) : false;
+  const actions: RoleHeaderActions | undefined =
+    data && role && manages
       ? {
-          disabled: !resetToDefaults(data, draft, role.code).changed,
-          onReset: () => setDraft((d) => resetToDefaults(data, d, role.code).draft),
+          reset: role.builtIn
+            ? {
+                disabled: !resetToDefaults(data, draft, role.code).changed,
+                onReset: () => setDraft((d) => resetToDefaults(data, d, role.code).draft),
+              }
+            : undefined,
+          onDuplicate: () => setForming({ kind: 'duplicate', from: role.code, name: duplicateName(role.name) }),
+          atLimit,
+          custom: role.builtIn
+            ? undefined
+            : {
+                onRename: () => setEditing('name'),
+                onDescribe: () => setEditing('description'),
+                onDelete: () => setDeleting(true),
+              },
         }
       : undefined;
 
@@ -231,6 +307,12 @@ function SystemRoles({
           onSystem={(next) => navigate(rolesHref(next), { replace: true })}
           onSelect={(code) => navigate(rolesHref(system, code), { replace: true })}
           onDownload={data?.supportsCustomRoles ? () => downloadRolesCsv(data) : undefined}
+          newRole={
+            data && manages
+              ? { atLimit, onOpen: () => setForming({ kind: 'new', from: role?.code ?? data.roles[0]?.code ?? '' }) }
+              : undefined
+          }
+          landed={landed}
         />
       </div>
       <div
@@ -259,7 +341,7 @@ function SystemRoles({
               role={role}
               draft={draft}
               onToggle={(key) => flip(role.code, key)}
-              reset={reset}
+              actions={actions}
               tab={tab}
               onTab={setTab}
               peopleVersion={peopleVersion}
@@ -295,6 +377,31 @@ function SystemRoles({
           onClose={() => setAdding(false)}
           onMoved={() => void afterMove()}
         />
+      )}
+      {data && manages && (
+        <RoleFormDialog start={forming} data={data} draft={draft} onClose={() => setForming(null)} onCreated={afterCreate} />
+      )}
+      {data && role && manages && !role.builtIn && (
+        <>
+          <RoleFieldDialog
+            kind={editing}
+            data={data}
+            role={role}
+            onClose={() => setEditing(null)}
+            onSaved={afterUpdate}
+          />
+          <DeleteRoleDialog
+            open={deleting}
+            data={data}
+            role={role}
+            onClose={() => setDeleting(false)}
+            onDeleted={() => void afterDelete(role)}
+            onShowPeople={() => {
+              setDeleting(false);
+              setTab('people');
+            }}
+          />
+        </>
       )}
       {data?.canEdit && (
         <RoleReviewDialog

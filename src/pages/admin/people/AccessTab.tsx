@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
+import { RoleChip } from '@/components/ui/role-chip';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { errorCode, type AdminMe, type SystemCode } from '@/lib/admin';
@@ -170,7 +171,10 @@ function ChangeRoleDialog({
                 className="mt-0.5 size-4 accent-primary outline-none"
               />
               <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-body font-semibold text-foreground">{role.name}</span>
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="text-body font-semibold text-foreground">{role.name}</span>
+                  {role.builtIn === false && <RoleChip custom>Custom</RoleChip>}
+                </span>
                 {role.description && (
                   <span className="text-caption font-normal text-muted-foreground">{role.description}</span>
                 )}

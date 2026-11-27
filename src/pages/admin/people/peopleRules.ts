@@ -291,3 +291,15 @@ export function accessRows(
     };
   });
 }
+
+// ---- the person's tabs ------------------------------------------------------------------------
+
+export type PersonTab = 'overview' | 'access' | 'devices' | 'activity';
+
+const PERSON_TABS: readonly PersonTab[] = ['overview', 'access', 'devices', 'activity'];
+
+/** Suite spec 0018, child 0002 AC-25: `?tab=access` opens that tab first; anything else Overview. */
+export function tabFromQuery(search: string): PersonTab {
+  const asked = new URLSearchParams(search).get('tab');
+  return PERSON_TABS.find((t) => t === asked) ?? 'overview';
+}

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { AdminMe } from '@/lib/admin';
 import type { RoleSummary, RolesData } from '@/lib/adminApi';
 import {
+  customRoleCopy,
   allowedCount,
   barSubline,
   checkDraft,
@@ -48,6 +49,7 @@ const role = (code: string, name: string, over: Partial<RoleSummary> = {}): Role
   isSystemAdmin: false,
   copiedFrom: null,
   peopleCount: 0,
+  graceCount: 0,
   lastChanged: null,
   ...over,
 });
@@ -111,7 +113,7 @@ describe('the role header (AC-3)', () => {
   it('writes the help line for a built in role, a custom role and a system without permissions', () => {
     expect(roleHelp(data.roles[0], data)).toBe('Comes with VRMS. You can change its permissions, not delete it.');
     expect(roleHelp(role('C_NIGHT', 'Night shift lead', { builtIn: false }), data)).toBe(
-      'Made by a suite admin. You can rename or delete it.',
+      'Made by a suite admin. You can rename or delete it. Works in the browser. The mobile app is for Mechanics and Chief mechanics.',
     );
     expect(roleHelp(data.roles[0], { ...data, system: 'VMMS', supportsCustomRoles: false })).toBe(
       'VMMS sets what each role can do in its own app. You can give these roles to people here.',
@@ -271,5 +273,16 @@ describe('save bar and review words (AC-7 to AC-9, AC-11, AC-12)', () => {
     expect(rolesCopy.draftOutOfDate('VRMS')).toBe('Your saved draft for VRMS roles was out of date, so it was cleared.');
     expect(rolesCopy.draftName([role('C', 'Chief mechanic')], 'VRMS')).toBe('Chief mechanic');
     expect(rolesCopy.draftName([role('C', 'Chief mechanic'), role('M', 'Mechanic')], 'VRMS')).toBe('VRMS roles');
+  });
+});
+
+describe('customRoleCopy.graceHolders (AC-25)', () => {
+  it('words one person and several people the way the spec does', () => {
+    expect(customRoleCopy.graceHolders(1)).toBe(
+      '1 person waiting for deletion keeps it until their deletion completes; if they are restored, they come back without it.',
+    );
+    expect(customRoleCopy.graceHolders(3)).toBe(
+      '3 people waiting for deletion keep it until their deletion completes; if one is restored, they come back without it.',
+    );
   });
 });

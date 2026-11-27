@@ -129,7 +129,14 @@ export type Scope = SystemCode | null;
 
 const scoped = (system: Scope) => (system ? { system } : {});
 
-export type CatalogRole = { code: string; name: string; description: string; isSystemAdmin: boolean };
+export type CatalogRole = {
+  code: string;
+  name: string;
+  description: string;
+  isSystemAdmin: boolean;
+  /** False for a custom role (suite spec 0018, child 0002 AC-29); older answers leave it out. */
+  builtIn?: boolean;
+};
 export type CatalogSystem = { code: SystemCode; name: string; maxRolesPerUser: number; roles: CatalogRole[] };
 
 export type EventCatalog = {
@@ -563,6 +570,8 @@ export type RoleSummary = {
   copiedFrom: { code: string; name: string } | null;
   /** People who hold it and aren't deleted. */
   peopleCount: number;
+  /** People in their deletion grace period who still hold it; they don't block Delete (AC-25). */
+  graceCount: number;
   /** The newest permission change or role event; `byName` is "System" for the catalog sync. */
   lastChanged: { at: string; byName: string } | null;
 };
@@ -644,6 +653,48 @@ export function addRoleMembers(
         )
       ).data,
   );
+}
+
+/** Child 0002, AC-20, AC-21: the create answer; the page takes the cells and version from it. */
+export type CreatedRole = { role: RoleSummary; cells: string[]; version: number };
+
+/** Child 0002, AC-20 to AC-23: a custom role copied from `from` (a live role's saved cells). */
+export function createRole(
+  system: SystemCode,
+  input: { name: string; description?: string; from: string },
+): Promise<CreatedRole> {
+  return withStepUp(async () => (await api.post<CreatedRole>(`/auth/admin/roles/${system}`, input)).data);
+}
+
+/** Child 0002, AC-24: rename or describe a custom role. The code never changes. */
+export function updateRole(
+  system: SystemCode,
+  code: string,
+  input: { name?: string; description?: string },
+): Promise<RoleSummary> {
+  return withStepUp(
+    async () =>
+      (await api.patch<RoleSummary>(`/auth/admin/roles/${system}/${encodeURIComponent(code)}`, input)).data,
+  );
+}
+
+/** Child 0002, AC-25: archive a custom role no one holds. Answers the new matrix version. */
+export function deleteRole(system: SystemCode, code: string): Promise<{ version: number }> {
+  return withStepUp(async () => {
+    // `data: {}` keeps the JSON content type, which the portal CSRF guard needs (see `deletePerson`)
+    const { data } = await api.delete<{ version: number }>(`/auth/admin/roles/${system}/${encodeURIComponent(code)}`, {
+      data: {},
+    });
+    return data;
+  });
+}
+
+/** A number in an error's `details` (`ROLE_IN_USE` carries `count`). */
+export function errorDetail(error: unknown, name: string): number | undefined {
+  const details = (error as { response?: { data?: { details?: Record<string, unknown> } } } | null)?.response?.data
+    ?.details;
+  const value = details?.[name];
+  return typeof value === 'number' ? value : undefined;
 }
 
 export function errorMessage(error: unknown, fallback: string): string {

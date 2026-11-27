@@ -41,6 +41,7 @@ const role = (code: string, name: string, over: Partial<RoleSummary> = {}): Role
   isSystemAdmin: false,
   copiedFrom: null,
   peopleCount: 0,
+  graceCount: 0,
   lastChanged: null,
   ...over,
 });
