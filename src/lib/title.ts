@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 
-// Suite spec 0019, AC-28: every route names itself in the tab, the most specific part first, then
-// "WeLinc" ("People · Suite management · WeLinc").
+// Suite spec 0019, AC-28: every route names itself in the tab, the most specific part first
+// ("People · Suite management"). The "WeLinc" suffix was dropped on 2026-11-28 (your call); a
+// screen with no part is just "WeLinc".
 
 export const SUITE_MANAGEMENT = 'Suite management';
 
@@ -10,7 +11,8 @@ export const SIGN_IN_TITLE = 'Sign in · WeLinc Logistics Operations Workspace';
 
 /** The tab title for `parts`, most specific first; empty parts are left out. */
 export function pageTitle(...parts: (string | null | undefined)[]): string {
-  return [...parts.map((p) => p?.trim()).filter(Boolean), 'WeLinc'].join(' · ');
+  const named = parts.map((p) => p?.trim()).filter(Boolean);
+  return named.length > 0 ? named.join(' · ') : 'WeLinc';
 }
 
 /**
