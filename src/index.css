@@ -283,6 +283,23 @@
 }
 
 /*
+  The landing flash (design.md, Motion): a row that was just created or moved starts on highlight
+  at 20% and fades to none over --duration-land. Reduced motion: no flash at all.
+*/
+@utility land-flash {
+  animation: land-flash var(--duration-land) var(--ease-enter) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes land-flash {
+  from {
+    background-color: color-mix(in oklab, var(--color-highlight) 20%, transparent);
+  }
+}
+
+/*
   A group that opens and closes (design.md, Motion: --duration-fold, height plus fade). Put it on
   the wrapper, `data-open` when open, and one child with `min-h-0 overflow-hidden`. Mark the
   closed wrapper `inert` so its controls leave the tab order. Reduced motion: only the fade.

@@ -61,7 +61,10 @@ export function roleHelp(role: RoleSummary, data: RolesData): string {
   }
   return role.builtIn
     ? `Comes with ${data.system}. You can change its permissions, not delete it.`
-    : 'Made by a suite admin. You can rename or delete it.';
+    : data.system === 'VRMS'
+      ? // Child 0002, AC-31: the shared mobile app keeps Mechanic and Chief mechanic only
+        'Made by a suite admin. You can rename or delete it. Works in the browser. The mobile app is for Mechanics and Chief mechanics.'
+      : 'Made by a suite admin. You can rename or delete it.';
 }
 
 /**
@@ -368,3 +371,89 @@ export function csvFileName(system: SystemCode, now: Date): string {
   const day = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   return `welinc-${system.toLowerCase()}-roles-${day}.csv`;
 }
+
+// ---- custom roles (child 0002, AC-20 to AC-26) ------------------------------------------------
+
+/** AC-22: the most live custom roles a system can have (welinc-auth `CUSTOM_ROLE_LIMIT`). */
+export const CUSTOM_ROLE_LIMIT = 20;
+export const ROLE_NAME_MAX = 40;
+export const ROLE_DESCRIPTION_MAX = 200;
+
+/** AC-22: the name problem the server would answer, or null. The name is trimmed first. */
+export function roleNameProblem(raw: string): string | null {
+  const name = raw.trim();
+  if (name.length < 2 || name.length > ROLE_NAME_MAX) return 'Name needs 2 to 40 characters.';
+  // The code is made from A to Z and 0 to 9 only (umbrella rules), so the name needs one of them
+  if (!/[A-Z0-9]/.test(name.toUpperCase())) return 'Use letters or numbers in the name.';
+  return null;
+}
+
+/** AC-22: a live role (built in or custom) already has this name, ignoring case. */
+export function nameTaken(roles: RoleSummary[], raw: string, except?: string): boolean {
+  const name = raw.trim().toLowerCase();
+  return roles.some((r) => r.code !== except && r.name.toLowerCase() === name);
+}
+
+/** AC-22: New role and Duplicate are disabled at the limit. */
+export function atCustomRoleLimit(data: RolesData): boolean {
+  return data.roles.filter((r) => !r.builtIn).length >= CUSTOM_ROLE_LIMIT;
+}
+
+/** AC-21: "Copy of [role]", cut to 40 characters (trimmed, so the cut never ends in a space). */
+export function duplicateName(role: string): string {
+  return `Copy of ${role}`.slice(0, ROLE_NAME_MAX).trim();
+}
+
+/** AC-20: the source's saved cells hold a key that manages the team or settings. */
+export function sourceHoldsPower(data: RolesData, from: string): boolean {
+  return POWER_KEYS.some((key) => data.cells[from]?.includes(key) ?? false);
+}
+
+/** AC-20: the source has unsaved changes in the draft, which aren't copied. */
+export function sourceHasDraft(draft: MatrixDraft, from: string): boolean {
+  return draftCount(draft, from) > 0;
+}
+
+/** AC-25: the draft without the entries of a deleted role. */
+export function dropRoleFromDraft(draft: MatrixDraft, role: string): MatrixDraft {
+  return Object.fromEntries(Object.entries(draft).filter(([id]) => !id.startsWith(`${role}|`)));
+}
+
+/** Live roles as the server orders them: built in first as served, then custom by name. */
+function ordered(roles: RoleSummary[]): RoleSummary[] {
+  const custom = roles
+    .filter((r) => !r.builtIn)
+    .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+  return [...roles.filter((r) => r.builtIn), ...custom];
+}
+
+/** AC-20, AC-23: the page's data with a just created role, its cells and the new version. */
+export function withCreatedRole(data: RolesData, created: { role: RoleSummary; cells: string[]; version: number }): RolesData {
+  return {
+    ...data,
+    version: created.version,
+    roles: ordered([...data.roles.filter((r) => r.code !== created.role.code), created.role]),
+    cells: { ...data.cells, [created.role.code]: created.cells },
+  };
+}
+
+/** AC-24: the page's data with a renamed or described role (a rename can move it in the list). */
+export function withUpdatedRole(data: RolesData, role: RoleSummary): RolesData {
+  return { ...data, roles: ordered(data.roles.map((r) => (r.code === role.code ? role : r))) };
+}
+
+/** AC-20 to AC-25: the custom role toasts and dialog lines. */
+export const customRoleCopy = {
+  created: (name: string, source: string) => `${name} created from ${source}.`,
+  renamed: (name: string) => `Renamed to ${name}.`,
+  described: 'Description saved.',
+  deleted: (name: string) => `${name} deleted.`,
+  taken: (name: string, system: SystemCode) => `There's already a role called ${name} in ${system}.`,
+  limit: (system: SystemCode) =>
+    `${system} has ${CUSTOM_ROLE_LIMIT} custom roles, the most it can have. Delete one to make another.`,
+  draftNotCopied: (source: string) => `Unsaved changes on ${source} aren't copied.`,
+  power: (name: string, system: SystemCode) => `${name} will be able to manage the team and change settings in ${system}.`,
+  stillHeld: (n: number, role: string) => (n === 1 ? `1 person still has ${role}` : `${n} people still have ${role}`),
+  /** AC-31: the help line's extra sentence for a custom VRMS role. */
+  browserOnly: 'Works in the browser. The mobile app is for Mechanics and Chief mechanics.',
+};

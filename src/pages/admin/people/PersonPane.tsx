@@ -17,13 +17,13 @@ import { pageTitle, SUITE_MANAGEMENT, useDocumentTitle } from '@/lib/title';
 import { useEventCatalog, useSystemsCatalog } from '../useCatalogs';
 import { AccessTab } from './AccessTab';
 import { CardAction, PaneCard, StatusPill, SystemChip } from './peopleParts';
-import { accessSummary, isPending, orList, personPill, roleLine, signInFacts } from './peopleRules';
+import { accessSummary, isPending, orList, personPill, roleLine, signInFacts, tabFromQuery } from './peopleRules';
 import type { PersonActions } from './personActions';
 import { PersonHeaderActions } from './PersonHeaderActions';
 import { ActivityTab, DevicesTab } from './PersonTabs';
 import { TemporaryTag } from './TemporaryTag';
 
-export type PersonTab = 'overview' | 'access' | 'devices' | 'activity';
+import type { PersonTab } from './peopleRules';
 
 type Load =
   | { kind: 'loading' }
@@ -59,10 +59,21 @@ export function PersonPane({
   const [attempt, setAttempt] = useState(0);
   // Bumped after each action, so the tabs' own reads (sessions, activity) load again
   const [version, setVersion] = useState(0);
-  const [tab, setTab] = useState<PersonTab>('overview');
   const catalog = useSystemsCatalog();
   const navigate = useNavigate();
-  const { search } = useLocation();
+  const { pathname, search } = useLocation();
+  // Suite spec 0018, child 0002 AC-25: "Change role →" opens the person on Access (`?tab=access`)
+  const [tab, setTab] = useState<PersonTab>(() => tabFromQuery(search));
+
+  // The tab query only picks the first tab; it leaves the address so picking the next person
+  // from the list (which keeps the query) opens them on Overview as usual
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    if (!params.has('tab')) return;
+    params.delete('tab');
+    const rest = params.toString();
+    navigate(`${pathname}${rest ? `?${rest}` : ''}`, { replace: true });
+  }, [navigate, pathname, search]);
   const name = load.kind === 'ready' ? load.person.name : 'This person';
   // Suite spec 0019, AC-28: "Maria Santos · People", the list's title while the person loads
   useDocumentTitle(

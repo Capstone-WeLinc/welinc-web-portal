@@ -17,6 +17,14 @@ function once<T>(get: () => Promise<T> | null, set: (p: Promise<T> | null) => vo
   return next;
 }
 
+/**
+ * Suite spec 0018, child 0002 AC-28: a create, rename or delete changes the role list, so the
+ * next view that asks reads `/auth/systems` again (it revalidates with its ETag, AC-29).
+ */
+export function refreshSystemsCatalog(): void {
+  systemsOnce = null;
+}
+
 /** `GET /auth/systems`: every system with its roles in display order (spec 0004). */
 export function useSystemsCatalog(): CatalogSystem[] | null {
   const [systems, setSystems] = useState<CatalogSystem[] | null>(null);

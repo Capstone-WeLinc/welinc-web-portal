@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Check, Mail, UserRound, UserRoundPlus } from 'lucide-react';
+import { RoleChip } from '@/components/ui/role-chip';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { InitialsTile } from '@/components/ui/initials-tile';
@@ -356,7 +357,10 @@ function AddUserForm({
                     )}
                   />
                   <span className="flex min-w-0 flex-col gap-0.5">
-                    <span className="text-body font-semibold text-foreground">{r.name}</span>
+                    <span className="flex flex-wrap items-center gap-2">
+                  <span className="text-body font-semibold text-foreground">{r.name}</span>
+                  {r.builtIn === false && <RoleChip custom>Custom</RoleChip>}
+                </span>
                     {r.description && <span className="text-caption font-normal text-muted-foreground">{r.description}</span>}
                   </span>
                 </button>

@@ -111,7 +111,7 @@ describe('the role header (AC-3)', () => {
   it('writes the help line for a built in role, a custom role and a system without permissions', () => {
     expect(roleHelp(data.roles[0], data)).toBe('Comes with VRMS. You can change its permissions, not delete it.');
     expect(roleHelp(role('C_NIGHT', 'Night shift lead', { builtIn: false }), data)).toBe(
-      'Made by a suite admin. You can rename or delete it.',
+      'Made by a suite admin. You can rename or delete it. Works in the browser. The mobile app is for Mechanics and Chief mechanics.',
     );
     expect(roleHelp(data.roles[0], { ...data, system: 'VMMS', supportsCustomRoles: false })).toBe(
       'VMMS sets what each role can do in its own app. You can give these roles to people here.',

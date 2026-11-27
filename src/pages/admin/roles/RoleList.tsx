@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { EllipsisVertical, FileSpreadsheet, Search, SearchX } from 'lucide-react';
+import { EllipsisVertical, FileSpreadsheet, Plus, Search, SearchX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -14,14 +14,16 @@ import type { SystemCode } from '@/lib/admin';
 import type { RoleSummary, RolesData } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 import type { MatrixDraft } from '../permissions/matrixDraft';
-import { draftCount, matchRoles, peopleWords, roleCountWords } from './rolesRules';
+import { customRoleCopy, draftCount, matchRoles, peopleWords, roleCountWords } from './rolesRules';
 
 /**
  * Suite spec 0018, child 0001 AC-2 (board Roles9): the list pane. The title with the count, the
  * system switch (only with two or more systems), a search over names and descriptions, and the
  * sticky Built in and Custom headings. Each row: a square initials tile, the name, the people in
  * words, and the gold draft bubble when the row holds unsaved changes (AC-7). The ⋮ "More options"
- * holds the spreadsheet download (AC-16), for systems with permissions only.
+ * holds the spreadsheet download (AC-16), for systems with permissions only. Child 0002, AC-20:
+ * a suite admin on a system with permissions gets the dashed New role button pinned at the bottom;
+ * a just created role lands with the landing flash.
  */
 export function RoleList({
   systems,
@@ -32,6 +34,8 @@ export function RoleList({
   onSystem,
   onSelect,
   onDownload,
+  newRole,
+  landed,
 }: {
   systems: SystemCode[];
   system: SystemCode;
@@ -43,6 +47,10 @@ export function RoleList({
   onSelect: (code: string) => void;
   /** Download as spreadsheet; absent for a system without permissions. */
   onDownload?: () => void;
+  /** New role (child 0002, AC-20); absent unless a suite admin views a system with permissions. */
+  newRole?: { onOpen: () => void; atLimit: boolean };
+  /** The code of a role that was just created, which gets the landing flash. */
+  landed?: string;
 }) {
   const [q, setQ] = useState('');
   const roles = data ? matchRoles(data.roles, q) : [];
@@ -132,12 +140,32 @@ export function RoleList({
                 selected={selected}
                 draft={draft}
                 onSelect={onSelect}
+                landed={landed}
                 empty={q.trim() ? null : 'No custom roles yet'}
               />
             )}
           </>
         )}
       </div>
+      {newRole && (
+        <div className="flex flex-col gap-2 border-t border-divider bg-card px-4 pt-3 pb-4">
+          <Button
+            variant="outline"
+            disabled={newRole.atLimit}
+            aria-describedby={newRole.atLimit ? 'new-role-limit' : undefined}
+            onClick={newRole.onOpen}
+            className="h-11 w-full border-dashed border-muted-foreground bg-transparent font-semibold text-primary shadow-none"
+          >
+            <Plus aria-hidden="true" />
+            New role
+          </Button>
+          {newRole.atLimit && (
+            <p id="new-role-limit" className="text-caption font-normal text-muted-foreground">
+              {customRoleCopy.limit(system)}
+            </p>
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -149,6 +177,7 @@ function RoleGroup({
   selected,
   draft,
   onSelect,
+  landed,
   empty = null,
 }: {
   id: string;
@@ -157,6 +186,7 @@ function RoleGroup({
   selected: string | undefined;
   draft: MatrixDraft;
   onSelect: (code: string) => void;
+  landed?: string;
   /** Shown under the heading when the group has no role; null hides the whole group then. */
   empty?: string | null;
 }) {
@@ -176,6 +206,7 @@ function RoleGroup({
                 role={role}
                 selected={role.code === selected}
                 drafts={draftCount(draft, role.code)}
+                landed={role.code === landed}
                 onSelect={() => onSelect(role.code)}
               />
             </li>
@@ -190,11 +221,13 @@ function RoleRow({
   role,
   selected,
   drafts,
+  landed,
   onSelect,
 }: {
   role: RoleSummary;
   selected: boolean;
   drafts: number;
+  landed: boolean;
   onSelect: () => void;
 }) {
   return (
@@ -205,6 +238,7 @@ function RoleRow({
       className={cn(
         'my-px flex min-h-14 w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors outline-none hover:bg-background focus-visible:ring-2 focus-visible:ring-ring',
         selected && 'bg-info-bg ring-1 ring-primary/15 ring-inset hover:bg-info-bg',
+        landed && 'land-flash',
       )}
     >
       <InitialsTile
