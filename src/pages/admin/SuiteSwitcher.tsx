@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Grip, House, ShieldCheck } from 'lucide-react';
+import { Grip, LayoutGrid, ShieldCheck } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { LauncherAnswer } from '@/lib/auth';
 import { roleTag } from '@/lib/launcher';
@@ -16,7 +16,7 @@ const TAG = 'shrink-0 rounded-md px-2 py-0.5 text-caption font-semibold whitespa
 /**
  * Suite spec 0019, AC-20 (board `Switcher16`): the grid button at the top right. Wide cards, one
  * per row: Suite management first and ticked, then the systems you hold a role in (from the held
- * launcher answer), each with your role and its own address. A Home pill sits in the title.
+ * launcher answer), each with your role and its own address. A Launcher pill (`LayoutGrid`) sits in the title.
  * `systems` empty for a suite admin with no system roles: the caller shows no switcher at all.
  */
 export function SuiteSwitcher({ systems }: { systems: readonly System[] }) {
@@ -36,8 +36,8 @@ export function SuiteSwitcher({ systems }: { systems: readonly System[] }) {
               to="/"
               className="flex h-8 items-center gap-1.5 rounded-full border border-border px-3 text-small font-semibold text-primary outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <House aria-hidden="true" className="size-3.5" />
-              Home
+              <LayoutGrid aria-hidden="true" className="size-3.5" />
+              Launcher
             </Link>
           </div>
           <ul className="flex flex-col gap-2 px-3 pb-3">

@@ -443,6 +443,12 @@
     @apply border-border outline-ring/50;
   }
 
+  /* A hand on anything you can press, as in web-vrms (Tailwind 4 leaves buttons on the arrow) */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
   /* No rubber band past the top or bottom on macOS, which showed the browser's white behind
      the page; the root also takes the canvas color in case anything still peeks through */
   html {
