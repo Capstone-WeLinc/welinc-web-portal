@@ -45,8 +45,9 @@ export const NOTE_MAX = 500;
 /**
  * Suite spec 0013, AC-23: deletion requests waiting for this system's admins, and accounts in
  * their grace period (spec 0012). Any one admin of the person's systems decides.
+ * `onChanged` reads `me` again after an approve or reject, so the sidebar count follows (VRMS spec 0027, AC-12).
  */
-export function DeletionRequestsView({ me }: { me: AdminMe }) {
+export function DeletionRequestsView({ me, onChanged }: { me: AdminMe; onChanged?: () => void }) {
   const scope = useAdminScope(me);
   const system = scope.kind === 'ok' ? scope.system : null;
   const key = system ?? 'all';
@@ -83,14 +84,14 @@ export function DeletionRequestsView({ me }: { me: AdminMe }) {
       {scope.kind === 'not-admin' && <NoSystemScope asked={scope.asked} />}
       {scope.kind === 'ok' && (
         <>
-          {tab === 'pending' ? <PendingList key={key} system={system} /> : <GraceList key={key} system={system} />}
+          {tab === 'pending' ? <PendingList key={key} system={system} onChanged={onChanged} /> : <GraceList key={key} system={system} />}
         </>
       )}
     </>
   );
 }
 
-function PendingList({ system }: { system: Scope }) {
+function PendingList({ system, onChanged }: { system: Scope; onChanged?: () => void }) {
   const [attempt, setAttempt] = useState(0);
   const [rejecting, setRejecting] = useState<DeletionRequest | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -102,6 +103,7 @@ function PendingList({ system }: { system: Scope }) {
     setBusy(request.id);
     try {
       await approveDeletion(request.id, system);
+      onChanged?.();
       notifySuccess(`${request.user?.name ?? 'The account'} is deleted. You can restore it during the grace period.`);
       drop(request.id);
     } catch (err) {
@@ -182,6 +184,7 @@ function PendingList({ system }: { system: Scope }) {
         system={system}
         onClose={() => setRejecting(null)}
         onRejected={(id) => {
+          onChanged?.();
           setRejecting(null);
           drop(id);
         }}

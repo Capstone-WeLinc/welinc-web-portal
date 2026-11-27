@@ -15,6 +15,8 @@ import {
   keyTarget,
   signOutLine,
   suiteTileFor,
+  openRequest,
+  withoutLaunchParams,
 } from './launcher';
 
 // covers: spec 0007 AC-15 (greeting, first name), AC-17 (picture, initials)
@@ -164,5 +166,21 @@ describe('account initials and number keys', () => {
     expect(keyTarget(key('2', { ctrlKey: true }), 4)).toBeNull();
     expect(keyTarget(key('2', { altKey: true }), 4)).toBeNull();
     expect(keyTarget(key('2', { shiftKey: true }), 4)).toBeNull();
+  });
+});
+
+// covers: VRMS spec 0027 AC-13
+describe('the launcher open request', () => {
+  const systems = [{ system: 'VRMS' }, { system: 'VMMS' }];
+
+  it('names a system the person holds, denies one they do not, and is absent without open', () => {
+    expect(openRequest(new URLSearchParams('open=VMMS&from=VRMS'), systems)).toEqual({ system: { system: 'VMMS' } });
+    expect(openRequest(new URLSearchParams('open=BMS'), systems)).toEqual({ denied: 'BMS' });
+    expect(openRequest(new URLSearchParams('from=VRMS'), systems)).toBeNull();
+  });
+
+  it('drops open and from from the address, keeping the rest', () => {
+    expect(withoutLaunchParams('?from=VRMS&open=VMMS&error=x')).toBe('?error=x');
+    expect(withoutLaunchParams('?open=VMMS')).toBe('');
   });
 });

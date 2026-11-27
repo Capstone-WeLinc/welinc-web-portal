@@ -23,6 +23,11 @@ export type AdminMe = {
     roleName: string;
     expiresAt: string;
   }[];
+  /**
+   * VRMS spec 0027, AC-12: pending deletion requests the caller can act on (the sidebar count).
+   * Optional, so an older welinc-auth reads as no count.
+   */
+  pendingDeletionRequests?: number;
 };
 
 export function isAdmin(me: AdminMe | null): boolean {

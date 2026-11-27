@@ -31,6 +31,9 @@ type Load = { kind: 'loading' } | { kind: 'signed-out' } | { kind: 'error' } | {
  * comes from `GET /auth/admin/me`; welinc-auth checks every call again, so this only shapes the
  * page. A session that owes the emailed code asks for it before anything else.
  */
+/** VRMS spec 0027, AC-12: how stale `me` may be before a focus reads it again. */
+const ME_FOCUS_AFTER_MS = 15_000;
+
 export default function AdminPage() {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -78,6 +81,21 @@ export default function AdminPage() {
       .then((me) => setLoad({ kind: 'ready', me }))
       .catch(() => undefined);
   }, []);
+
+  // VRMS spec 0027, AC-12: the sidebar's Deletion requests count comes with `me`, so read it again
+  // when the window regains focus (at most every 15 seconds); a failed read keeps the last one.
+  const ready = load.kind === 'ready';
+  useEffect(() => {
+    if (!ready) return;
+    let readAt = Date.now();
+    const onFocus = () => {
+      if (Date.now() - readAt < ME_FOCUS_AFTER_MS) return;
+      readAt = Date.now();
+      refresh();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [ready, refresh]);
 
   // Suite spec 0016, AC-12b: the signing out soon watch, once the session is known to be live. A
   // reload or a pasted link starts with no cutoffs, so the watch asks /auth/sso once itself.
@@ -165,7 +183,7 @@ function AdminViewBody({
     case 'people':
       return <PeoplePage me={me} onMeChanged={onChanged} />;
     case 'deletion-requests':
-      return <DeletionRequestsView me={me} />;
+      return <DeletionRequestsView me={me} onChanged={onChanged} />;
     case 'activity':
       return <ActivityView me={me} />;
     case 'roles':

@@ -1,7 +1,7 @@
 import {
-  History,
+  Activity,
   IdCard,
-  KeyRound,
+  Timer,
   LayoutDashboard,
   ShieldCheck,
   UserX,
@@ -43,8 +43,8 @@ export const ADMIN_VIEWS: readonly AdminView[] = [
   { path: 'suite-admins', label: 'Suite admins', short: 'Suite', suiteOnly: true, icon: ShieldCheck, group: 'Accounts' },
   // Suite spec 0018, AC-1: the Roles page took the Permissions page's place (/admin/permissions redirects)
   { path: 'roles', label: 'Roles', short: 'Roles', suiteOnly: false, icon: IdCard, group: 'Access' },
-  { path: 'temporary-access', label: 'Temporary access', short: 'Temporary', suiteOnly: false, icon: KeyRound, group: 'Access' },
-  { path: 'activity', label: 'Activity', short: 'Activity', suiteOnly: false, icon: History, group: 'Audit' },
+  { path: 'temporary-access', label: 'Temporary access', short: 'Temporary', suiteOnly: false, icon: Timer, group: 'Access' },
+  { path: 'activity', label: 'Activity', short: 'Activity', suiteOnly: false, icon: Activity, group: 'Audit' },
 ];
 
 /** One view by path; every path is in `ADMIN_VIEWS`. */

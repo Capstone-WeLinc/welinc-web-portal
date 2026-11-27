@@ -126,3 +126,27 @@ export function keyTarget(
   const index = Number(event.key) - 1;
   return index < tiles ? index : null;
 }
+
+/**
+ * VRMS spec 0027, AC-13: the system the address asks the launcher to open (`?open=VMMS`), read
+ * once before `from`. A system the person can open is returned to start its handoff; one they
+ * can't gives `denied` (the launcher shows as usual with an error toast); no `open` gives null.
+ */
+export function openRequest<T extends { system: string }>(
+  params: URLSearchParams,
+  systems: readonly T[],
+): { system: T } | { denied: string } | null {
+  const asked = params.get('open');
+  if (!asked) return null;
+  const system = systems.find((candidate) => candidate.system === asked);
+  return system ? { system } : { denied: asked };
+}
+
+/** AC-13: the address without `open` and `from`, once the launcher has read them. */
+export function withoutLaunchParams(search: string): string {
+  const rest = new URLSearchParams(search);
+  rest.delete('open');
+  rest.delete('from');
+  const query = rest.toString();
+  return query ? `?${query}` : '';
+}
