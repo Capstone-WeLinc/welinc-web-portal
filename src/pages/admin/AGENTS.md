@@ -2,21 +2,22 @@
 
 ## Overview
 
-The portal's admin screens from suite spec 0013. They talk only to welinc-auth's cookie based `/auth/admin/*` routes, through `src/lib/admin.ts` (standing, step up) and `src/lib/adminApi.ts` (every call). Entry points: the launcher's Suite management tile (`SuiteTile`) and the top bar `AdminEntry`, both through `useAdminMe`.
+The portal's admin screens from suite spec 0013. They talk only to welinc-auth's cookie based `/auth/admin/*` routes, through `src/lib/admin.ts` (standing, step up) and `src/lib/adminApi.ts` (every call). Entry points: the launcher's Suite management tile (`SuiteTile`, built by `suiteTileFor` in `src/lib/launcher.ts` from the SSO answer) and the top bar `AdminEntry` (through `useAdminMe`).
 
 ## Key files
 
 | File | Owns |
 |---|---|
 | `AdminPage.tsx` | The session gate (`fetchAdminMe`), the view switch, and the Code owed and Not an admin screens; `/admin/people/new` is Add person |
-| `AdminShell.tsx` | The frame: sidebar, breadcrumb top bar, and on phones a bottom bar or a sheet menu (`BOTTOM_BAR_MAX` in `adminViews.ts`) |
+| `AdminShell.tsx` | The frame: sidebar, breadcrumb top bar, and on phones a bottom bar or a sheet menu (`BOTTOM_BAR_MAX` in `adminViews.ts`); the sidebar count bubble (`viewCount`) reads `pendingDeletionRequests` from `/auth/admin/me` |
+| `SuiteSwitcher.tsx` | The top bar's system switcher popover |
 | `AdminTable.tsx` | `DataTable`, `Row`, `Cell`, `PersonCell`, `Muted`: a table from md up that stacks into blocks on phones |
 | `adminViews.ts` | `ADMIN_VIEWS` (with the `suiteOnly` flag), `landingView`, `viewHref`, `BOTTOM_BAR_MAX` |
 | `useAdminSystem.ts` | `?system=` handling: `systemChoices` (the systems a viewer may pick), `useAdminScope` for views where a suite admin may pick `all` (people, activity, deletion). Writes the query with `replace` and drops `?cursor=` on a change |
 | `AdminStates.tsx` | `ViewHeader`, `ViewError`, `ViewEmpty`, `Segmented`, `SystemSwitcher`, `Toolbar`, `NoSystemScope` |
 | `StepUpDialog.tsx`, `ReauthDialog.tsx` | The "Confirm it's you" code dialog and the password dialog, each mounted once in `App.tsx` |
 | `ConfirmFields.tsx`, `reason.ts` | `ReasonField`, `PasswordField`, and `reasonProblem` (10 to 500 trimmed characters) |
-| `useAdminMe.ts` | The shared `/auth/admin/me` read behind the launcher's Suite management tile and the top bar `AdminEntry` |
+| `useAdminMe.ts` | The shared `/auth/admin/me` read behind the top bar `AdminEntry` |
 | `useAsync.ts`, `useCatalogs.ts` | The key based loader, and the systems and activity catalogs fetched once per page load |
 | `people/` | Suite spec 0017 (board `People8`): `PeoplePage` (the list beside the whole person; `/admin/people/new` opens `AddPersonDialog` over it), `PeopleListPane` (groups, sorts, search, filters), `PeopleFilter` (the Filter popover, suite spec 0019 AC-21) with its pure rules in `filterRules.ts` (tested), `PersonPane` and `PersonTabs` (header, facts, Overview, Access, Signed in devices, Activity), `AccessTab`, `PersonHeaderActions`, and the pure rules in `peopleRules.ts` (tested) |
 | `permissions/` | `matrixDraft.ts` only: the draft rules (cells keyed `role|key`, tested) the Roles page uses |
